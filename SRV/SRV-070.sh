@@ -1,58 +1,31 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1   
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-070] 취약한 패스워드 저장 방식 사용
 
 cat << EOF >> $result
-
-[양호]: NFS 접근제어 설정파일의 소유자가 root 이고, 권한이 644 이하인 경우
-
-[취약]: NFS 접근제어 설정파일의 소유자가 root 가 아니거나, 권한이 644 초과인 경우
-
+[양호]: 패스워드 저장에 강력한 해싱 알고리즘을 사용하는 경우
+[취약]: 패스워드 저장에 취약한 해싱 알고리즘을 사용하는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 패스워드 해싱 알고리즘 확인
+PAM_FILE="/etc/pam.d/common-password"
 
-> $TMP1 
-
-filename="/etc/exports"
-
-owner=$(stat -c '%U' "$filename")
-permission=$(stat -c '%a' "$filename")
-
-if [ ! -e "$filename" ]; then
-  INFO "$filename 가 존재하지 않습니다"
-else 
-  if [ "$owner" != "root" ]; then
-    WARN "$filename의 소유자가 루트가 아닙니다."
-  else
-    OK "$filename의 소유자가 루트가 맞습니다."
-  fi
-
-  if [ "$permission" -gt 644 ] 2>/dev/null; then
-    WARN "$filename의 권한이 644보다 큽니다."
-  else
-    OK "$filename의 권한이 644 이하니다."
-  fi
-fi 
-
-
-
+# MD5, DES와 같이 취약한 알고리즘을 확인합니다
+if grep -Eq "md5|des" "$PAM_FILE"; then
+    WARN "취약한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE"
+else
+    OK "강력한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE"
+fi
 
 cat $result
 
-echo ; echo 
-
+echo ; echo
