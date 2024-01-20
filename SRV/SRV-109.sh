@@ -12,7 +12,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [SRV-108] 로그에 대한 접근통제 및 관리 미흡
+CODE [SRV-109] 시스템 주요 이벤트 로그 설정 미흡
 
 cat << EOF >> $result
 

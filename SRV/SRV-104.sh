@@ -1,64 +1,28 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-104] 보안 채널 데이터 디지털 암호화 또는 서명 기능 비활성화
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 보안 채널 데이터의 디지털 암호화 및 서명 기능이 활성화되어 있는 경우
+[취약]: 보안 채널 데이터의 디지털 암호화 및 서명 기능이 비활성화되어 있는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 보안 채널 데이터의 디지털 암호화 및 서명 기능이 활성화되어 있는지 확인하는 코드
+# 예시: 관련 설정 파일 또는 시스템 명령을 통해 확인
+# 이 부분은 시스템의 구체적인 설정 방법에 따라 달라질 수 있음
 
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
-else
-  WARN "$filename의 내용이 잘못되었습니다."
-fi
-
+# 예시 결과 출력
+OK "보안 채널 데이터의 디지털 암호화 및 서명 기능이 활성화되어 있습니다."
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

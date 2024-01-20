@@ -1,64 +1,32 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-101] 불필요한 예약된 작업 존재
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 불필요한 cron 작업이 존재하지 않는 경우
+[취약]: 불필요한 cron 작업이 존재하는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
+# 시스템의 모든 cron 작업을 검사합니다
+for user in $(cut -f1 -d: /etc/passwd); do
+  crontab -l -u $user 2>/dev/null | grep -v '^#' | while read -r cron_job; do
+    if [ -n "$cron_job" ]; then
+      WARN "불필요한 cron 작업이 존재할 수 있습니다: $cron_job (사용자: $user)"
+    fi
+  done
 done
 
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
-else
-  WARN "$filename의 내용이 잘못되었습니다."
-fi
-
+OK "불필요한 cron 작업이 존재하지 않습니다."
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo
