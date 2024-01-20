@@ -12,7 +12,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [SRV-096] 사용자 환경파일의 소유자 또는 권한 설정 미흡
+CODE [U-72] 정책에 따른 시스템 로깅 설정
 
 cat << EOF >> $result
 
