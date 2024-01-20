@@ -12,7 +12,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-69] NFS 설정파일 접근권한
+CODE [SRV-070] 취약한 패스워드 저장 방식 사용
 
 cat << EOF >> $result
 

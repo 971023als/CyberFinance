@@ -2,49 +2,37 @@
 
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1   
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-61] ftp 서비스 확인
+CODE [SRV-062] DNS 서비스 정보 노출
 
 cat << EOF >> $result
-
-[양호]: FTP 서비스가 비활성화 되어 있는 경우
-
-[취약]: FTP 서비스가 활성화 되어 있는 경우
-
+[양호]: DNS 서비스 정보가 안전하게 보호되고 있는 경우
+[취약]: DNS 서비스 정보가 노출되고 있는 경우
 EOF
 
 BAR
 
-apt install net-tools -y
+# DNS 설정 파일 경로
+DNS_CONFIG_FILE="/etc/bind/named.conf"  # BIND 사용 예시, 실제 환경에 따라 달라질 수 있음
 
-apt-get install -y iproute2
-
-# FTP 서비스의 상태를 확인합니다
-ftp_status=$(service ftp status 2>&1)
-
-# /etc/passwd에서 FTP 계정을 확인합니다
-ftp_entry=$(grep "^ftp:" /etc/passwd)
-
-# FTP 계정의 셸을 확인합니다
-ftp_shell=$(grep "^ftp:" /etc/passwd | awk -F: '{print $7}')
-
-# FTP 포트가 수신 중인지 확인합니다
-if ss -tnlp | grep -q ':21'; then
-  if [ "$ftp_shell" == "/bin/false" ]; then
-    OK "FTP 계정의 셸이 /bin/false로 설정되었습니다."
-  else
-    WARN "FTP 계정의 셸을 /bin/false로 설정할 수 없습니다."
-  fi
+# 버전 정보 숨김 옵션 확인
+if grep -qE "version \"none\"" "$DNS_CONFIG_FILE"; then
+    OK "DNS 서비스에서 버전 정보가 숨겨져 있습니다."
 else
-  OK "FTP 포트(21)가 열려 있지 않습니다."
+    WARN "DNS 서비스에서 버전 정보가 노출될 수 있습니다."
 fi
 
+# 불필요한 전송 허용 확인
+if grep -qE "allow-transfer" "$DNS_CONFIG_FILE"; then
+    WARN "DNS 서비스에서 불필요한 Zone Transfer가 허용될 수 있습니다."
+else
+    OK "DNS 서비스에서 불필요한 Zone Transfer가 제한됩니다."
+fi
 
 cat $result
 
-echo ; echo 
+echo ; echo

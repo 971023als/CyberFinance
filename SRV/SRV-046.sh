@@ -37,4 +37,11 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         OK "Nginx 설정에서 적절한 경로 설정이 확인됨: $NGINX_CONFIG_FILE"
     else
         WARN "Nginx 설정에서 취약한 경로 설정이 확인됨: $NGINX_CONFIG_FILE"
-   
+    fi
+else
+    INFO "Nginx 설정 파일이 존재하지 않습니다: $NGINX_CONFIG_FILE"
+fi
+
+cat $result
+
+echo ; echo

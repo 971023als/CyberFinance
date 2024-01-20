@@ -1,58 +1,31 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1  
-
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-59] 숨겨진 파일 및 디렉터리 검색 및 제거
+CODE [SRV-060] 웹 서비스 기본 계정(아이디 또는 비밀번호) 미변경
 
 cat << EOF >> $result
-
-[양호]: 디렉터리 내 숨겨진 파일을 확인하여, 불필요한 파일 삭제를 완료한 경우
-
-[취약]: 디렉터리 내 숨겨진 파일을 확인하지 않고, 불필요한 파일을 방치한 경우
-
+[양호]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경된 경우
+[취약]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않은 경우
 EOF
 
 BAR
 
+# 웹 서비스의 기본 계정 설정 파일 예시 (실제 환경에 맞게 조정)
+CONFIG_FILE="/etc/web_service/config"
 
-rootdir="/home/user/"
-
-# 숨겨진 모든 파일 및 디렉터리 나열
-hidden_files=$(find "$rootdir" -type f -name ".*" ! -name ".*.swp")
-hidden_dirs=$(find "$rootdir" -type d -name ".*" ! -name ".*.swp")
-
-# 원하지 않거나 의심스러운 파일 또는 디렉터리가 있는지 확인
-for file in $hidden_files; do
-  if [[ $(basename $file) =~ "unwanted-file" ]]; then
-    WARN "원하지 않는 파일: $file"
-  else
-    OK "정상적인 파일: $file"
-  fi
-done
-
-for dir in $hidden_dirs; do
-  if [[ $(basename $dir) =~ "suspicious-dir" ]]; then
-    WARN "의심스러운 디렉토리: $dir"
-  else
-    OK "정상적인 디렉터리: $dir"
-  fi
-done
-
+# 기본 계정 설정 확인 (예시: 'admin' 또는 'password')
+if grep -qE "username=admin|password=password" "$CONFIG_FILE"; then
+    WARN "웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않았습니다: $CONFIG_FILE"
+else
+    OK "웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되었습니다: $CONFIG_FILE"
+fi
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

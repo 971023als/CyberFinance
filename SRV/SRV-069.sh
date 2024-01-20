@@ -1,46 +1,40 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1   
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-68] 로그온 시 경고 메시지 제공
+CODE [SRV-069] 비밀번호 관리정책 설정 미비
 
 cat << EOF >> $result
-
-[양호]: 서버 및 Telnet 서비스에 로그온 메시지가 설정되어 있는 경우
-
-[취약]: 서버 및 Telnet 서비스에 로그온 메시지가 설정되어 있지 않은 경우
-
+[양호]: 서버의 비밀번호 관리정책이 적절하게 설정된 경우
+[취약]: 서버의 비밀번호 관리정책이 미비하게 설정된 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 비밀번호 정책 파일 경로
+PASSWORD_POLICY_FILE="/etc/login.defs"
 
-> $TMP1 
+# 비밀번호 관리정책 확인
+if [ -f "$PASSWORD_POLICY_FILE" ]; then
+    # 최소 길이, 최대 사용 기간, 최소 사용 기간 등을 확인
+    min_len=$(grep -E "^PASS_MIN_LEN" "$PASSWORD_POLICY_FILE" | awk '{print $2}')
+    max_days=$(grep -E "^PASS_MAX_DAYS" "$PASSWORD_POLICY_FILE" | awk '{print $2}')
+    min_days=$(grep -E "^PASS_MIN_DAYS" "$PASSWORD_POLICY_FILE" | awk '{print $2}')
 
-files=("/etc/motd" "/etc/issue.net" "/etc/vsftpd/vsftpd.conf" "/etc/mail/sendmail.cf" "/etc/named.conf")
-
-for file in "${files[@]}"; do
-  if [ ! -e "$file" ]; then
-    INFO "$file이 존재하지 않습니다."
-  else
-    OK "$file이 존재합니다."
-  fi
-done
-
-
+    if [ "$min_len" -ge 8 ] && [ "$max_days" -le 90 ] && [ "$min_days" -ge 1 ]; then
+        OK "비밀번호 관리정책이 적절하게 설정되었습니다. (최소 길이: $min_len, 최대 사용 기간: $max_days, 최소 사용 기간: $min_days)"
+    else
+        WARN "비밀번호 관리정책 설정이 미비합니다."
+    fi
+else
+    WARN "비밀번호 정책 파일($PASSWORD_POLICY_FILE)이 존재하지 않습니다."
+fi
 
 cat $result
 
 echo ; echo
-
- 

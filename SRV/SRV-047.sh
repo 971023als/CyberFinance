@@ -1,55 +1,31 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-047] 웹 서비스 경로 내 불필요한 링크 파일 존재
 
 cat << EOF >> $result
-
-[양호]: 패스워드 최소 길이가 8자 이상으로 설정되어 있는 경우
-
-[취약]: 패스워드 최소 길이가 8자 미만으로 설정되어 있는 경우
-
+[양호]: 웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하지 않는 경우
+[취약]: 웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 웹 서비스 경로 설정
+WEB_SERVICE_PATH="/var/www/html" # 실제 경로에 맞게 조정하세요.
 
-> $TMP1
+# 웹 서비스 경로 내에서 심볼릭 링크 찾기
+found_links=$(find "$WEB_SERVICE_PATH" -type l)
 
-# login.defs 파일에서 PASS_MIN_LEN 값을 가져옵니다
-pass_min_len=$(grep -E "^PASS_MIN_LEN" /etc/login.defs | awk '{print $2}')
-
-pass=8
-
-# PASS_MIN_LEN 값이 주석 처리되었는지 확인합니다
-if grep -q "^#PASS_MIN_LEN" /etc/login.defs; then
-  INFO "PASS_MIN_LEN가 주석 처리되었습니다."
+if [ -n "$found_links" ]; then
+    WARN "웹 서비스 경로 내에 불필요한 심볼릭 링크가 존재합니다: $found_links"
 else
-  # PASS_MIN_LENS 값이 올바른 정수인지 확인하십시오
-  if [ "$pass_min_len" -eq "$pass_min_len" ] 2>/dev/null; then
-    # PASS_MIN_LEN의 값이 지정된 범위 내에 있는지 확인합니다
-    if [ "$pass_min_len" -ge 0 ] && [ "$pass_min_len" -le 99999999 ]; then
-      if [ "$pass_min_len" -ge "$pass" ]; then
-        OK "PASS_MIN_LEN이 $pass_min_len 으로 설정되어 $pass 보다 크거나 같습니다."
-      else
-        WARN "PASS_MIN_LEN이 $pass 보다 작은 $pass_min_len 으로 설정되었습니다."
-      fi
-    else
-      INFO " PASS_MIN_LEN 값이 범위를 벗어났습니다."
-    fi
-  else
-    INFO " PASS_MIN_LEN 값이 올바른 정수가 아닙니다."
-  fi
+    OK "웹 서비스 경로 내에 불필요한 심볼릭 링크가 존재하지 않습니다."
 fi
 
 cat $result

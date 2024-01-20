@@ -1,55 +1,37 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-63] ftpusers 파일 소유자 및 권한 설정
+CODE [SRV-064] 취약한 버전의 DNS 서비스 사용
 
 cat << EOF >> $result
-
-[양호]: ftpusers 파일의 소유자가 root이고, 권한이 640 이하인 경우
-
-[취약]: ftpusers 파일의 소유자가 root아니거나, 권한이 640 이하가 아닌 경우
-
+[양호]: DNS 서비스가 최신 버전으로 업데이트되어 있는 경우
+[취약]: DNS 서비스가 최신 버전으로 업데이트되어 있지 않은 경우
 EOF
 
 BAR
 
-ftpusers_file="/etc/vsftpd/ftpusers"
+# DNS 서버 소프트웨어 확인 (예: BIND)
+dns_server="bind9"
 
-owner=$(stat -c '%U' $ftpusers_file)
+# DNS 서버 버전 확인
+dns_version=$(named -v | grep BIND)
 
-# ftpusers 파일 확인
-if [ ! -f $ftpusers_file ]; then
-  INFO "ftpusers 파일이 없습니다. 확인해주세요."
+# 최신 버전 정보 확인을 위한 로직이 필요 (여기서는 예시만 제공)
+# 실제로는 DNS 서버의 최신 버전 정보를 얻기 위한 외부 API 또는 데이터베이스 확인이 필요할 수 있음
+latest_version="BIND 9.16.1" # 최신 버전 정보 예시
+
+if [[ "$dns_version" == *"$latest_version"* ]]; then
+    OK "DNS 서버가 최신 버전입니다: $dns_version"
 else
-  # ftpusers 파일 소유자 root 확인
-  if [[ $owner == "root" ]]; then
-      OK "root가 users 파일을 소유하고 있습니다."
-  else
-      WARN "root가 users 파일을 소유하고 있지 않습니다."
-  fi
-  # ftp 사용자에 대한 권한
-
-  if [[ `stat -c '%a' $ftpusers_file` -lt 640 ]]; then
-    WARN "권한이 640 초과입니다"
-  else
-      # 스크립트가 이 지점에 도달하면 소유권 및 사용 권한이 올바른 것입니다
-      OK "권한이 600 이하입니다."
-  fi
+    WARN "DNS 서버가 최신 버전이 아닐 수 있습니다: $dns_version"
 fi
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

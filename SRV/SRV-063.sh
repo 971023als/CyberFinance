@@ -1,48 +1,36 @@
 #!/bin/bash
 
 . function.sh
- 
-TMP1=`SCRIPTNAME`.log
 
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
+
 BAR
 
-CODE [U-62] ftp 계정 shell 제한
+CODE [SRV-063] DNS Recursive Query 설정 미흡
 
 cat << EOF >> $result
-
-[양호]: ftp 계정에 /bin/false 쉘이 부여되어 있는 경우
-
-[취약]: ftp 계정에 /bin/false 쉘이 부여되지 않는 경우
-
+[양호]: DNS 서버에서 재귀적 쿼리가 제한적으로 설정된 경우
+[취약]: DNS 서버에서 재귀적 쿼리가 적절하게 제한되지 않은 경우
 EOF
 
 BAR
 
-# FTP 서비스의 상태를 확인합니다
-ftp_status=$(service ftp status 2>&1)
+# DNS 설정 파일 경로
+DNS_CONFIG_FILE="/etc/bind/named.conf.options" # BIND 예시, 실제 파일 경로는 다를 수 있음
 
-# /etc/passwd에서 FTP 계정을 확인합니다
-ftp_entry=$(grep "^ftp:" /etc/passwd)
-
-# FTP 계정의 셸을 확인합니다
-ftp_shell=$(grep "^ftp:" /etc/passwd | awk -F: '{print $7}')
-
-# FTP 포트가 수신 중인지 확인합니다
-if ss -tnlp | grep -q ':21'; then
-  if [ "$ftp_shell" == "/bin/false" ]; then
-    OK "FTP 계정의 셸이 /bin/false로 설정되었습니다."
-  else
-    WARN "FTP 계정의 셸을 /bin/false로 설정할 수 없습니다."
-  fi
+# 재귀 쿼리 설정 확인
+if grep -E "allow-recursion" "$DNS_CONFIG_FILE"; then
+    recursion_setting=$(grep "allow-recursion" "$DNS_CONFIG_FILE")
+    if echo "$recursion_setting" | grep -q "{ localhost; };" || echo "$recursion_setting" | grep -q "{ localnets; };"; then
+        OK "DNS 서버에서 재귀적 쿼리가 안전하게 제한됨: $recursion_setting"
+    else
+        WARN "DNS 서버에서 재귀적 쿼리 제한이 미흡함: $recursion_setting"
+    fi
 else
-  OK "FTP 포트(21)가 열려 있지 않습니다."
+    OK "DNS 서버에서 재귀적 쿼리가 기본적으로 제한됨"
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo
