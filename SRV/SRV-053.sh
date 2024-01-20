@@ -4,7 +4,7 @@
 
 BAR
 
-CODE [U-52] 동일한 UID 금지
+CODE [SRV-053] 동일한 UID 금지
 
 cat << EOF >> $result
 

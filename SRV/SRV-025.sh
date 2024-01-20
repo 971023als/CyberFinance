@@ -2,38 +2,40 @@
 
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-025] NFS 서비스 비활성화 
+CODE [SRV-025] 취약한 hosts.equiv 또는 .rhosts 설정 존재
 
 cat << EOF >> $result
-
-[양호]: 불필요한 NFS 서비스가 비활성화 되어있는 경우
-
-[취약]: 불필요한 NFS 서비스가 활성화 되어있는 경우
-
+[양호]: hosts.equiv 및 .rhosts 파일이 없거나, 안전하게 구성된 경우
+[취약]: hosts.equiv 또는 .rhosts 파일에 취약한 설정이 있는 경우
 EOF
 
 BAR
 
-# NFS 서비스 데몬(nfsd, statd 및 lockd)이 실행 중인지 확인합니다
-NFS=$(ps -ef | egrep "nfsd|statd|lockd" | grep -v grep)
+# hosts.equiv 및 .rhosts 파일의 존재 및 내용을 확인합니다.
+HOSTS_EQUIV="/etc/hosts.equiv"
+RHOSTS="/root/.rhosts"
 
-# 결과 변수가 비어 있지 않으면 NFS 서비스 데몬이 실행되고 있습니다
-if [ ! -f "$NFS" ]; then
-  INFO "NFS 관련 파일이 없습니다"
-else
-  if [ -n "$NFS" ]; then
-    WARN "NFS 서비스 데몬이 실행 중입니다."
+check_file() {
+  file=$1
+  if [ -f "$file" ]; then
+    if grep -qE '^\+' "$file"; then
+      WARN "$file 파일에 취약한 설정이 존재합니다 ('+' 항목 발견)."
+    else
+      OK "$file 파일에 안전한 설정이 존재합니다."
+    fi
   else
-    OK "NFS 서비스 데몬이 실행되고 있지 않습니다."
+    OK "$file 파일이 존재하지 않습니다."
   fi
-fi
- 
+}
+
+check_file "$HOSTS_EQUIV"
+check_file "$RHOSTS"
+
 cat $result
 
 echo ; echo

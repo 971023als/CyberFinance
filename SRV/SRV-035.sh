@@ -1,41 +1,31 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1   
-
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-035] DNS Zone Transfer 설정
+CODE [SRV-035] 취약한 서비스 활성화
 
 cat << EOF >> $result
-
-[양호]: DNS 서비스 미사용 또는, Zone Transfer를 허가된 사용자에게만 허용한 경우
-
-[취약]: DNS 서비스를 사용하여 Zone Transfer를 모든 사용자에게 허용한 경우
-
+[양호]: 취약한 서비스가 비활성화된 경우
+[취약]: 취약한 서비스가 활성화된 경우
 EOF
 
 BAR
 
-# DNS 프로세스가 지금 실행 중인지 확인합니다
-dns_process=$(ps -ef | grep named | grep -v grep)
+# 취약한 서비스 목록
+VULNERABLE_SERVICES=("telnet" "ftp" "rsh" "rpcbind" "tftp" "snmpd")
 
-# DNS 프로세스가 계속 실행되면 오류 메시지를 인쇄합니다
-if [ -z "$dns_process" ]; then
-  OK "DNS 서비스 데몬이 실행되고 있지 않습니다."
-else
-  WARN "DNS 서비스 데몬이 실행 중입니다."
-fi
-
-
-
+for service in "${VULNERABLE_SERVICES[@]}"; do
+  if systemctl is-active --quiet $service; then
+    WARN "$service 서비스가 활성화되어 있습니다."
+  else
+    OK "$service 서비스가 비활성화되어 있습니다."
+  fi
+done
 
 cat $result
 

@@ -1,56 +1,30 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
->$TMP1 
-
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-012] .netrc 파일 내 중요 정보 노출 
+CODE [SRV-012] .netrc 파일 내 중요 정보 노출
 
-cat << EOF >> $result 
-
-[양호]: /etc/rsyslog.conf 파일의 소유자가 root(또는 bin, sys)이고, 권한이 640 이하인 경우
-
-[취약]: /etc/rsyslog.conf 파일의 소유자가 root(또는 bin, sys)가 아니거나, 권한이  640 이하가 아닌 경우
-
+cat << EOF >> $result
+[양호]: 시스템 전체에서 .netrc 파일이 존재하지 않는 경우
+[취약]: 시스템 전체에서 .netrc 파일이 존재하는 경우
 EOF
 
 BAR
 
-# 파일 소유권 확인
-if [ -e "/etc/rsyslog.conf" ]; then
-  file_owner=$(stat -c %U /etc/rsyslog.conf)
-if [[ "$file_owner" != "root" && "$file_owner" != "bin" && "$file_owner" != "sys" ]]; then
-  WARN " /etc/rsyslog.conf가 루트(또는 bin, sys)에 의해 소유되지 않습니다."
-fi
+# 시스템 전체에서 .netrc 파일 찾기
+netrc_files=$(find / -name ".netrc" 2>/dev/null)
 
-# 파일 권한 확인
-file_perms=$(stat -c %a /etc/rsyslog.conf)
-dec_perms=$(printf "%d" $file_perms)
-
-if [ $dec_perms -lt 640 ]; then
-      WARN "/etc/rsyslog.conf에 대한 사용 권한은 안전하지 않습니다"
-  else
-      OK "/etc/rsyslog.conf에 대한 사용 권한은 안전합니다"
-  fi
-
+if [ -z "$netrc_files" ]; then
+    OK "시스템에 .netrc 파일이 존재하지 않습니다."
 else
-  OK "/etc/rsyslog.conf 존재하지 않음"
+    WARN "다음 위치에 .netrc 파일이 존재합니다: $netrc_files"
 fi
-
 
 cat $result
 
 echo ; echo
-
- 
-
-
-
- 

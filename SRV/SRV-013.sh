@@ -1,45 +1,29 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
->$TMP1  
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-013] Anonymous 계정의 FTP 서비스 접속 제한 미비
 
-cat << EOF >> $result  
-
-[양호]: /etc/services 파일의 소유자가 root이고, 권한이 644 이하
-
-[취약]: /etc/services 파일의 소유자가 root가 아니거나, 권한이 644 이상
-
+cat << EOF >> $result
+[양호]: Anonymous 계정의 FTP 접속이 적절하게 제한되어 있는 경우
+[취약]: Anonymous 계정의 FTP 접속 제한이 미비한 경우
 EOF
 
 BAR
 
+# FTP 서비스 구성 파일에서 익명 사용자 접속을 확인합니다.
+FTP_CONFIG_FILE="/etc/vsftpd.conf" # vsFTPd 예시입니다. 실제 환경에 맞게 조정해야 합니다.
 
-file="/etc/services"
-
-# 소유권확인
-owner=$(stat -c '%U' "$file")
-if [ "$owner" != "root" ] && [ "$owner" != "bin" ] && [ "$owner" != "sys" ]; then
-  WARN "$file의 소유자가 root, bin, sys가 아니고 $owner 가 소유하고 있다."
+# 익명 사용자 접속을 제한하는 설정 확인
+if grep -q "^anonymous_enable=NO" "$FTP_CONFIG_FILE"; then
+    OK "Anonymous 계정의 FTP 접속이 제한됩니다."
 else
-  OK "$file의 소유자는 root, bin 또는 sys입니다."
-fi
-
-# Check permissions
-permissions=$(stat -c '%a' "$file")
-if [ "$permissions" -gt 644 ]; then
-  WARN "$file의 권한이 644보다 큽니다. $permissions 으로 설정."
-else
-  OK "$file의 권한이 644 이하입니다."
+    WARN "Anonymous 계정의 FTP 접속이 적절하게 제한되지 않습니다."
 fi
 
 cat $result

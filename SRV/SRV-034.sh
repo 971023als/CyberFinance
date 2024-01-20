@@ -1,37 +1,31 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1  
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-034]  DNS 보안 버전 패치 
+CODE [SRV-034] 불필요한 서비스 활성화
 
-cat << EOF >> $result 
-
-[양호]: DNS 서비스를 사용하지 않거나 주기적으로 패치를 관리하고 있는 경우
-
-[취약]: DNS 서비스를 사용하며 주기적으로 패치를 관리하고 있지 않는 경우
-
+cat << EOF >> $result
+[양호]: 불필요한 서비스가 비활성화된 경우
+[취약]: 불필요한 서비스가 활성화된 경우
 EOF
 
 BAR
 
-# 명명된 프로세스가 실행 중인지 확인하십시오
-results=$(ps -ef | grep named | grep -v grep)
+# 불필요하거나 보안에 영향을 줄 수 있는 서비스 목록
+UNNECESSARY_SERVICES=("telnet" "ftp" "nfs-server" "rpcbind" "smb" "snmpd")
 
-# 결과 변수가 비어 있으면 명명된 프로세스가 실행되고 있지 않습니다
-if [ -z "$results" ]; then
-  OK "DNS 서비스가 실행되고 있지 않습니다."
-else
-  WARN "DNS 서비스가 실행 중입니다."
-fi
-
+for service in "${UNNECESSARY_SERVICES[@]}"; do
+  if systemctl is-active --quiet $service; then
+    WARN "$service 서비스가 활성화되어 있습니다."
+  else
+    OK "$service 서비스가 비활성화되어 있습니다."
+  fi
+done
 
 cat $result
 

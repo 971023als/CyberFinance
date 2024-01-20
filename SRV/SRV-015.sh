@@ -1,56 +1,32 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
->$TMP1  
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-015] 불필요한 NFS 서비스 실행 
+CODE [SRV-015] 불필요한 NFS 서비스 실행
 
-cat << EOF >> $result  
-
-[양호]: 홈 디렉터리 환경변수 파일 소유자가 root 또는 해당 계정으로 지정되어 있고 
-
-홈 디렉터리 환경변수 파일에 root와 소유자만 쓰기 권한이 부여된 경우
-
-[취약]: 홈 디렉터리 환경변수 파일 소유자가 root 또는 해당 계정으로 지정되지 않고 
-
-홈 디렉터리 환경변수 파일에 root와 소유자 외에 쓰기 권한이 부여된 경우
-
+cat << EOF >> $result
+[양호]: NFS 서비스가 비활성화되어 있거나 필요에 따라 실행되고 있는 경우
+[취약]: NFS 서비스가 필요 없음에도 활성화되어 실행 중인 경우
 EOF
 
 BAR
 
-files=(".profile" ".kshrc" ".cshrc" ".bashrc" ".bash_profile" ".login" ".exrc" ".netrc")
+# NFS 서비스 상태를 확인합니다.
+NFS_SERVICES=("nfs-server" "nfsd" "rpcbind")  # NFS 관련 서비스 이름은 배포판에 따라 다를 수 있습니다.
 
-for file in "${files[@]}"; do
-
-  if [ -f "${file}" ]; then
-    owner=$(stat -c '%U' $file)
-    if [ "$owner" != "root" ] && [ "$owner" != "$USER" ]; then
-      WARN "$file 에 잘못된 소유자($owner), 예상 루트 또는 $USER 가 있습니다."
-    else
-      OK "$file 에 잘못된 소유자($owner), 예상 루트 또는 $USER 가 있습니다." 
-    fi
-
-    permission=$(stat -c '%a' $file)
-    if [ "$permission" != "600" ] && [ "$permission" != "700" ]; then
-      WARN "$file 에 잘못된 권한($permission)이 있습니다. 600 또는 700이 예상됩니다."
-    else
-      OK "$file 에 잘못된 소유자($owner), 예상 루트 또는 $USER 가 있습니다." 
-    fi
+for service in "${NFS_SERVICES[@]}"; do
+  if systemctl is-active --quiet $service; then
+    WARN "$service 서비스가 활성화되어 실행 중입니다."
   else
-    INFO " $file 을 찾을 수 없습니다"
+    OK "$service 서비스가 비활성화되어 있거나 실행 중이지 않습니다."
   fi
 done
 
 cat $result
 
 echo ; echo
- 

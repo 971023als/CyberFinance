@@ -1,41 +1,37 @@
 #!/bin/bash
 
 . function.sh
- 
-TMP1=`SCRIPTNAME`.log
 
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
+
 BAR
 
-CODE [U-42] 최신 보안패치 및 벤더 권고사항 적용
+CODE [SRV-043] 웹 서비스 경로 내 불필요한 파일 존재
 
 cat << EOF >> $result
-
-[양호]: 패치 적용 정책을 수립하여 주기적으로 패치를 관리하고 있는 경우
-
-[취약]: 패치 적용 정책을 수립하지 않고 주기적으로 패치관리를 하지 않는 경우
-
+[양호]: 웹 서비스 경로에 불필요한 파일이 존재하지 않는 경우
+[취약]: 웹 서비스 경로에 불필요한 파일이 존재하는 경우
 EOF
 
 BAR
 
-# 현재 날짜 가져오기
-current_date=$(date +%Y-%m-%d)
+# 웹 서비스 경로 설정
+WEB_SERVICE_PATH="/var/www/html" # 예시 경로입니다. 실제 환경에 맞게 조정하세요.
 
-# /var/log/patch.log에 "$current_date에 설치된 패치" 행이 있는지 확인합니다
-grep "Patches installed on $current_date" /var/log/patch.log > /dev/null 2>&1
+# 불필요하거나 위험한 파일 형식을 정의합니다.
+# 예시: .bak, .tmp, .old 파일
+UNNECESSARY_FILES=("*.bak" "*.tmp" "*.old")
 
-# If the exit status of grep is 0, the line exists in the file
-if [ $? -eq 0 ]; then
-  OK "'$current_date 에 설치된 패치' 행이 /var/log/patch.log에 있습니다."
-else
-  WARN "'$current_date 에 설치된 패치' 행이 /var/log/patch.log에 없습니다."
-fi
-
+# 웹 서비스 경로에서 불필요한 파일 찾기
+for file_type in "${UNNECESSARY_FILES[@]}"; do
+  if find "$WEB_SERVICE_PATH" -name "$file_type"; then
+    WARN "$WEB_SERVICE_PATH 경로에 불필요한 파일이 있습니다: $file_type"
+  else
+    OK "$WEB_SERVICE_PATH 경로에 불필요한 파일이 없습니다: $file_type"
+  fi
+done
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

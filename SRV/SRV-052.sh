@@ -10,7 +10,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-51] 계정이 존재하지 않는 GID 금지
+CODE [SRV-052] 계정이 존재하지 않는 GID 금지
 
 cat << EOF >> $result
 

@@ -2,33 +2,32 @@
 
 . function.sh
 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
+
 BAR
 
-CODE [U-44] root 이외의 UID가 '0' 금지
+CODE [SRV-045] 웹 서비스 프로세스 권한 제한 미비
 
 cat << EOF >> $result
-
-[양호]: root 계정과 동일한 UID를 갖는 계정이 존재하지 않는 경우
-
-[취약]: root 계정과 동일한 UID를 갖는 계정이 존재하는 경우
-
+[양호]: 웹 서비스 프로세스가 root 권한으로 실행되지 않는 경우
+[취약]: 웹 서비스 프로세스가 root 권한으로 실행되는 경우
 EOF
 
 BAR
 
-FILE=/etc/passwd
+# Apache 또는 Nginx 프로세스의 사용자 권한 확인
+# 예시로 Apache(httpd)와 Nginx(nginx) 서비스의 사용자 권한을 확인합니다.
+# 실제 환경에 따라 서비스 이름을 조정하세요.
 
-# 루트 계정과 동일한 UID를 가진 계정 확인(UID 값 0)
-awk -F: '$3=="0"{print $1":"$3}' $FILE > $TMP1
-UIDCHECK=$(wc -l < $TMP1)
-if [ $UIDCHECK -ge 2 ]; then
-   WARN "루트 계정과 동일한 UID를 가진 계정이 있습니다."
-   INFO "자세한 내용은 $TMP1 을 확인하십시오."
-else
-   OK "루트 계정과 동일한 UID를 가진 계정이 없습니다."
-   rm $TMP1
-fi
- 
+for service in "apache2" "nginx"; do
+  if pgrep -u root -x "$service" > /dev/null; then
+    WARN "$service 서비스가 root 권한으로 실행되고 있습니다."
+  else
+    OK "$service 서비스가 root 권한으로 실행되지 않습니다."
+  fi
+done
+
 cat $result
 
 echo ; echo

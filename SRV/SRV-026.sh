@@ -2,29 +2,27 @@
 
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1  
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-026] NFS 서비스 접근 통제 '확인 필요'
+CODE [SRV-026] root 계정 원격 접속 제한 미비
 
 cat << EOF >> $result
-
-[양호]: 불필요한 NFS 서비스가 비활성화 되어있는 경우
-
-[취약]: 불필요한 NFS 서비스가 활성화 되어있는 경우
-
+[양호]: SSH를 통한 root 계정의 원격 접속이 제한된 경우
+[취약]: SSH를 통한 root 계정의 원격 접속이 제한되지 않은 경우
 EOF
 
 BAR
 
+# SSH 설정 파일에서 root 로그인을 허용하는 설정을 확인합니다.
+SSH_CONFIG_FILE="/etc/ssh/sshd_config"
 
-if grep -q -E '^[^#].*\s+everyone(?!.*no_root_squash)' /etc/exports; then
-    WARN "NFS는 '모두' 그룹에 대한 제한 없이 수출을 공유하고 있습니다"
+if grep -q "^PermitRootLogin no" "$SSH_CONFIG_FILE"; then
+    OK "SSH를 통한 root 계정의 원격 접속이 제한됩니다."
 else
-    OK "NFS는 '모두' 그룹에 대한 제한 없이 수출을 공유하지 않습니다."
+    WARN "SSH를 통한 root 계정의 원격 접속이 허용됩니다."
 fi
 
 cat $result

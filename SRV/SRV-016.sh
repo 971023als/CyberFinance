@@ -1,40 +1,32 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
->$TMP1  
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-016] 불필요한 RPC서비스 활성화
 
-cat << EOF >> $result  
-
-[양호]: world writable 파일이 존재하지 않거나, 존재 시 설정 이유를 확인하고 있는 경우
-
-[취약]: world writable 파일이 존재하나 해당 설정 이유를 확인하고 있지 않은 경우
-
+cat << EOF >> $result
+[양호]: RPC 서비스가 필요에 따라 비활성화되어 있는 경우
+[취약]: RPC 서비스가 필요 없음에도 활성화되어 실행 중인 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# RPC 관련 서비스 목록
+RPC_SERVICES=("rpcbind" "rpc.statd" "rpc.mountd")  # 이 서비스 목록은 시스템에 따라 다를 수 있습니다.
 
->$TMP1  
+for service in "${RPC_SERVICES[@]}"; do
+  if systemctl is-active --quiet $service; then
+    WARN "$service 서비스가 활성화되어 실행 중입니다."
+  else
+    OK "$service 서비스가 비활성화되어 있거나 실행 중이지 않습니다."
+  fi
+done
 
-if find / -type f -perm 777 | grep -q . ; then
-  WARN "world writeable 파일이 있습니다"
-else
-  OK "world writeable 파일이 없습니다."
-fi
-
- 
 cat $result
 
 echo ; echo
-
- 

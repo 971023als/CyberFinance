@@ -9,7 +9,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-49] 불필요한 계정 제거
+CODE [SRV-050] 불필요한 계정 제거
 
 cat << EOF >> $result
 

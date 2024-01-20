@@ -1,54 +1,33 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
-
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1  
-
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [SRV-037] Apache 웹 프로세스 권한 제한 
+CODE [SRV-037] 취약한 FTP 서비스 실행
 
 cat << EOF >> $result
-
-[양호]: Apache 데몬이 root 권한으로 구동되지 않는 경우
-
-[취약]: Apache 데몬이 root 권한으로 구동되는 경우
-
+[양호]: 안전한 FTP 서비스가 활성화되어 있거나 FTP 서비스가 비활성화된 경우
+[취약]: 취약한 FTP 서비스가 활성화되어 있는 경우
 EOF
 
 BAR
 
-# 아파치 데몬(httpd)이 실행확인
-if pgrep -x "httpd" > /dev/null
-then
-    INFO "아파치 데몬(httpd)이 실행 중입니다.."
+# FTP 서비스의 상태를 확인합니다.
+# vsftpd를 예로 들었으나 실제 서비스에 따라 다를 수 있습니다.
+FTP_SERVICE="vsftpd"
+
+if systemctl is-active --quiet $FTP_SERVICE; then
+    # FTP 서비스의 설정 파일을 추가로 확인할 수 있습니다.
+    # 예: /etc/vsftpd.conf 파일에서 anonymous_enable, local_enable 설정 확인
+    WARN "$FTP_SERVICE 서비스가 활성화되어 있습니다."
 else
-    INFO "아파치 데몬(httpd)이 실행되고 있지 않습니다.."
+    OK "$FTP_SERVICE 서비스가 비활성화되어 있습니다."
 fi
-
-# httpd 프로세스의 사용자 및 그룹 가져오기
-httpd_user=$(ps -o user=-p $(pgrep -x "httpd"))
-httpd_group=$(ps -o group=-p $(pgrep -x "httpd"))
-
-# httpd 프로세스가 루트로 실행 중인지 확인
-if [[ $httpd_user == "root" || $httpd_group == "root" ]]
-then
-    WARN "Apache 데몬(httpd)이 루트 권한으로 실행되고 있습니다"
-else
-    OK "Apache 데몬(httpd)이 루트 권한으로 실행이 안되고 있습니다"
-fi
-
-
 
 cat $result
 
 echo ; echo
-
- 

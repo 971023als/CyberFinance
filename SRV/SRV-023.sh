@@ -2,54 +2,34 @@
 
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
-
+TMP1=$(SCRIPTNAME).log
 > $TMP1
 
 BAR
 
-CODE [SRV-023] cron 파일 소유자 및 권한 설정
+CODE [SRV-023] 원격 터미널 서비스의 암호화 수준 설정 미흡
 
 cat << EOF >> $result
-
-[양호]: cron 접근제어 파일 소유자가 root이고, 권한이 640 이하인 경우
-
-[취약]: cron 접근제어 파일 소유자가 root가 아니거나, 권한이 640 이하가 아닌 경우
-
+[양호]: SSH 서비스의 암호화 수준이 적절하게 설정된 경우
+[취약]: SSH 서비스의 암호화 수준 설정이 미흡한 경우
 EOF
 
 BAR
 
-# 파일 정의
-files=(/etc/crontab /etc/cron.hourly /etc/cron.daily /etc/cron.weekly /etc/cron.monthly /etc/cron.allow /etc/cron.deny /var/spool/cron* /var/spool/cron/crontabs/)
+# SSH 설정 파일을 확인합니다.
+SSH_CONFIG_FILE="/etc/ssh/sshd_config"
 
-for file in "${files[@]}"; do
-  if [ -e "$file" ]; then
-    owner=$(stat -c %U "$file")
-    if [ "$owner" != "root" ]; then
-      WARN "$file 은 root가 아닌 $owner가 소유합니다"
-    else
-      OK "$file 은 root가 소유합니다"
-    fi
+# SSH 암호화 관련 설정을 확인합니다.
+# 여기서는 예시로 KexAlgorithms, Ciphers, MACs 설정을 확인합니다.
+ENCRYPTION_SETTINGS=("KexAlgorithms" "Ciphers" "MACs")
+
+for setting in "${ENCRYPTION_SETTINGS[@]}"; do
+  if grep -q "^$setting" "$SSH_CONFIG_FILE"; then
+    OK "$SSH_CONFIG_FILE 파일에서 $setting 설정이 적절하게 구성되어 있습니다."
   else
-    INFO "$file이 존재하지 않습니다"
+    WARN "$SSH_CONFIG_FILE 파일에서 $setting 설정이 미흡합니다."
   fi
 done
-
-for file in "${files[@]}"; do
-  if [ -e "$file" ]; then
-    perms=$(stat -c %a "$file")
-    if [ "$perms" -lt 640 ]; then
-      WARN "$file 에 $perms 권한이 640보다 큽니다"
-    else
-      OK "$file 에 $perms 권한이 640보다 작습니다"
-    fi
-  else
-    INFO "$file이 존재하지 않습니다"
-  fi
-done
-
-
 
 cat $result
 

@@ -2,46 +2,35 @@
 
 . function.sh
 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
+
 BAR
 
-CODE [SRV-014] NFS 접근통제 미비 
+CODE [SRV-014] NFS 접근통제 미비
 
 cat << EOF >> $result
-
-[양호]: 주요 파일의 권한에 SUID와 SGID에 대한 설정이 부여되어 있지 않은 경우
-
-[취약]: 주요 파일의 권한에 SUID와 SGID에 대한 설정이 부여되어 있는 경우
-
+[양호]: NFS 공유 설정에 적절한 접근 제어가 설정된 경우
+[취약]: NFS 공유 설정에 충분한 접근 제어가 설정되지 않은 경우
 EOF
 
 BAR
 
-# /etc/passwd 파일을 읽고 홈 디렉토리 정보 추출
-while IFS=: read -r username passwd uid gid name home shell
-do
-  # 홈 디렉토리에서 기본 실행 파일의 사용 권한 정보를 가져옵니다
-  main_exec=$(find / -user root -type f \( -perm -04000 -o -perm -02000 \) -exec ls -al {} \;)
+# NFS 설정 파일을 확인합니다.
+NFS_EXPORTS_FILE="/etc/exports"
 
-  # 주 실행 파일이 존재하는 경우
-  if [ -n "$main_exec" ]; then
-    # 권한 정보를 가져옵니다
-    permissions=$(ls -ld "$main_exec" | awk '{print $1}')
-    owner=$(ls -ld "$main_exec" | awk '{print $3}')
-    group=$(ls -ld "$main_exec" | awk '{print $4}')
-
-    # 파일에 SUID 또는 SGID 사용 권한이 있는지 확인합니다
-    if [ -u "$main_exec" ]; then
-      WARN "$main_exec SUID 권한이 탐지됨"
-    elif [ -g "$main_exec" ]; then
-      WARN "$main_exec SGID 권한이 파일에서 탐지됨"
+# NFS exports 파일에서 적절한 접근 제어 설정을 확인합니다.
+if [ -f "$NFS_EXPORTS_FILE" ]; then
+    # 특정 접근 제어 관련 설정을 찾는 예시입니다.
+    if grep -q "rw" "$NFS_EXPORTS_FILE" || grep -q "root_squash" "$NFS_EXPORTS_FILE"; then
+        OK "NFS 공유 설정에 적절한 접근 제어가 설정되어 있습니다."
     else
-      OK "$main_exec SUID와 SGID에 대한 설정이 부여"
+        WARN "NFS 공유 설정에 충분한 접근 제어가 설정되지 않았습니다."
     fi
-  fi
-done < /etc/passwd
+else
+    INFO "NFS 공유 설정 파일($NFS_EXPORTS_FILE)을 찾을 수 없습니다."
+fi
 
 cat $result
 
 echo ; echo
-
- 

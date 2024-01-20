@@ -12,7 +12,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-48] 패스워드 최소 사용기간 설정
+CODE [SRV-049] 패스워드 최소 사용기간 설정
 
 cat << EOF >> $result
 

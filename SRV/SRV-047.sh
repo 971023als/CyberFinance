@@ -10,7 +10,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-46] 패스워드 최소 길이 설정
+CODE [SRV-047] 웹 서비스 경로 내 불필요한 링크 파일 존재
 
 cat << EOF >> $result
 

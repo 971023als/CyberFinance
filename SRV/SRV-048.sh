@@ -11,7 +11,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-47] 패스워드 최대 사용기간 설정
+CODE [SRV-048] 패스워드 최대 사용기간 설정
 
 cat << EOF >> $result
 

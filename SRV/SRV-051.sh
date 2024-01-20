@@ -8,7 +8,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-50] 관리자 그룹에 최소한의 계정 포함
+CODE [SRV-051] 관리자 그룹에 최소한의 계정 포함
 
 cat << EOF >> $result
 
