@@ -12,7 +12,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-094] crontab 참조파일 권한 설정 미흡
 
 cat << EOF >> $result
 

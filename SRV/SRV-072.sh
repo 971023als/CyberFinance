@@ -1,54 +1,28 @@
 #!/bin/bash
 
- 
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1   
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-71] Apache 웹서비스 정보 숨김
+CODE [SRV-072] 기본 관리자 계정명(Administrator) 존재
 
 cat << EOF >> $result
-
-[양호]: ServerTokens Prod, ServerSignature Off로 설정되어있는 경우
-
-[취약]: ServerTokens Prod, ServerSignature Off로 설정되어있지 않은 경우
-
+[양호]: 기본 'Administrator' 계정이 존재하지 않는 경우
+[취약]: 기본 'Administrator' 계정이 존재하는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
-
-filename="/etc/apache2/apache2.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-server_tokens=$(grep -i 'ServerTokens Prod' "$filename")
-server_signature=$(grep -i 'ServerSignature Off' "$filename")
-
-if [ "$server_tokens" == "ServerTokens Prod" ]; then
-  OK "서버 토큰 설정이 Prod로 설정되었습니다."
+# 'Administrator' 계정 확인
+if grep -qi "Administrator" /etc/passwd; then
+    WARN "기본 'Administrator' 계정이 존재합니다."
 else
-  WARN "서버 토큰 설정이 Prod로 설정되지 않았습니다."
+    OK "기본 'Administrator' 계정이 존재하지 않습니다."
 fi
-
-if [ "$server_signature" == "ServerSignature Off" ]; then
-  OK "Server Signature 설정이 Off로 설정되었습니다."
-else
-  WARN "Server Signature 설정이 Off로 설정되지 않았습니다."
-fi
-
 
 cat $result
 
-echo ; echo 
+echo ; echo

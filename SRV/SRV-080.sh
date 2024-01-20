@@ -1,64 +1,37 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-080] 일반 사용자의 프린터 드라이버 설치 제한 미비
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 일반 사용자에 의한 프린터 드라이버 설치가 제한된 경우
+[취약]: 일반 사용자에 의한 프린터 드라이버 설치에 제한이 없는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# CUPS 설정 파일 경로
+CUPS_CONFIG_FILE="/etc/cups/cupsd.conf"
 
-> $TMP1 
+# 설정 파일에서 'SystemGroup' 설정 확인
+if [ -f "$CUPS_CONFIG_FILE" ]; then
+    system_group=$(grep -E "^SystemGroup" "$CUPS_CONFIG_FILE")
 
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+    if [ -n "$system_group" ]; then
+        OK "CUPS 설정에서 시스템 그룹이 지정됨: $system_group"
+    else
+        WARN "CUPS 설정에서 시스템 그룹이 지정되지 않음"
+    fi
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+    WARN "CUPS 설정 파일($CUPS_CONFIG_FILE)이 존재하지 않습니다."
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

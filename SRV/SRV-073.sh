@@ -1,64 +1,35 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-073] 관리자 그룹에 불필요한 사용자 존재
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 관리자 그룹에 불필요한 사용자가 없는 경우
+[취약]: 관리자 그룹에 불필요한 사용자가 존재하는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 관리자 그룹 이름을 정의합니다 (예: sudo, wheel)
+admin_group="sudo"
 
-> $TMP1 
+# 관리자 그룹의 멤버 확인
+admin_members=$(getent group "$admin_group" | cut -d: -f4)
 
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+# 예상되지 않은 사용자가 관리자 그룹에 있는지 확인
+# 여기서는 예시로 'testuser'를 사용하지만, 실제 환경에 맞게 수정 필요
+if [[ $admin_members == *'testuser'* ]]; then
+  WARN "관리자 그룹($admin_group)에 불필요한 사용자(testuser)가 포함되어 있습니다."
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  OK "관리자 그룹($admin_group)에 불필요한 사용자가 없습니다."
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo
