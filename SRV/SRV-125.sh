@@ -16,34 +16,49 @@ EOF
 
 BAR
 
-# GNOME 데스크톱 환경에서 화면보호기 설정 확인
-if gsettings get org.gnome.desktop.screensaver lock-enabled | grep -q 'true'; then
-  OK "화면보호기가 설정되어 있습니다."
+# GNOME 데스크톱 환경
+if command -v gsettings > /dev/null; then
+  if gsettings get org.gnome.desktop.screensaver lock-enabled | grep -q 'true'; then
+    OK "GNOME에서 화면보호기가 설정되어 있습니다."
+  else
+    WARN "GNOME에서 화면보호기가 설정되어 있지 않습니다."
+  fi
 else
-  WARN "화면보호기가 설정되어 있지 않습니다."
+  INFO "GNOME 화면보호기 도구가 설치되어 있지 않습니다."
 fi
 
 # KDE Plasma
-if qdbus org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.GetActive; then
-  OK "KDE에서 화면보호기가 설정되어 있습니다."
+if command -v qdbus > /dev/null; then
+  if qdbus org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.GetActive; then
+    OK "KDE에서 화면보호기가 설정되어 있습니다."
+  else
+    WARN "KDE에서 화면보호기가 설정되어 있지 않습니다."
+  fi
 else
-  WARN "KDE에서 화면보호기가 설정되어 있지 않습니다."
+  INFO "KDE 화면보호기 도구가 설치되어 있지 않습니다."
 fi
 
 # Xfce
-if xfconf-query -c xfce4-screensaver -p /saver/enabled; then
-  OK "Xfce에서 화면보호기가 설정되어 있습니다."
+if command -v xfconf-query > /dev/null; then
+  if xfconf-query -c xfce4-screensaver -p /saver/enabled; then
+    OK "Xfce에서 화면보호기가 설정되어 있습니다."
+  else
+    WARN "Xfce에서 화면보호기가 설정되어 있지 않습니다."
+  fi
 else
-  WARN "Xfce에서 화면보호기가 설정되어 있지 않습니다."
+  INFO "Xfce 화면보호기 도구가 설치되어 있지 않습니다."
 fi
 
 # Cinnamon
-if gsettings get org.cinnamon.desktop.screensaver lock-enabled | grep -q 'true'; then
-  OK "Cinnamon에서 화면보호기가 설정되어 있습니다."
+if command -v gsettings > /dev/null; then
+  if gsettings get org.cinnamon.desktop.screensaver lock-enabled | grep -q 'true'; then
+    OK "Cinnamon에서 화면보호기가 설정되어 있습니다."
+  else
+    WARN "Cinnamon에서 화면보호기가 설정되어 있지 않습니다."
+  fi
 else
-  WARN "Cinnamon에서 화면보호기가 설정되어 있지 않습니다."
+  INFO "Cinnamon 화면보호기 도구가 설치되어 있지 않습니다."
 fi
-
 
 cat $result
 

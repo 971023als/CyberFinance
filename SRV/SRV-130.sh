@@ -12,7 +12,7 @@ TMP1=`SCRIPTNAME`.log
 
 BAR
 
-CODE [SRV-126] 자동 로그온 방지 설정 미흡
+CODE [U-72] 정책에 따른 시스템 로깅 설정
 
 cat << EOF >> $result
 
