@@ -10,37 +10,20 @@ BAR
 CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
 
 cat << EOF >> $result
-[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우
-[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우
+[양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
+[취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
 EOF
 
 BAR
 
-# Apache 서버에서 ServerTokens 및 ServerSignature 설정 확인
-apache_config="/etc/apache2/apache2.conf"
-if [ -f "$apache_config" ]; then
-    server_tokens=$(grep -i 'ServerTokens Prod' "$apache_config")
-    server_signature=$(grep -i 'ServerSignature Off' "$apache_config")
+# 시스템에서 숨김 파일 및 디렉터리 검색
+hidden_files=$(find / -name ".*" -type f)
+hidden_dirs=$(find / -name ".*" -type d)
 
-    if [[ "$server_tokens" == "ServerTokens Prod" ]] && [[ "$server_signature" == "ServerSignature Off" ]]; then
-        OK "Apache 서버에서 버전 정보 및 운영체제 정보 노출이 제한됩니다."
-    else
-        WARN "Apache 서버에서 버전 정보 및 운영체제 정보가 노출됩니다."
-    fi
+if [ -z "$hidden_files" ] && [ -z "$hidden_dirs" ]; then
+    OK "불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다."
 else
-    INFO "Apache 서버 설정 파일이 존재하지 않습니다."
-fi
-
-# Nginx 서버에서 버전 정보 노출 설정 확인
-nginx_config="/etc/nginx/nginx.conf"
-if [ -f "$nginx_config" ]; then
-    if grep -q 'server_tokens off;' "$nginx_config"; then
-        OK "Nginx 서버에서 버전 정보 노출이 제한됩니다."
-    else
-        WARN "Nginx 서버에서 버전 정보가 노출됩니다."
-    fi
-else
-    INFO "Nginx 서버 설정 파일이 존재하지 않습니다."
+    WARN "다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: $hidden_files $hidden_dirs"
 fi
 
 cat $result

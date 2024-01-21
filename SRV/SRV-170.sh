@@ -10,37 +10,35 @@ BAR
 CODE [SRV-170] SMTP 서비스 정보 노출
 
 cat << EOF >> $result
-[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우
-[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우
+[양호]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우
+[취약]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되는 경우
 EOF
 
 BAR
 
-# Apache 서버에서 ServerTokens 및 ServerSignature 설정 확인
-apache_config="/etc/apache2/apache2.conf"
-if [ -f "$apache_config" ]; then
-    server_tokens=$(grep -i 'ServerTokens Prod' "$apache_config")
-    server_signature=$(grep -i 'ServerSignature Off' "$apache_config")
-
-    if [[ "$server_tokens" == "ServerTokens Prod" ]] && [[ "$server_signature" == "ServerSignature Off" ]]; then
-        OK "Apache 서버에서 버전 정보 및 운영체제 정보 노출이 제한됩니다."
+# SMTP 서버 설정 확인 (예: Postfix, Sendmail 등)
+# Postfix 예시
+postfix_config="/etc/postfix/main.cf"
+if [ -f "$postfix_config" ]; then
+    if grep -q '^smtpd_banner = $myhostname' "$postfix_config"; then
+        OK "Postfix에서 버전 정보 노출이 제한됩니다."
     else
-        WARN "Apache 서버에서 버전 정보 및 운영체제 정보가 노출됩니다."
+        WARN "Postfix에서 버전 정보가 노출됩니다."
     fi
 else
-    INFO "Apache 서버 설정 파일이 존재하지 않습니다."
+    INFO "Postfix 서버 설정 파일이 존재하지 않습니다."
 fi
 
-# Nginx 서버에서 버전 정보 노출 설정 확인
-nginx_config="/etc/nginx/nginx.conf"
-if [ -f "$nginx_config" ]; then
-    if grep -q 'server_tokens off;' "$nginx_config"; then
-        OK "Nginx 서버에서 버전 정보 노출이 제한됩니다."
+# Sendmail 예시
+sendmail_config="/etc/mail/sendmail.cf"
+if [ -f "$sendmail_config" ]; then
+    if grep -q 'O SmtpGreetingMessage=$j' "$sendmail_config"; then
+        OK "Sendmail에서 버전 정보 노출이 제한됩니다."
     else
-        WARN "Nginx 서버에서 버전 정보가 노출됩니다."
+        WARN "Sendmail에서 버전 정보가 노출됩니다."
     fi
 else
-    INFO "Nginx 서버 설정 파일이 존재하지 않습니다."
+    INFO "Sendmail 서버 설정 파일이 존재하지 않습니다."
 fi
 
 cat $result
