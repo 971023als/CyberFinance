@@ -7,23 +7,26 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-005] SMTP 서비스의 expn/vrfy 명령어 실행 제한 미비
+CODE [DBM-005] 데이터베이스 내 중요정보 암호화 미적용
 
 cat << EOF >> $result
-[양호]: SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하고 있는 경우
-[취약]: SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하지 않는 경우
+[양호]: 중요 데이터가 암호화되어 있는 경우
+[취약]: 중요 데이터가 암호화되어 있지 않은 경우
 EOF
 
 BAR
 
-# Postfix의 경우 main.cf 파일을 검사합니다.
-POSTFIX_MAIN_CF="/etc/postfix/main.cf"
+# MySQL 명령 실행
+MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
 
-# Expn과 Vrfy를 제한하는 설정이 있는지 확인합니다.
-if grep -E "^(disable_vrfy_command|disable_expn_command) *= *yes" $POSTFIX_MAIN_CF; then
-    OK "SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하고 있습니다."
+# 암호화 확인 로직 (예시)
+# 여기에서는 'your_table'과 'your_field'를 암호화해야 하는 필드로 가정
+ENCRYPTED_COUNT=$($MYSQL_CMD "SELECT COUNT(*) FROM your_table WHERE your_field IS NOT NULL AND your_field != AES_DECRYPT(AES_ENCRYPT(your_field, 'your_key'), 'your_key')")
+
+if [ "$ENCRYPTED_COUNT" -gt 0 ]; then
+    WARN "미암호화된 중요 데이터가 존재합니다."
 else
-    WARN "SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하지 않습니다."
+    OK "모든 중요 데이터가 암호화되어 있습니다."
 fi
 
 cat $result

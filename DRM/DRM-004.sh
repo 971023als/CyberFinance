@@ -7,27 +7,28 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-004] 불필요한 SMTP 서비스 실행
+CODE [DBM-005] 데이터베이스 내 중요정보 암호화 미적용
 
 cat << EOF >> $result
-[양호]: SMTP 서비스가 비활성화되어 있거나 필요한 경우에만 실행되는 경우
-[취약]: SMTP 서비스가 필요하지 않음에도 실행되고 있는 경우
+[양호]: 중요 데이터가 암호화되어 있는 경우
+[취약]: 중요 데이터가 암호화되어 있지 않은 경우
 EOF
 
 BAR
 
-# SMTP 서비스 (예: postfix, sendmail 등)가 실행 중인지 확인합니다.
-SMTP_SERVICES=("sendmail" "postfix" "exim")
+# MySQL 명령 실행
+MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
 
-for service in "${SMTP_SERVICES[@]}"; do
-  if systemctl is-active --quiet $service; then
-    WARN "$service 서비스가 실행 중입니다."
-  else
-    OK "$service 서비스가 비활성화되어 있거나 실행 중이지 않습니다."
-  fi
-done
+# 암호화 확인 로직 (예시)
+# 여기에서는 'your_table'과 'your_field'를 암호화해야 하는 필드로 가정
+ENCRYPTED_COUNT=$($MYSQL_CMD "SELECT COUNT(*) FROM your_table WHERE your_field IS NOT NULL AND your_field != AES_DECRYPT(AES_ENCRYPT(your_field, 'your_key'), 'your_key')")
+
+if [ "$ENCRYPTED_COUNT" -gt 0 ]; then
+    WARN "미암호화된 중요 데이터가 존재합니다."
+else
+    OK "모든 중요 데이터가 암호화되어 있습니다."
+fi
 
 cat $result
 
 echo ; echo
-

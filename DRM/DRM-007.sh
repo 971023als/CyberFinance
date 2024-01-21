@@ -7,27 +7,36 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-007] 취약한 버전의 SMTP 서비스 사용
+CODE [DBM-007] 비밀번호의 복잡도 정책 설정 미흡
 
 cat << EOF >> $result
-[양호]: 최신 버전의 SMTP 서비스를 사용하는 경우
-[취약]: 구버전 또는 취약한 버전의 SMTP 서비스를 사용하는 경우
+[양호]: 모든 사용자의 비밀번호 복잡도 정책이 적절하게 설정되어 있는 경우
+[취약]: 하나 이상의 사용자의 비밀번호 복잡도 정책이 설정되어 있지 않은 경우
 EOF
 
 BAR
 
-# Postfix 버전 확인
-POSTFIX_VERSION=$(postconf mail_version 2>/dev/null | grep -oP 'mail_version = \K.*')
+# MySQL 사용자 정보 입력
+read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
+read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
+echo
 
-# 여기서 'safe_versions'는 안전하다고 알려진 버전의 목록입니다.
-# 이 리스트는 실제 환경에 따라 업데이트 되어야 합니다.
-safe_versions=('3.5.8' '3.4.14' '3.3.20' '3.2.36' '3.1.15' '2.11.13')
+# MySQL 명령 실행
+MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
 
-if [[ " ${safe_versions[@]} " =~ " ${POSTFIX_VERSION} " ]]; then
-  OK "안전한 버전의 Postfix를 사용 중입니다: ${POSTFIX_VERSION}"
-else
-  WARN "취약할 수 있는 버전의 Postfix를 사용 중입니다: ${POSTFIX_VERSION}"
-fi
+# 각 사용자의 비밀번호 설정 검사
+$MYSQL_CMD "SELECT user, host, authentication_string FROM mysql.user" | while read user host authentication_string; do
+    # 비밀번호 길이 및 패턴 검사
+    if [[ ${#authentication_string} -ge 8 ]] && \
+       [[ $authentication_string =~ [A-Z] ]] && \
+       [[ $authentication_string =~ [a-z] ]] && \
+       [[ $authentication_string =~ [0-9] ]] && \
+       [[ $authentication_string =~ [^a-zA-Z0-9] ]]; then
+        OK "적절한 비밀번호 복잡도: $user@$host"
+    else
+        WARN "비밀번호 복잡도 정책이 미흡한 사용자: $user@$host"
+    fi
+done
 
 cat $result
 
