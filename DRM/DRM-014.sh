@@ -7,30 +7,46 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-014] NFS 접근통제 미비
+CODE [DBM-014] 취약한 운영체제 역할 인증 기능(OS_ROLES, REMOTE_OS_ROLES) 사용
 
 cat << EOF >> $result
-[양호]: NFS 공유 설정에 적절한 접근 제어가 설정된 경우
-[취약]: NFS 공유 설정에 충분한 접근 제어가 설정되지 않은 경우
+[양호]: OS_ROLES 및 REMOTE_OS_ROLES 기능이 비활성화되어 있는 경우
+[취약]: OS_ROLES 또는 REMOTE_OS_ROLES 기능이 활성화되어 있는 경우
 EOF
 
 BAR
 
-# NFS 설정 파일을 확인합니다.
-NFS_EXPORTS_FILE="/etc/exports"
+# Oracle DB 사용자 정보 입력
+ORACLE_USER="sys as sysdba"
+ORACLE_PASS="yourpassword"
 
-# NFS exports 파일에서 적절한 접근 제어 설정을 확인합니다.
-if [ -f "$NFS_EXPORTS_FILE" ]; then
-    # 특정 접근 제어 관련 설정을 찾는 예시입니다.
-    if grep -q "rw" "$NFS_EXPORTS_FILE" || grep -q "root_squash" "$NFS_EXPORTS_FILE"; then
-        OK "NFS 공유 설정에 적절한 접근 제어가 설정되어 있습니다."
-    else
-        WARN "NFS 공유 설정에 충분한 접근 제어가 설정되지 않았습니다."
-    fi
+# SQL*Plus 명령 실행
+SQLPLUS_CMD="sqlplus -s $ORACLE_USER/$ORACLE_PASS"
+
+# OS 역할 인증 기능 설정 확인
+OS_ROLES=$($SQLPLUS_CMD << EOF
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT value FROM v\$parameter WHERE name = 'os_roles';
+EXIT;
+EOF
+)
+
+REMOTE_OS_ROLES=$($SQLPLUS_CMD << EOF
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT value FROM v\$parameter WHERE name = 'remote_os_roles';
+EXIT;
+EOF
+)
+
+if [[ "$OS_ROLES" == "FALSE" && "$REMOTE_OS_ROLES" == "FALSE" ]]; then
+    OK "OS_ROLES 및 REMOTE_OS_ROLES 기능이 안전하게 비활성화되어 있습니다."
 else
-    INFO "NFS 공유 설정 파일($NFS_EXPORTS_FILE)을 찾을 수 없습니다."
+    WARN "OS_ROLES 또는 REMOTE_OS_ROLES 기능이 활성화되어 있어 취약할 수 있습니다."
 fi
 
 cat $result
 
 echo ; echo
+
