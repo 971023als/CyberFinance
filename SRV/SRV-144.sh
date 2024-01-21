@@ -17,7 +17,7 @@ EOF
 BAR
 
 # /dev 경로에서 불필요한 파일 확인
-unnecessary_files=$(find /dev -type f)
+unnecessary_files=$(find /dev -type f -exec file {} \; | grep -E "executable|script|document|media|compressed|temporary")
 
 if [ -z "$unnecessary_files" ]; then
     OK "/dev 경로에 불필요한 파일이 존재하지 않습니다."
