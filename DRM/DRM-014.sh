@@ -16,29 +16,26 @@ EOF
 
 BAR
 
-# Oracle DB 사용자 정보 입력
-ORACLE_USER="sys as sysdba"
-ORACLE_PASS="yourpassword"
+# Prompt for Oracle DB user information
+read -p "Enter Oracle DB username: " ORACLE_USER
+read -sp "Enter Oracle DB password: " ORACLE_PASS
+echo
 
-# SQL*Plus 명령 실행
-SQLPLUS_CMD="sqlplus -s $ORACLE_USER/$ORACLE_PASS"
+# SQL*Plus command execution
+SQLPLUS_CMD="sqlplus -s /nolog"
 
-# OS 역할 인증 기능 설정 확인
-OS_ROLES=$($SQLPLUS_CMD << EOF
+# Check OS roles authentication settings
+OS_ROLES=$(echo "conn $ORACLE_USER/$ORACLE_PASS
 SET HEADING OFF;
 SET FEEDBACK OFF;
 SELECT value FROM v\$parameter WHERE name = 'os_roles';
-EXIT;
-EOF
-)
+EXIT;" | $SQLPLUS_CMD)
 
-REMOTE_OS_ROLES=$($SQLPLUS_CMD << EOF
+REMOTE_OS_ROLES=$(echo "conn $ORACLE_USER/$ORACLE_PASS
 SET HEADING OFF;
 SET FEEDBACK OFF;
 SELECT value FROM v\$parameter WHERE name = 'remote_os_roles';
-EXIT;
-EOF
-)
+EXIT;" | $SQLPLUS_CMD)
 
 if [[ "$OS_ROLES" == "FALSE" && "$REMOTE_OS_ROLES" == "FALSE" ]]; then
     OK "OS_ROLES 및 REMOTE_OS_ROLES 기능이 안전하게 비활성화되어 있습니다."
@@ -49,4 +46,3 @@ fi
 cat $result
 
 echo ; echo
-
