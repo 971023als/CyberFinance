@@ -1,64 +1,33 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-131] SU 명령 사용가능 그룹 제한 미비
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: SU 명령을 특정 그룹에만 허용한 경우
+[취약]: SU 명령을 모든 사용자가 사용할 수 있는 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
+# /etc/pam.d/su 파일에서 su 명령에 대한 그룹 제한 설정을 확인합니다
+if grep -q "auth required pam_wheel.so use_uid" /etc/pam.d/su; then
+  # wheel 그룹에 속한 사용자만 su 명령 사용 가능
+  if grep -q "^wheel:" /etc/group; then
+    OK "SU 명령은 특정 그룹에 제한됩니다."
+  else
+    WARN "Wheel 그룹이 /etc/group에 존재하지 않습니다."
   fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  WARN "모든 사용자가 SU 명령을 사용할 수 있습니다."
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

@@ -1,64 +1,39 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-129] 백신 프로그램 미설치
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 백신 프로그램이 설치되어 있는 경우
+[취약]: 백신 프로그램이 설치되어 있지 않은 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 일반적으로 사용되는 백신 프로그램의 설치 여부를 확인합니다
+antivirus_programs=("clamav" "avast" "avg" "avira" "eset")
 
-> $TMP1 
+installed_antivirus=()
 
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
+for antivirus in "${antivirus_programs[@]}"; do
+  if command -v $antivirus &> /dev/null; then
+    installed_antivirus+=("$antivirus")
   fi
 done
 
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+# 설치된 백신 프로그램이 있는지 확인합니다
+if [ ${#installed_antivirus[@]} -eq 0 ]; then
+  WARN "설치된 백신 프로그램이 없습니다."
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  OK "설치된 백신 프로그램: ${installed_antivirus[*]}"
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo
