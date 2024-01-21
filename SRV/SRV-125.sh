@@ -1,64 +1,50 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-125] 화면보호기 미설정
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 화면보호기가 설정되어 있는 경우
+[취약]: 화면보호기가 설정되어 있지 않은 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
+# GNOME 데스크톱 환경에서 화면보호기 설정 확인
+if gsettings get org.gnome.desktop.screensaver lock-enabled | grep -q 'true'; then
+  OK "화면보호기가 설정되어 있습니다."
+else
+  WARN "화면보호기가 설정되어 있지 않습니다."
 fi
 
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+# KDE Plasma
+if qdbus org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.GetActive; then
+  OK "KDE에서 화면보호기가 설정되어 있습니다."
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  WARN "KDE에서 화면보호기가 설정되어 있지 않습니다."
+fi
+
+# Xfce
+if xfconf-query -c xfce4-screensaver -p /saver/enabled; then
+  OK "Xfce에서 화면보호기가 설정되어 있습니다."
+else
+  WARN "Xfce에서 화면보호기가 설정되어 있지 않습니다."
+fi
+
+# Cinnamon
+if gsettings get org.cinnamon.desktop.screensaver lock-enabled | grep -q 'true'; then
+  OK "Cinnamon에서 화면보호기가 설정되어 있습니다."
+else
+  WARN "Cinnamon에서 화면보호기가 설정되어 있지 않습니다."
 fi
 
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo
