@@ -1,64 +1,44 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-109] 시스템 주요 이벤트 로그 설정 미흡
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 주요 이벤트 로그 설정이 적절하게 구성되어 있는 경우
+[취약]: 주요 이벤트 로그 설정이 적절하게 구성되어 있지 않은 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 이벤트 로그 파일 및 설정 확인
+log_files=("/var/log/messages" "/var/log/secure" "/var/log/maillog" "/var/log/cron")
 
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
+for file in "${log_files[@]}"; do
+  if [ ! -f "$file" ]; then
+    WARN "$file 파일이 존재하지 않습니다."
+  else
+    OK "$file 파일이 존재합니다."
   fi
 done
 
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+# rsyslog.conf 설정 확인
+rsyslog_conf="/etc/rsyslog.conf"
+if [ ! -f "$rsyslog_conf" ]; then
+  WARN "rsyslog.conf 파일이 존재하지 않습니다."
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  if grep -q "authpriv.*" "$rsyslog_conf" && grep -q "cron.*" "$rsyslog_conf" && grep -q "*.emerg" "$rsyslog_conf"; then
+    OK "rsyslog.conf 설정이 적절합니다."
+  else
+    WARN "rsyslog.conf 설정이 적절하지 않습니다."
+  fi
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

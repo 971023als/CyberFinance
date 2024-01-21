@@ -1,64 +1,46 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
 CODE [SRV-108] 로그에 대한 접근통제 및 관리 미흡
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있는 경우
+[취약]: 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있지 않은 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 로그 파일 목록
+log_files=("/var/log/messages" "/var/log/secure" "/var/log/maillog" "/var/log/cron")
 
-> $TMP1 
+# 각 로그 파일의 소유자 및 권한을 확인합니다.
+for file in "${log_files[@]}"; do
+  if [ -f "$file" ]; then
+    owner=$(stat -c '%U' "$file")
+    permissions=$(stat -c '%a' "$file")
 
-filename="/etc/rsyslog.conf"
+    if [ "$owner" != "root" ]; then
+      WARN "$file 파일의 소유자가 root가 아닙니다."
+    else
+      OK "$file 파일의 소유자가 root입니다."
+    fi
 
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
+    if [ "$permissions" -gt 640 ]; then
+      WARN "$file 파일의 권한이 640보다 큽니다."
+    else
+      OK "$file 파일의 권한이 640 이하입니다."
+    fi
+  else
+    WARN "$file 파일이 존재하지 않습니다."
   fi
 done
 
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
-else
-  WARN "$filename의 내용이 잘못되었습니다."
-fi
-
-
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

@@ -1,64 +1,41 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-112] Cron 서비스 로깅 미설정
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: Cron 서비스 로깅이 적절하게 설정되어 있는 경우
+[취약]: Cron 서비스 로깅이 적절하게 설정되어 있지 않은 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+# rsyslog.conf 파일에서 Cron 로깅 설정 확인
+rsyslog_conf="/etc/rsyslog.conf"
+if [ ! -f "$rsyslog_conf" ]; then
+  WARN "rsyslog.conf 파일이 존재하지 않습니다."
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  if grep -q "cron.*" "$rsyslog_conf"; then
+    OK "Cron 로깅이 rsyslog.conf에서 설정되었습니다."
+  else
+    WARN "Cron 로깅이 rsyslog.conf에서 설정되지 않았습니다."
+  fi
 fi
 
+# Cron 로그 파일 존재 여부 확인
+cron_log="/var/log/cron"
+if [ ! -f "$cron_log" ]; then
+  WARN "Cron 로그 파일이 존재하지 않습니다."
+else
+  OK "Cron 로그 파일이 존재합니다."
+fi
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo

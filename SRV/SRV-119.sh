@@ -1,64 +1,31 @@
 #!/bin/bash
 
- 
-
 . function.sh
 
- 
-TMP1=`SCRIPTNAME`.log
-
-> $TMP1 
- 
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
 BAR
 
-CODE [U-72] 정책에 따른 시스템 로깅 설정
+CODE [SRV-119] 백신 프로그램 업데이트 미흡
 
 cat << EOF >> $result
-
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-
+[양호]: 백신 프로그램이 최신 버전으로 업데이트 되어 있는 경우
+[취약]: 백신 프로그램이 최신 버전으로 업데이트 되어 있지 않은 경우
 EOF
 
 BAR
 
-TMP1=`SCRIPTNAME`.log
+# 백신 프로그램의 업데이트 상태를 확인합니다 (예시: ClamAV)
+clamav_version=$(clamscan --version)
+latest_clamav_version=$(curl -s https://www.clamav.net/downloads | grep -oP 'ClamAV \K[0-9.]+')
 
-> $TMP1 
-
-filename="/etc/rsyslog.conf"
-
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
-)
-
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
-
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
+if [ "$clamav_version" == "$latest_clamav_version" ]; then
+  OK "ClamAV가 최신 버전입니다: $clamav_version"
 else
-  WARN "$filename의 내용이 잘못되었습니다."
+  WARN "ClamAV가 최신 버전이 아닙니다. 현재 버전: $clamav_version, 최신 버전: $latest_clamav_version"
 fi
-
 
 cat $result
 
-echo ; echo 
-
- 
+echo ; echo
