@@ -10,37 +10,35 @@ BAR
 CODE [SRV-171] FTP 서비스 정보 노출
 
 cat << EOF >> $result
-[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우
-[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우
+[양호]: FTP 서버에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우
+[취약]: FTP 서버에서 버전 정보 및 기타 세부 정보가 노출되는 경우
 EOF
 
 BAR
 
-# Apache 서버에서 ServerTokens 및 ServerSignature 설정 확인
-apache_config="/etc/apache2/apache2.conf"
-if [ -f "$apache_config" ]; then
-    server_tokens=$(grep -i 'ServerTokens Prod' "$apache_config")
-    server_signature=$(grep -i 'ServerSignature Off' "$apache_config")
-
-    if [[ "$server_tokens" == "ServerTokens Prod" ]] && [[ "$server_signature" == "ServerSignature Off" ]]; then
-        OK "Apache 서버에서 버전 정보 및 운영체제 정보 노출이 제한됩니다."
+# FTP 서버 설정 확인 (예: vsftpd, proftpd 등)
+# vsftpd 예시
+vsftpd_config="/etc/vsftpd.conf"
+if [ -f "$vsftpd_config" ]; then
+    if grep -q 'ftpd_banner=' "$vsftpd_config"; then
+        OK "vsftpd에서 버전 정보 노출이 제한됩니다."
     else
-        WARN "Apache 서버에서 버전 정보 및 운영체제 정보가 노출됩니다."
+        WARN "vsftpd에서 버전 정보가 노출됩니다."
     fi
 else
-    INFO "Apache 서버 설정 파일이 존재하지 않습니다."
+    INFO "vsftpd 설정 파일이 존재하지 않습니다."
 fi
 
-# Nginx 서버에서 버전 정보 노출 설정 확인
-nginx_config="/etc/nginx/nginx.conf"
-if [ -f "$nginx_config" ]; then
-    if grep -q 'server_tokens off;' "$nginx_config"; then
-        OK "Nginx 서버에서 버전 정보 노출이 제한됩니다."
+# ProFTPD 예시
+proftpd_config="/etc/proftpd/proftpd.conf"
+if [ -f "$proftpd_config" ]; then
+    if grep -q 'ServerIdent on "FTP Server ready."' "$proftpd_config"; then
+        OK "ProFTPD에서 버전 정보 노출이 제한됩니다."
     else
-        WARN "Nginx 서버에서 버전 정보가 노출됩니다."
+        WARN "ProFTPD에서 버전 정보가 노출됩니다."
     fi
 else
-    INFO "Nginx 서버 설정 파일이 존재하지 않습니다."
+    INFO "ProFTPD 설정 파일이 존재하지 않습니다."
 fi
 
 cat $result

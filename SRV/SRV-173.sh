@@ -10,37 +10,25 @@ BAR
 CODE [SRV-173] DNS 서비스의 취약한 동적 업데이트 설정
 
 cat << EOF >> $result
-[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우
-[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우
+[양호]: DNS 동적 업데이트가 안전하게 구성된 경우
+[취약]: DNS 동적 업데이트가 취약하게 구성된 경우
 EOF
 
 BAR
 
-# Apache 서버에서 ServerTokens 및 ServerSignature 설정 확인
-apache_config="/etc/apache2/apache2.conf"
-if [ -f "$apache_config" ]; then
-    server_tokens=$(grep -i 'ServerTokens Prod' "$apache_config")
-    server_signature=$(grep -i 'ServerSignature Off' "$apache_config")
+# DNS 설정 파일 경로
+dns_config="/etc/bind/named.conf"
 
-    if [[ "$server_tokens" == "ServerTokens Prod" ]] && [[ "$server_signature" == "ServerSignature Off" ]]; then
-        OK "Apache 서버에서 버전 정보 및 운영체제 정보 노출이 제한됩니다."
+# 동적 업데이트 설정 확인
+if [ -f "$dns_config" ]; then
+    dynamic_updates=$(grep "allow-update" "$dns_config")
+    if [ -z "$dynamic_updates" ]; then
+        OK "DNS 동적 업데이트가 안전하게 구성되어 있습니다."
     else
-        WARN "Apache 서버에서 버전 정보 및 운영체제 정보가 노출됩니다."
+        WARN "DNS 동적 업데이트 설정이 취약합니다: $dynamic_updates"
     fi
 else
-    INFO "Apache 서버 설정 파일이 존재하지 않습니다."
-fi
-
-# Nginx 서버에서 버전 정보 노출 설정 확인
-nginx_config="/etc/nginx/nginx.conf"
-if [ -f "$nginx_config" ]; then
-    if grep -q 'server_tokens off;' "$nginx_config"; then
-        OK "Nginx 서버에서 버전 정보 노출이 제한됩니다."
-    else
-        WARN "Nginx 서버에서 버전 정보가 노출됩니다."
-    fi
-else
-    INFO "Nginx 서버 설정 파일이 존재하지 않습니다."
+    INFO "DNS 설정 파일이 존재하지 않습니다."
 fi
 
 cat $result
