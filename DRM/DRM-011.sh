@@ -7,23 +7,33 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-011] 시스템 관리자 계정의 FTP 사용 제한 미비
+CODE [DBM-011] 감사 로그 수집 및 백업 미흡
 
 cat << EOF >> $result
-[양호]: FTP 서비스에서 시스템 관리자 계정의 접근이 제한되는 경우
-[취약]: FTP 서비스에서 시스템 관리자 계정의 접근이 제한되지 않는 경우
+[양호]: 감사 로그가 정기적으로 수집 및 백업되고 있는 경우
+[취약]: 감사 로그 수집 및 백업 정책이 미흡한 경우
 EOF
 
 BAR
 
-# FTP 구성 파일에서 루트 사용자의 접근을 제한하는 설정 확인
-FTP_CONFIG_FILE="/etc/ftpusers"
+# Audit log directory
+audit_log_dir="/var/log/audit"
 
-# 'root' 계정의 FTP 접근이 제한되는지 확인합니다.
-if grep -q "^root" "$FTP_CONFIG_FILE"; then
-    OK "FTP 서비스에서 root 계정의 접근이 제한됩니다."
+# Check if audit logs are being collected
+if [ "$(find $audit_log_dir -type f -name '*.log' | wc -l)" -gt 0 ]; then
+    OK "감사 로그가 정기적으로 수집되고 있습니다."
 else
-    WARN "FTP 서비스에서 root 계정의 접근이 제한되지 않습니다."
+    WARN "감사 로그가 수집되지 않고 있습니다."
+fi
+
+# Backup directory
+backup_dir="/var/backup/audit"
+
+# Check for recent backup files
+if [ "$(find $backup_dir -type f -name '*.bak' -mtime -30 | wc -l)" -gt 0 ]; then
+    OK "감사 로그가 최근 30일 이내에 백업되었습니다."
+else
+    WARN "감사 로그 백업이 30일 이상 되지 않았습니다."
 fi
 
 cat $result
