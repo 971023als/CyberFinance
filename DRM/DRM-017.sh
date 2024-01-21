@@ -2,31 +2,38 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
 
-CODE [SRV-031] 계정 목록 및 네트워크 공유 이름 노출
+CODE [DBM-017] 업무상 불필요한 시스템 테이블 접근 권한 존재
 
-cat << EOF >> $result
-[양호]: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 노출되지 않는 경우
-[취약]: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 노출되는 경우
+cat << EOF >> "$result"
+[양호]: 업무상 불필요한 시스템 테이블 접근 권한이 없는 경우
+[취약]: 업무상 불필요한 시스템 테이블 접근 권한이 존재하는 경우
 EOF
 
 BAR
 
-# SMB 설정 파일을 확인합니다.
-SMB_CONF_FILE="/etc/samba/smb.conf"
+# 데이터베이스 사용자 정보 입력받기
+read -p "Enter the database username: " DB_USER
+read -sp "Enter the database password: " DB_PASS
+echo
 
-# 공유 목록 및 계정 정보 노출을 방지하는 설정을 확인합니다.
-# 예: 'enum shares', 'enum users' 설정을 확인
-if grep -E "(enum shares|enum users)" "$SMB_CONF_FILE"; then
-    WARN "SMB 서비스에서 계정 목록 또는 네트워크 공유 이름이 노출될 수 있습니다."
+# MySQL 명령 실행
+MYSQL_CMD="mysql -u $DB_USER -p$DB_PASS -Bse"
+
+# 시스템 테이블 권한 확인
+SYSTEM_TABLE_PRIVILEGES=$($MYSQL_CMD "SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA = 'mysql' OR TABLE_SCHEMA = 'information_schema' OR TABLE_SCHEMA = 'performance_schema';")
+
+if [ -z "$SYSTEM_TABLE_PRIVILEGES" ]; then
+    OK "업무상 불필요한 시스템 테이블 접근 권한이 존재하지 않습니다."
 else
-    OK "SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 적절하게 보호되고 있습니다."
+    WARN "다음 사용자에게 업무상 불필요한 시스템 테이블 접근 권한이 부여되었습니다:"
+    echo "$SYSTEM_TABLE_PRIVILEGES"
 fi
 
-cat $result
+cat "$result"
 
 echo ; echo
