@@ -2,43 +2,36 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
 
-CODE [SRV-020] 공유에 대한 접근 통제 미비
+CODE [DBM-020] 사용자별 계정 분리 미흡
 
-cat << EOF >> $result
-[양호]: NFS 또는 SMB/CIFS 공유에 대한 접근 통제가 적절하게 설정된 경우
-[취약]: NFS 또는 SMB/CIFS 공유에 대한 접근 통제가 미비한 경우
+cat << EOF >> "$result"
+[양호]: 사용자별 계정 분리가 올바르게 설정된 경우
+[취약]: 사용자별 계정 분리가 충분하지 않은 경우
 EOF
 
 BAR
 
-# NFS와 SMB/CIFS 설정 파일을 확인합니다.
-NFS_EXPORTS_FILE="/etc/exports"
-SMB_CONF_FILE="/etc/samba/smb.conf"
+read -p "데이터베이스 관리자 사용자 이름을 입력하세요: " DB_USER
+read -sp "데이터베이스 관리자 비밀번호를 입력하세요: " DB_PASS
+echo
 
-check_access_control() {
-  file=$1
-  service_name=$2
+DB_CMD="mysql -u $DB_USER -p$DB_PASS -Bse"
 
-  if [ -f "$file" ]; then
-    # 공유 설정에 'everyone' 또는 비슷한 느슨한 설정이 있는지 확인합니다.
-    if grep -E "everyone|public" "$file"; then
-      WARN "$service_name 서비스에서 느슨한 공유 접근 통제가 발견됨: $file"
+USER_PRIVILEGES=$($DB_CMD "SELECT User, Host, Db, Select_priv, Insert_priv, Update_priv FROM mysql.db;")
+
+echo "$USER_PRIVILEGES" | while read USER HOST DB SELECT_PRIV INSERT_PRIV UPDATE_PRIV; do
+    if [[ "$SELECT_PRIV" == "Y" && "$INSERT_PRIV" == "Y" && "$UPDATE_PRIV" == "Y" ]]; then
+        WARN "사용자 $USER@$HOST는 데이터베이스 $DB에 대해 과도한 권한을 가지고 있을 수 있습니다."
     else
-      OK "$service_name 서비스에서 공유 접근 통제가 적절함: $file"
+        OK "사용자 $USER@$HOST는 데이터베이스 $DB에 적절한 권한을 가지고 있습니다."
     fi
-  else
-    INFO "$service_name 서비스 설정 파일($file)을 찾을 수 없습니다."
-  fi
-}
+done
 
-check_access_control "$NFS_EXPORTS_FILE" "NFS"
-check_access_control "$SMB_CONF_FILE" "SMB/CIFS"
-
-cat $result
+cat "$result"
 
 echo ; echo
