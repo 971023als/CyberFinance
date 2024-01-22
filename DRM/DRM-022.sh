@@ -6,31 +6,29 @@ TMP1=$(mktemp)
 > "$TMP1"
 
 BAR
-
-CODE [DBM-022] 설정 파일 및 중요정보가 포함된 파일의 접근 권한 설정 미흡
+CODE [DBM-022] 데이터베이스 설정 파일의 접근 권한 설정 확인
 
 cat << EOF >> "$result"
-[양호]: 설정 파일 및 중요 정보가 포함된 파일의 접근 권한이 적절하게 설정된 경우
-[취약]: 설정 파일 및 중요 정보가 포함된 파일의 접근 권한이 미흡한 경우
+[양호]: MySQL, Oracle, PostgreSQL 설정 파일의 접근 권한이 적절한 경우
+[취약]: 설정 파일의 접근 권한이 미흡한 경우
 EOF
 
 BAR
 
-# 설정 파일 및 중요 정보 파일 목록
-CONFIG_FILES="/path/to/configfile1 /path/to/configfile2"
+# Define the list of critical files for MySQL, Oracle, and PostgreSQL
+FILES_TO_CHECK=("/etc/mysql/my.cnf" "/u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora" "/var/lib/pgsql/data/postgresql.conf")
 
-# 권한 검사
-for FILE in $CONFIG_FILES; do
-    if [ ! -f "$FILE" ]; then
-        WARN "중요 설정 파일이 존재하지 않습니다: $FILE"
-        continue
-    fi
-
-    PERMISSIONS=$(stat -c "%a" "$FILE")
-    if [ "$PERMISSIONS" -ne "600" ]; then
-        WARN "적절하지 않은 접근 권한이 설정된 중요 파일: $FILE (현재 권한: $PERMISSIONS)"
+# Check permissions for each file
+for file in "${FILES_TO_CHECK[@]}"; do
+    if [ -e "$file" ]; then
+        PERMS=$(stat -c '%a' "$file")
+        if [ "$PERMS" -gt "600" ]; then # Replace 600 with the desired permission level
+            WARN "File $file has insecure permissions: $PERMS"
+        else
+            OK "File $file has secure permissions: $PERMS"
+        fi
     else
-        OK "적절한 접근 권한이 설정된 중요 파일: $FILE"
+        WARN "File $file does not exist"
     fi
 done
 
