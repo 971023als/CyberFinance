@@ -2,36 +2,32 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [DBM-032] 데이터베이스 접속 시 통신구간에 비밀번호 평문 노출
 
-CODE [SRV-029] SMB 세션 중단 관리 설정 미비
-
-cat << EOF >> $result
-[양호]: SMB 서비스의 세션 중단 시간이 적절하게 설정된 경우
-[취약]: SMB 서비스의 세션 중단 시간 설정이 미비한 경우
+cat << EOF >> "$result"
+[양호]: 데이터베이스 접속 시 비밀번호가 암호화되어 전송되는 경우
+[취약]: 데이터베이스 접속 시 비밀번호가 평문으로 노출되는 경우
 EOF
 
 BAR
 
-# SMB 설정 파일을 확인합니다.
-SMB_CONF_FILE="/etc/samba/smb.conf"
+# 데이터베이스 연결 설정 확인
+DB_CONNECTION_CMD="your_database_connection_check_command"
 
-# SMB 세션 중단 시간 설정을 확인합니다.
-# 여기서는 'deadtime' 설정을 예로 듭니다.
-if grep -q "^deadtime" "$SMB_CONF_FILE"; then
-    deadtime=$(grep "^deadtime" "$SMB_CONF_FILE" | awk '{print $NF}')
-    if [ "$deadtime" -gt 0 ]; then
-        OK "SMB 세션 중단 시간(deadtime)이 적절하게 설정되어 있습니다: $deadtime 분"
-    else
-        WARN "SMB 세션 중단 시간(deadtime) 설정이 미비합니다."
-    fi
+# SSL/TLS 설정 확인
+SECURE_CONNECTION=$($DB_CONNECTION_CMD -e "SHOW SSL/TLS SETTINGS;")
+
+# 연결 보안 설정 검사
+if [[ "$SECURE_CONNECTION" =~ "SSL ENABLED" || "$SECURE_CONNECTION" =~ "TLS ENABLED" ]]; then
+    OK "데이터베이스 접속 시 비밀번호가 안전하게 암호화되어 전송됩니다."
 else
-    WARN "SMB 세션 중단 시간(deadtime) 설정이 '$SMB_CONF_FILE' 파일에 존재하지 않습니다."
+    WARN "데이터베이스 접속 시 비밀번호가 평문으로 노출될 위험이 있습니다."
 fi
 
-cat $result
+cat "$result"
 
 echo ; echo
