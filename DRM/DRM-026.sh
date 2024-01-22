@@ -2,29 +2,32 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [DBM-026] 데이터베이스 구동 계정의 umask 설정 확인
 
-CODE [SRV-026] root 계정 원격 접속 제한 미비
-
-cat << EOF >> $result
-[양호]: SSH를 통한 root 계정의 원격 접속이 제한된 경우
-[취약]: SSH를 통한 root 계정의 원격 접속이 제한되지 않은 경우
+cat << EOF >> "$result"
+[양호]: 적절한 umask 설정이 적용된 경우
+[취약]: umask 설정이 미흡한 경우
 EOF
 
 BAR
 
-# SSH 설정 파일에서 root 로그인을 허용하는 설정을 확인합니다.
-SSH_CONFIG_FILE="/etc/ssh/sshd_config"
+# 데이터베이스 서비스를 실행하는 사용자 계정에 대한 umask 값 확인
+# 예를 들어, 'mysql' 사용자 계정의 경우
+DATABASE_USER='mysql'
+UMASK_VALUE=$(su - $DATABASE_USER -c umask)
 
-if grep -q "^PermitRootLogin no" "$SSH_CONFIG_FILE"; then
-    OK "SSH를 통한 root 계정의 원격 접속이 제한됩니다."
+# 적절한 umask 값이 설정되었는지 확인 (예: 027)
+EXPECTED_UMASK='027'
+if [ "$UMASK_VALUE" == "$EXPECTED_UMASK" ]; then
+    OK "데이터베이스 구동 계정에 적절한 umask 값($EXPECTED_UMASK)이 설정되어 있습니다."
 else
-    WARN "SSH를 통한 root 계정의 원격 접속이 허용됩니다."
+    WARN "데이터베이스 구동 계정의 umask 값($UMASK_VALUE)이 기대치($EXPECTED_UMASK)와 다릅니다."
 fi
 
-cat $result
+cat "$result"
 
 echo ; echo

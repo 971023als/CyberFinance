@@ -2,31 +2,33 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [DBM-028] 업무상 불필요한 데이터베이스 오브젝트 존재 여부 확인
 
-CODE [SRV-028] 원격 터미널 접속 타임아웃 미설정
-
-cat << EOF >> $result
-[양호]: SSH 원격 터미널 접속 타임아웃이 적절하게 설정된 경우
-[취약]: SSH 원격 터미널 접속 타임아웃이 설정되지 않은 경우
+cat << EOF >> "$result"
+[양호]: 불필요한 데이터베이스 오브젝트가 존재하지 않는 경우
+[취약]: 불필요한 데이터베이스 오브젝트가 존재하는 경우
 EOF
 
 BAR
 
-# SSH 설정 파일을 확인합니다.
-SSH_CONFIG_FILE="/etc/ssh/sshd_config"
+# 데이터베이스 사용자 정보 입력
+read -p "데이터베이스 사용자 이름을 입력하세요: " DB_USER
+read -sp "데이터베이스 비밀번호를 입력하세요: " DB_PASS
+echo
 
-# ClientAliveInterval과 ClientAliveCountMax를 확인합니다.
-# 이 값들은 무활동 상태의 SSH 세션을 얼마나 오랫동안 유지할지 결정합니다.
-if grep -q "^ClientAliveInterval" "$SSH_CONFIG_FILE" && grep -q "^ClientAliveCountMax" "$SSH_CONFIG_FILE"; then
-    OK "SSH 원격 터미널 타임아웃 설정이 적절하게 구성되어 있습니다."
-else
-    WARN "SSH 원격 터미널 타임아웃 설정이 미비합니다."
-fi
+# 데이터베이스 명령 실행
+DB_CMD="데이터베이스_명령어_경로"
 
-cat $result
+# 데이터베이스 오브젝트 리스트 가져오기
+DB_OBJECTS=$($DB_CMD -u $DB_USER -p$DB_PASS -e "데이터베이스 오브젝트 리스트 조회 쿼리")
+
+# 불필요한 오브젝트 확인 로직 구현
+# 여기에 코드 추가
+
+cat "$result"
 
 echo ; echo
