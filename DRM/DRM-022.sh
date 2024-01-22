@@ -2,31 +2,38 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
 
-CODE [SRV-022] 계정의 비밀번호 미설정, 빈 암호 사용 관리 미흡
+CODE [DBM-022] 설정 파일 및 중요정보가 포함된 파일의 접근 권한 설정 미흡
 
-cat << EOF >> $result
-[양호]: 모든 계정에 비밀번호가 설정되어 있고 빈 비밀번호를 사용하는 계정이 없는 경우
-[취약]: 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 있는 경우
+cat << EOF >> "$result"
+[양호]: 설정 파일 및 중요 정보가 포함된 파일의 접근 권한이 적절하게 설정된 경우
+[취약]: 설정 파일 및 중요 정보가 포함된 파일의 접근 권한이 미흡한 경우
 EOF
 
 BAR
 
-# /etc/shadow 파일을 확인하여 빈 비밀번호가 설정된 계정을 찾습니다.
-while IFS=: read -r user enc_passwd rest; do
-    if [[ "$enc_passwd" == "" ]]; then
-        WARN "비밀번호가 설정되지 않은 계정: $user"
-    elif [[ "$enc_passwd" == "!" || "$enc_passwd" == "*" ]]; then
-        OK "비밀번호가 잠긴 계정: $user"
-    else
-        OK "비밀번호가 설정된 계정: $user"
-    fi
-done < /etc/shadow
+# 설정 파일 및 중요 정보 파일 목록
+CONFIG_FILES="/path/to/configfile1 /path/to/configfile2"
 
-cat $result
+# 권한 검사
+for FILE in $CONFIG_FILES; do
+    if [ ! -f "$FILE" ]; then
+        WARN "중요 설정 파일이 존재하지 않습니다: $FILE"
+        continue
+    fi
+
+    PERMISSIONS=$(stat -c "%a" "$FILE")
+    if [ "$PERMISSIONS" -ne "600" ]; then
+        WARN "적절하지 않은 접근 권한이 설정된 중요 파일: $FILE (현재 권한: $PERMISSIONS)"
+    else
+        OK "적절한 접근 권한이 설정된 중요 파일: $FILE"
+    fi
+done
+
+cat "$result"
 
 echo ; echo
