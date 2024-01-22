@@ -2,33 +2,35 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [NET-006] 외부인터페이스 SNMP 접근 차단
 
-CODE [DBM-005] 데이터베이스 내 중요정보 암호화 미적용
-
-cat << EOF >> $result
-[양호]: 중요 데이터가 암호화되어 있는 경우
-[취약]: 중요 데이터가 암호화되어 있지 않은 경우
+cat << EOF >> "$result"
+[양호]: 외부 인터페이스에서 SNMP 접근이 차단된 경우
+[취약]: 외부 인터페이스에서 SNMP 접근이 차단되지 않은 경우
 EOF
 
 BAR
 
-# MySQL 명령 실행
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+# 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-# 암호화 확인 로직 (예시)
-# 여기에서는 'your_table'과 'your_field'를 암호화해야 하는 필드로 가정
-ENCRYPTED_COUNT=$($MYSQL_CMD "SELECT COUNT(*) FROM your_table WHERE your_field IS NOT NULL AND your_field != AES_DECRYPT(AES_ENCRYPT(your_field, 'your_key'), 'your_key')")
+# 외부 인터페이스에서의 SNMP 접근 차단 확인
+for device in "${DEVICES[@]}"; do
+    # 장비에 접속하여 외부 인터페이스의 SNMP 접근 설정 확인
+    SNMP_ACCESS=$(ssh $device "show snmp interface external") # 실제 명령어로 변경
 
-if [ "$ENCRYPTED_COUNT" -gt 0 ]; then
-    WARN "미암호화된 중요 데이터가 존재합니다."
-else
-    OK "모든 중요 데이터가 암호화되어 있습니다."
-fi
+    # SNMP 접근 차단 확인 로직
+    if [[ $(check_snmp_access "$SNMP_ACCESS") == "blocked" ]]; then
+        OK "$device 의 외부 인터페이스에서 SNMP 접근이 차단됩니다."
+    else
+        WARN "$device 의 외부 인터페이스에서 SNMP 접근이 차단되지 않습니다."
+    fi
+done
 
-cat $result
+cat "$result"
 
 echo ; echo
