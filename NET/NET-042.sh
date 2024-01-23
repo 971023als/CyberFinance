@@ -2,43 +2,35 @@
 
 . function.sh
 
-# Temporary log file
 TMP1=$(mktemp)
 > "$TMP1"
 
-# Header for the check
 BAR
-CODE [DBM-025] 사용중인 데이터베이스가 서비스 지원 종료(EoS) 버전인지 확인
+CODE [NET-042] ICMP 차단 미설정
 
 cat << EOF >> "$result"
-[양호]: 현재 사용 중인 데이터베이스 버전이 서비스 지원 기간 내에 있는 경우
-[취약]: 현재 사용 중인 데이터베이스 버전이 서비스 지원 종료(EoS)에 도달한 경우
+[양호]: 네트워크 장비에 ICMP 차단이 적절하게 설정된 경우
+[취약]: 네트워크 장비에 ICMP 차단이 설정되지 않은 경우
 EOF
 
-# Header for the end of the check
 BAR
 
-# Insert your database command to check the version
-DB_VERSION=$(your_command_to_check_db_version)
+# 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-# You should have a list of EoS versions to compare against
-# For the sake of this example, let's assume you have them in an array
-EOS_VERSIONS=('version1' 'version2' 'version3')
+# 각 장비의 ICMP 차단 설정 확인
+for device in "${DEVICES[@]}"; do
+    # 장비에 접속하여 ICMP 차단 설정 확인
+    ICMP_BLOCKING=$(ssh $device "show running-config | include icmp-block") # 실제 장비의 ICMP 차단 확인 명령어로 변경 필요
 
-for eos_version in "${EOS_VERSIONS[@]}"; do
-    if [[ "$DB_VERSION" == "$eos_version" ]]; then
-        WARN "현재 사용 중인 데이터베이스 버전($DB_VERSION)은 서비스 지원 종료(EoS)에 도달했습니다."
-        break
+    # ICMP 차단 설정 상태 확인
+    if [[ $ICMP_BLOCKING ]]; then
+        OK "$device 에서 ICMP 차단이 적절하게 설정되었습니다."
+    else
+        WARN "$device 에서 ICMP 차단이 설정되지 않았습니다."
     fi
 done
 
-# If the loop completes without finding a match, then the version is not EoS
-if [[ $eos_version != "$DB_VERSION" ]]; then
-    OK "현재 사용 중인 데이터베이스 버전($DB_VERSION)은 서비스 지원 기간 내에 있습니다."
-fi
-
-# Display the results
 cat "$result"
 
-# End of script
 echo ; echo
