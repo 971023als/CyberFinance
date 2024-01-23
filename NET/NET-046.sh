@@ -1,38 +1,38 @@
 #!/bin/bash
 
-# Include the function library
+# 함수 라이브러리 포함
 . function.sh
 
-# Create a temporary log file
+# 임시 로그 파일 생성
 TMP1=$(mktemp)
 > "$TMP1"
 
-# Start and end delimiter for the log
+# 로그 시작과 끝 구분선
 BAR
 
-# Specific code for the check
-CODE [NET-045] ICMP Mask-Reply 차단 미설정
+# 점검 코드
+CODE [NET-046] ICMP Timestamp, Information Requests 차단 미설정
 
 cat << EOF >> "$result"
-[양호]: ICMP Mask-Reply 차단이 적절하게 설정된 경우
-[취약]: ICMP Mask-Reply 차단이 설정되지 않은 경우
+[양호]: ICMP Timestamp, Information Requests 차단이 적절하게 설정된 경우
+[취약]: ICMP Timestamp, Information Requests 차단이 설정되지 않은 경우
 EOF
 
 BAR
 
-# List of network devices to check
-DEVICES=("Device1" "Device2" "Device3") # Replace with actual device list
+# 점검할 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-# Check ICMP mask-reply blocking on each device
+# 각 장비에서 ICMP Timestamp 및 Information Requests 차단 설정 점검
 for device in "${DEVICES[@]}"; do
-    # SSH into each device and check the ICMP mask-reply blocking configuration
-    ICMP_MASK_REPLY_BLOCKING=$(ssh $device "show running-config | include icmp-mask-reply-block") # Replace with the actual command for your devices
+    # 각 장비에 SSH 접속하여 ICMP Timestamp 및 Information Requests 차단 설정 확인
+    ICMP_BLOCKING_CONFIG=$(ssh $device "show running-config | include icmp-timestamp-info-block") # 실제 장비의 확인 명령어로 변경
 
-    # Check if the ICMP mask-reply blocking is properly configured
-    if [[ $ICMP_MASK_REPLY_BLOCKING ]]; then
-        OK "$device 에서 ICMP Mask-Reply 차단이 적절하게 설정되었습니다."
+    # ICMP 차단 설정이 제대로 되어 있는지 확인
+    if [[ $ICMP_BLOCKING_CONFIG ]]; then
+        OK "$device 에서 ICMP Timestamp, Information Requests 차단이 적절하게 설정되었습니다."
     else
-        WARN "$device 에서 ICMP Mask-Reply 차단이 설정되지 않았습니다."
+        WARN "$device 에서 ICMP Timestamp, Information Requests 차단이 설정되지 않았습니다."
     fi
 done
 
