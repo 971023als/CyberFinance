@@ -1,30 +1,41 @@
 #!/bin/bash
 
+# Include the function library
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# Create a temporary log file
+TMP1=$(mktemp)
+> "$TMP1"
 
+# Start and end delimiter for the log
 BAR
 
-CODE [SRV-027] 서비스 접근 IP 및 포트 제한 미비
+# Specific code for the check
+CODE [NET-045] ICMP Mask-Reply 차단 미설정
 
-cat << EOF >> $result
-[양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우
-[취약]: 서비스에 대한 IP 및 포트 접근 제한이 설정되지 않은 경우
+cat << EOF >> "$result"
+[양호]: ICMP Mask-Reply 차단이 적절하게 설정된 경우
+[취약]: ICMP Mask-Reply 차단이 설정되지 않은 경우
 EOF
 
 BAR
 
-# 예시로, iptables 또는 firewalld를 사용하여 특정 서비스에 대한 접근 제한을 확인할 수 있습니다.
-# 여기서는 SSH(포트 22)에 대한 접근 제한을 확인합니다.
+# List of network devices to check
+DEVICES=("Device1" "Device2" "Device3") # Replace with actual device list
 
-if iptables -L | grep -q "dport 22"; then
-    OK "SSH 서비스에 대한 포트 접근 제한이 설정되어 있습니다."
-else
-    WARN "SSH 서비스에 대한 포트 접근 제한이 설정되어 있지 않습니다."
-fi
+# Check ICMP mask-reply blocking on each device
+for device in "${DEVICES[@]}"; do
+    # SSH into each device and check the ICMP mask-reply blocking configuration
+    ICMP_MASK_REPLY_BLOCKING=$(ssh $device "show running-config | include icmp-mask-reply-block") # Replace with the actual command for your devices
 
-cat $result
+    # Check if the ICMP mask-reply blocking is properly configured
+    if [[ $ICMP_MASK_REPLY_BLOCKING ]]; then
+        OK "$device 에서 ICMP Mask-Reply 차단이 적절하게 설정되었습니다."
+    else
+        WARN "$device 에서 ICMP Mask-Reply 차단이 설정되지 않았습니다."
+    fi
+done
+
+cat "$result"
 
 echo ; echo
