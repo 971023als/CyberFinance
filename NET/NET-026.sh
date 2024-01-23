@@ -2,41 +2,35 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [NET-026] Proxy ARP 차단 설정 여부
 
-CODE [DBM-015] Public Role에 불필요한 권한 존재
-
-cat << EOF >> $result
-[양호]: Public Role에 불필요한 권한이 부여되지 않은 경우
-[취약]: Public Role에 불필요한 권한이 부여된 경우
+cat << EOF >> "$result"
+[양호]: Proxy ARP가 모두 차단된 경우
+[취약]: Proxy ARP가 차단되지 않은 경우
 EOF
 
 BAR
 
-# Prompt for database user information
-read -p "Enter database user name: " DB_USER
-read -sp "Enter database password: " DB_PASS
-echo
+# 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-# Database command execution
-DB_CMD="your_db_command_utility" # Replace with actual command utility like sqlplus, mysql etc.
+# 각 장비에서 Proxy ARP 차단 설정 확인
+for device in "${DEVICES[@]}"; do
+    # 장비에 접속하여 Proxy ARP 차단 설정 확인
+    PROXY_ARP_STATUS=$(ssh $device "show proxy-arp status") # 실제 장비의 Proxy ARP 상태 확인 명령어로 변경 필요
 
-echo "Checking for unnecessary privileges granted to PUBLIC role..."
+    # Proxy ARP 차단 설정 확인
+    if [[ "$PROXY_ARP_STATUS" == *"blocked"* || "$PROXY_ARP_STATUS" == *"disabled"* ]]; then
+        OK "$device 에서 Proxy ARP가 차단되었습니다."
+    else
+        WARN "$device 에서 Proxy ARP가 차단되지 않았습니다."
+    fi
+done
 
-# Check for unnecessary PUBLIC role privileges
-# Replace with the actual query that lists privileges for the PUBLIC role in your database
-UNNECESSARY_PRIVILEGES=$($DB_CMD -u "$DB_USER" -p"$DB_PASS" -e "CHECK QUERY TO LIST PRIVILEGES FOR PUBLIC ROLE;")
-
-# Check if unnecessary privileges are granted
-if [ -z "$UNNECESSARY_PRIVILEGES" ]; then
-    OK "No unnecessary privileges granted to PUBLIC role."
-else
-    WARN "The following unnecessary privileges are granted to PUBLIC role: $UNNECESSARY_PRIVILEGES"
-fi
-
-cat $result
+cat "$result"
 
 echo ; echo

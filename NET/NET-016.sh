@@ -2,40 +2,35 @@
 
 . function.sh
 
-TMP1=$(mktemp /tmp/$(basename $0).XXXXXX)
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [NET-016] 불필요한 보조 입출력 포트(AUX) 차단 여부
 
-CODE [DBM-009] 사용되지 않는 세션 종료 미흡
-
-cat << EOF >> $result
-[양호]: 사용되지 않는 데이터베이스 세션의 종료 시간이 적절히 설정되어 있는 경우
-[취약]: 사용되지 않는 데이터베이스 세션의 종료 시간이 설정되어 있지 않은 경우
+cat << EOF >> "$result"
+[양호]: 모든 불필요한 보조 입출력 포트(AUX)가 차단된 경우
+[취약]: 하나 이상의 불필요한 보조 입출력 포트(AUX)가 차단되지 않은 경우
 EOF
 
 BAR
 
-read -p "Enter MySQL username: " MYSQL_USER
-read -sp "Enter MySQL password: " MYSQL_PASS
-echo
+# 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+# 각 장비에서 AUX 포트 차단 상태 확인
+for device in "${DEVICES[@]}"; do
+    # 장비에 접속하여 AUX 포트 설정 확인
+    AUX_STATUS=$(ssh $device "show aux port status") # 실제 장비의 AUX 포트 상태 확인 명령어로 변경 필요
 
-SESSION_TIMEOUT=$($MYSQL_CMD "SHOW VARIABLES LIKE 'wait_timeout';")
-
-if [[ -z "$SESSION_TIMEOUT" ]]; then
-    WARN "세션 종료 시간이 설정되어 있지 않습니다."
-else
-    TIMEOUT_VALUE=$(echo $SESSION_TIMEOUT | awk '{print $2}')
-    if [[ "$TIMEOUT_VALUE" -le 300 ]]; then
-        OK "세션 종료 시간이 적절히 설정되어 있습니다: $TIMEOUT_VALUE seconds."
+    # AUX 포트 차단 상태 확인
+    if [[ "$AUX_STATUS" == *"blocked"* || "$AUX_STATUS" == *"disabled"* ]]; then
+        OK "$device 에서 모든 보조 입출력 포트(AUX)가 차단되었습니다."
     else
-        WARN "세션 종료 시간이 너무 길게 설정되어 있습니다: $TIMEOUT_VALUE seconds."
+        WARN "$device 에서 불필요한 보조 입출력 포트(AUX)가 차단되지 않았습니다."
     fi
-fi
+done
 
-cat $result
+cat "$result"
 
-rm $TMP1
-
-echo
+echo ; echo

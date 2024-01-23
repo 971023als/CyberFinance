@@ -2,42 +2,36 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+TMP1=$(mktemp)
+> "$TMP1"
 
 BAR
+CODE [NET-011] 안전한 암호화 알고리즘 설정 여부
 
-CODE [DBM-007] 비밀번호의 복잡도 정책 설정 미흡
-
-cat << EOF >> $result
-[양호]: 모든 사용자의 비밀번호 복잡도 정책이 적절하게 설정되어 있는 경우
-[취약]: 하나 이상의 사용자의 비밀번호 복잡도 정책이 설정되어 있지 않은 경우
+cat << EOF >> "$result"
+[양호]: 안전한 암호화 알고리즘을 사용하는 경우
+[취약]: 불안전한 알고리즘을 사용하거나 암호화가 설정되지 않은 경우
 EOF
 
 BAR
 
-# MySQL 사용자 정보 입력
-read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
-read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
-echo
+# 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-# MySQL 명령 실행
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+# 각 장비의 암호화 알고리즘 설정 확인
+for device in "${DEVICES[@]}"; do
+    # 장비에 접속하여 암호화 설정 확인
+    ENCRYPTION_CONFIG=$(ssh $device "show encryption status") # 실제 장비의 암호화 상태 확인 명령어로 변경 필요
 
-# 각 사용자의 비밀번호 설정 검사
-$MYSQL_CMD "SELECT user, host, authentication_string FROM mysql.user" | while read user host authentication_string; do
-    # 비밀번호 길이 및 패턴 검사
-    if [[ ${#authentication_string} -ge 8 ]] && \
-       [[ $authentication_string =~ [A-Z] ]] && \
-       [[ $authentication_string =~ [a-z] ]] && \
-       [[ $authentication_string =~ [0-9] ]] && \
-       [[ $authentication_string =~ [^a-zA-Z0-9] ]]; then
-        OK "적절한 비밀번호 복잡도: $user@$host"
+    # 안전한 암호화 알고리즘 사용 여부 확인 로직
+    # 예를 들어, AES 알고리즘 사용 여부 확인
+    if [[ "$ENCRYPTION_CONFIG" == *"AES"* ]]; then
+        OK "$device 에서 안전한 암호화 알고리즘(AES)을 사용하고 있습니다."
     else
-        WARN "비밀번호 복잡도 정책이 미흡한 사용자: $user@$host"
+        WARN "$device 에서 안전한 암호화 알고리즘을 사용하지 않고 있습니다."
     fi
 done
 
-cat $result
+cat "$result"
 
 echo ; echo
