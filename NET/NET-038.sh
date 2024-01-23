@@ -6,31 +6,28 @@ TMP1=$(mktemp)
 > "$TMP1"
 
 BAR
-
-CODE [DBM-022] 설정 파일 및 중요정보가 포함된 파일의 접근 권한 설정 미흡
+CODE [NET-038] 외부 인터페이스에 ingress 필터 설정
 
 cat << EOF >> "$result"
-[양호]: 설정 파일 및 중요 정보가 포함된 파일의 접근 권한이 적절하게 설정된 경우
-[취약]: 설정 파일 및 중요 정보가 포함된 파일의 접근 권한이 미흡한 경우
+[양호]: 외부 인터페이스에 적절한 ingress 필터가 설정된 경우
+[취약]: 외부 인터페이스에 ingress 필터가 설정되지 않은 경우
 EOF
 
 BAR
 
-# 설정 파일 및 중요 정보 파일 목록
-CONFIG_FILES="/path/to/configfile1 /path/to/configfile2"
+# 네트워크 장비 목록
+DEVICES=("Device1" "Device2" "Device3") # 실제 장비 목록으로 교체 필요
 
-# 권한 검사
-for FILE in $CONFIG_FILES; do
-    if [ ! -f "$FILE" ]; then
-        WARN "중요 설정 파일이 존재하지 않습니다: $FILE"
-        continue
-    fi
+# 각 장비의 외부 인터페이스 ingress 필터 설정 확인
+for device in "${DEVICES[@]}"; do
+    # 장비에 접속하여 외부 인터페이스의 ingress 필터 설정 확인
+    INGRESS_FILTER=$(ssh $device "show running-config | include ingress-filter") # 실제 장비의 ingress 필터 확인 명령어로 변경 필요
 
-    PERMISSIONS=$(stat -c "%a" "$FILE")
-    if [ "$PERMISSIONS" -ne "600" ]; then
-        WARN "적절하지 않은 접근 권한이 설정된 중요 파일: $FILE (현재 권한: $PERMISSIONS)"
+    # ingress 필터 설정 상태 확인
+    if [[ $INGRESS_FILTER ]]; then
+        OK "$device 에서 외부 인터페이스에 적절한 ingress 필터가 설정되었습니다."
     else
-        OK "적절한 접근 권한이 설정된 중요 파일: $FILE"
+        WARN "$device 에서 외부 인터페이스에 ingress 필터가 설정되지 않았습니다."
     fi
 done
 
