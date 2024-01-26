@@ -1,34 +1,53 @@
 Java.perform(function () {
     var accountClass = Java.use("com.example.financial.AccountManager");
 
-    // 이전 비밀번호를 저장하는 임시 데이터 구조 (실제로는 보안 강화가 필요함)
-    var oldPasswords = Java.use("java.util.ArrayList").$new();
+    // ... 이전에 정의된 메소드들 ...
+
+    // 비밀번호 패턴 유효성 검사 메소드
+    accountClass.isPasswordPatternInvalid.implementation = function (newPassword) {
+        // 연속된 숫자나 문자, 키보드 패턴 등을 확인
+        var pattern = /(?:12345|abcde|qwerty)/;
+        if (pattern.test(newPassword)) {
+            return true; // 유효하지 않은 패턴이면 true 반환
+        }
+        return false; // 유효한 경우 false 반환
+    };
+
+    // 보안 질문 검증 메소드
+    accountClass.verifySecurityQuestion.implementation = function (answer) {
+        var correctAnswer = "your_correct_answer"; // 실제 구현에서는 사용자별로 다를 수 있음
+        return answer === correctAnswer; // 답변이 정확한 경우 true 반환
+    };
+
+    // 사용자 활동 로그 기록 메소드
+    accountClass.logUserActivity.implementation = function (activity) {
+        console.log("User Activity: " + activity); // 로그 메시지 콘솔 출력
+    };
 
     // 비밀번호 변경 메소드
-    accountClass.changePassword.implementation = function (oldPassword, newPassword) {
-        console.log("[알림]: 비밀번호 변경 절차 시작");
-
-        // 이전 비밀번호와 새 비밀번호가 동일한지 확인
-        if (oldPassword.equals(newPassword)) {
-            console.log("[경고]: 새 비밀번호는 이전 비밀번호와 달라야 합니다.");
+    accountClass.changePassword.implementation = function (oldPassword, newPassword, securityAnswer) {
+        // 보안 질문 검증
+        if (!this.verifySecurityQuestion(securityAnswer)) {
+            this.logUserActivity("보안 질문 검증 실패");
+            console.log("[경고]: 보안 질문 검증 실패");
             return false;
         }
 
-        // 이전 비밀번호 재사용 확인
-        if (oldPasswords.contains(newPassword)) {
-            console.log("[경고]: 새 비밀번호는 최근 사용한 비밀번호와 달라야 합니다.");
+        // 비밀번호 패턴 유효성 검사
+        if (this.isPasswordPatternInvalid(newPassword)) {
+            this.logUserActivity("비밀번호 패턴 유효성 검사 실패");
+            console.log("[경고]: 비밀번호가 요구하는 패턴을 충족하지 않습니다.");
             return false;
         }
 
-        // 비밀번호 변경 로직
-        // 예시: 비밀번호 유효성 검사, 데이터베이스에 비밀번호 업데이트 등
-        console.log("[알림]: 비밀번호 변경 중...");
-        // ... 비밀번호 변경 로직
+        // 기존 비밀번호 변경 로직
+        // ...
 
-        // 새 비밀번호를 이전 비밀번호 목록에 추가
-        oldPasswords.add(newPassword);
-
+        // 성공적인 비밀번호 변경 후, 사용자 활동 로그 기록
+        this.logUserActivity("비밀번호 변경 성공");
         console.log("[알림]: 비밀번호가 성공적으로 변경되었습니다.");
         return true;
     };
+
+    // ... 기타 메소드들 ...
 });
