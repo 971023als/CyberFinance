@@ -25,7 +25,7 @@ check_share_activation() {
   service_name=$2
 
   if [ -f "$file" ]; then
-    if grep -E "^\s*\/" "$file"; then
+    if grep -E "^\s*\/" "$file" > /dev/null; then
       WARN "$service_name 서비스에서 불필요한 공유가 활성화되어 있습니다: $file"
     else
       OK "$service_name 서비스에서 불필요한 공유가 비활성화되어 있습니다: $file"
@@ -38,6 +38,6 @@ check_share_activation() {
 check_share_activation "$NFS_EXPORTS_FILE" "NFS"
 check_share_activation "$SMB_CONF_FILE" "SMB/CIFS"
 
-cat $result
+cat "$TMP1"
 
-echo ; echo
+echo

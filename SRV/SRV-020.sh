@@ -36,8 +36,32 @@ check_access_control() {
   fi
 }
 
+check_nfs_shares() {
+  # NFS 공유 목록을 확인합니다.
+  showmount -e localhost > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    WARN "NFS 서비스에서 공유 목록이 발견됨"
+    showmount -e localhost
+  else
+    OK "NFS 서비스에서 공유 목록이 발견되지 않음"
+  fi
+}
+
+check_smb_shares() {
+  # Samba 공유 목록을 확인합니다.
+  smbclient -L localhost -N > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    WARN "SMB/CIFS 서비스에서 공유 목록이 발견됨"
+    smbclient -L localhost -N
+  else
+    OK "SMB/CIFS 서비스에서 공유 목록이 발견되지 않음"
+  fi
+}
+
 check_access_control "$NFS_EXPORTS_FILE" "NFS"
 check_access_control "$SMB_CONF_FILE" "SMB/CIFS"
+check_nfs_shares
+check_smb_shares
 
 cat $result
 
