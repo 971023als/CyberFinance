@@ -16,21 +16,38 @@ EOF
 
 BAR
 
-# 웹 서비스 경로 설정
-WEB_SERVICE_PATH="/var/www/html" # 예시 경로입니다. 실제 환경에 맞게 조정하세요.
-
-# 불필요하거나 위험한 파일 형식을 정의합니다.
-# 예시: .bak, .tmp, .old 파일
-UNNECESSARY_FILES=("*.bak" "*.tmp" "*.old")
-
-# 웹 서비스 경로에서 불필요한 파일 찾기
-for file_type in "${UNNECESSARY_FILES[@]}"; do
-  if find "$WEB_SERVICE_PATH" -name "$file_type"; then
-    WARN "$WEB_SERVICE_PATH 경로에 불필요한 파일이 있습니다: $file_type"
-  else
-    OK "$WEB_SERVICE_PATH 경로에 불필요한 파일이 없습니다: $file_type"
-  fi
-done
+webconf_files=(".htaccess" "httpd.conf" "apache2.conf")
+	file_exists_count=0
+	for ((i=0; i<${#webconf_files[@]}; i++))
+	do
+		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
+		if [ $find_webconf_file_count -gt 0 ]; then
+			((file_exists_count++))
+			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
+			for ((j=0; j<${#find_webconf_files[@]}; j++))
+			do
+				webconf_file_documentroot_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'DocumentRoot' | grep '/' | wc -l`
+				if [ $webconf_file_documentroot_count -gt 0 ]; then
+					webconf_file_documentroot_basic_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'DocumentRoot' | grep '/' | awk '{gsub(/"/, "", $0); print $2}' | grep -E '/usr/local/apache/htdocs|/usr/local/apache2/htdocs|/var/www/html' | wc -l`
+					if [ $webconf_file_documentroot_basic_count -gt 0 ]; then 
+						WARN " Apache DocumentRoot를 기본 디렉터리로 설정했습니다." >> $TMP1
+						return 0
+					fi
+				else
+					WARN " Apache DocumentRoot를 설정하지 않았습니다." >> $TMP1
+					return 0
+				fi
+			done
+		fi
+	done
+	ps_apache_count=`ps -ef | grep -iE 'httpd|apache2' | grep -v 'grep' | wc -l`
+	if [ $ps_apache_count -gt 0 ] && [ $file_exists_count -eq 0 ]; then
+		WARN " Apache 서비스를 사용하고, DocumentRoot를 설정하는 파일이 없습니다." >> $TMP1
+		return 0
+	else
+		OK "※ U-41 결과 : 양호(Good)" >> $TMP1
+		return 0
+	fi
 
 cat $result
 
