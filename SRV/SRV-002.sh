@@ -19,6 +19,8 @@ EOF
 
 BAR
 
+"[SRV-002] SNMP 서비스 Set Community 스트링 설정 오류" >> $TMP1
+
 # SNMP service running check
 ps_snmp_count=$(ps -ef | grep -i 'snmp' | grep -v 'grep' | wc -l)
 
@@ -38,6 +40,8 @@ if [ $ps_snmp_count -gt 0 ]; then
 else
     OK "SNMP 서비스가 실행 중이지 않습니다." >> $TMP1
 fi
+
+BAR
 
 cat $TMP1
 

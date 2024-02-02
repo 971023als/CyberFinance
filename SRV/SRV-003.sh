@@ -2,6 +2,9 @@
 
 . function.sh
 
+TMP1=$(basename "$0").log
+> $TMP1
+
 BAR
 
 CODE [SRV-003] SNMP 접근 통제 미설정
@@ -15,9 +18,7 @@ EOF
 
 BAR
 
-TMP1=$(SCRIPTNAME).log
-
-> $TMP1
+"[SRV-003] SNMP 접근 통제 미설정" >> $TMP1
 
 SNMPD_CONF="/etc/snmp/snmpd.conf"
 ACCESS_CONTROL_STRING="com2sec"
@@ -30,6 +31,8 @@ if grep -q "^$ACCESS_CONTROL_STRING" "$SNMPD_CONF"; then
 else
    WARN "SNMP 접근 제어가 설정되지 않음"
 fi
+
+BAR
 
 cat $result
 
