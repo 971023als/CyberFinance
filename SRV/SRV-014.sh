@@ -24,7 +24,8 @@ if [ `ps -ef | grep -iE 'nfs|rpc.statd|statd|rpc.lockd|lockd' | grep -ivE 'grep|
 			etc_exports_directory_count=`grep -vE '^#|^\s#' /etc/exports | grep '/' | wc -l`
 			etc_exports_squash_count=`grep -vE '^#|^\s#' /etc/exports | grep '/' | grep -iE 'root_squash|all_squash' | wc -l`
 			if [ $etc_exports_all_count -gt 0 ]; then
-                WARN "/etc/exports 파일에 '*' 설정이 있습니다. 설정 = 모든 클라이언트에 대해 전체 네트워크 공유 허용" 
+                WARN "/etc/exports 파일에 '*' 설정이 있습니다. " >> $TMP1
+				INFO "설정 = 모든 클라이언트에 대해 전체 네트워크 공유 허용" >> $TMP1
 				return 0
 			elif [ $etc_exports_insecure_count -gt 0 ]; then
 				WARN " /etc/exports 파일에 'insecure' 옵션이 설정되어 있습니다." >> $TMP1
@@ -40,6 +41,8 @@ if [ `ps -ef | grep -iE 'nfs|rpc.statd|statd|rpc.lockd|lockd' | grep -ivE 'grep|
 		OK "불필요한 NFS 서비스를 사용하지 않거나, 불가피하게 사용 시 everyone 공유를 제한" >> $TMP1
 		return 0
 	fi
+	
+BAR
 
 cat $result
 
