@@ -9,27 +9,37 @@ BAR
 
 CODE [SRV-014] NFS 접근통제 미비
 
-cat << EOF >> $result
-[양호]: NFS 공유 설정에 적절한 접근 제어가 설정된 경우
-[취약]: NFS 공유 설정에 충분한 접근 제어가 설정되지 않은 경우
+cat << EOF >> $TMP1
+[양호]: 불필요한 NFS 서비스를 사용하지 않거나, 불가피하게 사용 시 everyone 공유를 제한한 경우
+[취약]: 불필요한 NFS 서비스를 사용하거나, 불가피하게 사용 시 everyone 공유를 제한하지 않는 경우
 EOF
 
 BAR
 
 # NFS 설정 파일을 확인합니다.
-NFS_EXPORTS_FILE="/etc/exports"
-
-# NFS exports 파일에서 적절한 접근 제어 설정을 확인합니다.
-if [ -f "$NFS_EXPORTS_FILE" ]; then
-    # 특정 접근 제어 관련 설정을 찾는 예시입니다.
-    if grep -q "rw" "$NFS_EXPORTS_FILE" || grep -q "root_squash" "$NFS_EXPORTS_FILE"; then
-        OK "NFS 공유 설정에 적절한 접근 제어가 설정되어 있습니다."
-    else
-        WARN "NFS 공유 설정에 충분한 접근 제어가 설정되지 않았습니다."
-    fi
-else
-    INFO "NFS 공유 설정 파일($NFS_EXPORTS_FILE)을 찾을 수 없습니다."
-fi
+if [ `ps -ef | grep -iE 'nfs|rpc.statd|statd|rpc.lockd|lockd' | grep -ivE 'grep|kblockd|rstatd|' | wc -l` -gt 0 ]; then
+		if [ -f /etc/exports ]; then
+			etc_exports_all_count=`grep -vE '^#|^\s#' /etc/exports | grep '/' | grep '*' | wc -l`
+			etc_exports_insecure_count=`grep -vE '^#|^\s#' /etc/exports | grep '/' | grep -i 'insecure' | wc -l`
+			etc_exports_directory_count=`grep -vE '^#|^\s#' /etc/exports | grep '/' | wc -l`
+			etc_exports_squash_count=`grep -vE '^#|^\s#' /etc/exports | grep '/' | grep -iE 'root_squash|all_squash' | wc -l`
+			if [ $etc_exports_all_count -gt 0 ]; then
+                WARN "/etc/exports 파일에 '*' 설정이 있습니다. 설정 = 모든 클라이언트에 대해 전체 네트워크 공유 허용" 
+				return 0
+			elif [ $etc_exports_insecure_count -gt 0 ]; then
+				WARN " /etc/exports 파일에 'insecure' 옵션이 설정되어 있습니다." >> $TMP1
+				return 0
+			else
+				if [ $etc_exports_directory_count -ne $etc_exports_squash_count ]; then
+					WARN " /etc/exports 파일에 'root_squash' 또는 'all_squash' 옵션이 설정되어 있지 않습니다." >> $TMP1
+					return 0
+				fi
+			fi
+		fi
+	else
+		OK "불필요한 NFS 서비스를 사용하지 않거나, 불가피하게 사용 시 everyone 공유를 제한" >> $TMP1
+		return 0
+	fi
 
 cat $result
 
