@@ -2,33 +2,59 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
+TMP1=$(basename "$0").log
 > $TMP1
-
 BAR
 
 CODE [SRV-007] 취약한 버전의 SMTP 서비스 사용
 
-cat << EOF >> $result
-[양호]: 최신 버전의 SMTP 서비스를 사용하는 경우
-[취약]: 구버전 또는 취약한 버전의 SMTP 서비스를 사용하는 경우
+cat << EOF >> $TMP1
+[양호]: SMTP 서비스 버전이 최신 버전일 경우 또는 취약점이 없는 버전을 사용하는 경우
+[취약]: SMTP 서비스 버전이 최신이 아니거나 알려진 취약점이 있는 버전을 사용하는 경우
 EOF
 
 BAR
 
-# Postfix 버전 확인
-POSTFIX_VERSION=$(postconf mail_version 2>/dev/null | grep -oP 'mail_version = \K.*')
+"[SRV-007] 취약한 버전의 SMTP 서비스 사용" >> $TMP1
+# Check Sendmail version
+SENDMAIL_VERSION=$(/usr/lib/sendmail -d0.1 -bt < /dev/null 2>&1 | grep Version | awk '{print $2}')
+SENDMAIL_MIN_VERSION="8.14.9"
 
-# 여기서 'safe_versions'는 안전하다고 알려진 버전의 목록입니다.
-# 이 리스트는 실제 환경에 따라 업데이트 되어야 합니다.
-safe_versions=('3.5.8' '3.4.14' '3.3.20' '3.2.36' '3.1.15' '2.11.13')
+# Version comparison function
+version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
 
-if [[ " ${safe_versions[@]} " =~ " ${POSTFIX_VERSION} " ]]; then
-  OK "안전한 버전의 Postfix를 사용 중입니다: ${POSTFIX_VERSION}"
+if [ -n "$SENDMAIL_VERSION" ]; then
+    if version_gt $SENDMAIL_MIN_VERSION $SENDMAIL_VERSION; then
+        WARN "Sendmail 버전이 취약합니다. 현재 버전: $SENDMAIL_VERSION, 권장 최소 버전: $SENDMAIL_MIN_VERSION" >> $TMP1
+    else
+        OK "Sendmail 버전이 안전합니다. 현재 버전: $SENDMAIL_VERSION" >> $TMP1
+    fi
 else
-  WARN "취약할 수 있는 버전의 Postfix를 사용 중입니다: ${POSTFIX_VERSION}"
+    INFO "Sendmail이 설치되어 있지 않습니다." >> $TMP1
 fi
 
-cat $result
+# Check Postfix version
+POSTFIX_VERSION=$(postconf -d mail_version 2>/dev/null)
+POSTFIX_SAFE_VERSIONS=("2.5.13" "2.6.10" "2.7.4" "2.8.3")
 
+if [ -n "$POSTFIX_VERSION" ]; then
+    POSTFIX_VERSION_SAFE=false
+    for safe_version in "${POSTFIX_SAFE_VERSIONS[@]}"; do
+        if version_gt $safe_version $POSTFIX_VERSION; then
+            POSTFIX_VERSION_SAFE=true
+            break
+        fi
+    done
+    if $POSTFIX_VERSION_SAFE; then
+        OK "Postfix 버전이 안전합니다. 현재 버전: $POSTFIX_VERSION" >> $TMP1
+    else
+        WARN "Postfix 버전이 취약할 수 있습니다. 현재 버전: $POSTFIX_VERSION" >> $TMP1
+    fi
+else
+    INFO "Postfix가 설치되어 있지 않습니다." >> $TMP1
+fi
+
+BAR
+
+cat $TMP1
 echo ; echo
