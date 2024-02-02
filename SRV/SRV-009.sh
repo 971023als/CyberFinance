@@ -9,7 +9,7 @@ BAR
 
 CODE [SRV-009] SMTP 서비스 스팸 메일 릴레이 제한 미설정
 
-cat << EOF >> $result
+cat << EOF >> $TMP1
 [양호]: SMTP 서비스를 사용하지 않거나 릴레이 제한이 설정되어 있는 경우
 [취약]: SMTP 서비스를 사용하거나 릴레이 제한이 설정이 없는 경우
 EOF

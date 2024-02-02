@@ -2,7 +2,7 @@
 
 . function.sh
 
-TMP1=$(SCRIPTNAME).log
+TMP1=$(basename "$0").log
 > $TMP1
 
 BAR
