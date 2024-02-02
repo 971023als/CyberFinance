@@ -18,9 +18,10 @@ BAR
 
 # Telnet 서비스 상태를 확인합니다.
 if systemctl is-active --quiet telnet.socket; then
-    # Telnet 서비스의 보안 설정을 추가로 확인할 수 있습니다.
-    # 예: /etc/securetty 파일에서 'pts/' 항목을 확인하는 등
-    WARN "Telnet 서비스가 활성화되어 있습니다."
+    # Telnet 서비스가 활성화된 경우, 추가적인 설정 확인이 필요할 수 있음
+    # Linux 시스템에서 NTLM 인증 설정을 직접 확인하는 방법은 제한적임
+    # 해당 확인은 Windows 환경에 더 적합함
+    WARN "Telnet 서비스가 활성화되어 있습니다. 추가 보안 설정 확인이 필요할 수 있습니다."
 else
     OK "Telnet 서비스가 비활성화되어 있습니다."
 fi
