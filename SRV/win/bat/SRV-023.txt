@@ -53,7 +53,7 @@ for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt')
 )
 type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
 echo ------------------------------------------end-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
+echo ------------------------------------------SRV-023------------------------------------------
 SRV-023 (Windows) 원격 터미널 서비스의 암호화 수준 설정 미흡
 
 【 상세설명 】
@@ -103,6 +103,6 @@ SRV-023 (Windows) 원격 터미널 서비스의 암호화 수준 설정 미흡
   2024-01-13 : (조치과정 삭제)
 echo -------------------------------------------end------------------------------------------
 
-echo --------------------------------------SRV-004 불필요한 SMTP 서비스 실행 여부------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+echo --------------------------------------SRV-023 (Windows) 원격 터미널 서비스의 암호화 수준 설정 미흡------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
