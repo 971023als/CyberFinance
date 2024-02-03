@@ -16,14 +16,12 @@ EOF
 
 BAR
 
-# 시스템에서 world writable 파일 찾기
-world_writable_files=$(find / -type f -perm -o+w -exec ls -ld {} \; 2>/dev/null)
-
-# world writable 파일 확인
-if [ -z "$world_writable_files" ]; then
-    OK "불필요한 world writable 파일이 존재하지 않습니다."
+if [ `find / -type f -perm -2 2>/dev/null | wc -l` -gt 0 ]; then
+		WARN " world writable 설정이 되어있는 파일이 있습니다." >> $TMP1
+		return 0
 else
-    WARN "다음 world writable 파일이 발견되었습니다: $world_writable_files"
+		OK "※ U-15 결과 : 양호(Good)" >> $TMP1
+		return 0
 fi
 
 cat $result
