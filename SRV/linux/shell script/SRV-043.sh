@@ -45,7 +45,7 @@ webconf_files=(".htaccess" "httpd.conf" "apache2.conf")
 		WARN " Apache 서비스를 사용하고, DocumentRoot를 설정하는 파일이 없습니다." >> $TMP1
 		return 0
 	else
-		OK "※ U-41 결과 : 양호(Good)" >> $TMP1
+		OK "양호(Good)" >> $TMP1
 		return 0
 	fi
 

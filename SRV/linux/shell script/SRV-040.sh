@@ -43,7 +43,7 @@ webconf_files=(".htaccess" "httpd.conf" "apache2.conf" "userdir.conf")
 			done
 		fi
 	done
-	OK "※ U-35 결과 : 양호(Good)" >> $TMP1
+	OK "※ 양호(Good)" >> $TMP1
 	return 0
 
 cat $TMP1

@@ -16,20 +16,67 @@ EOF
 
 BAR
 
-# DNS 서버 소프트웨어 확인 (예: BIND)
-dns_server="bind9"
-
-# DNS 서버 버전 확인
-dns_version=$(named -v | grep BIND)
-
-# 최신 버전 정보 확인을 위한 로직이 필요 (여기서는 예시만 제공)
-# 실제로는 DNS 서버의 최신 버전 정보를 얻기 위한 외부 API 또는 데이터베이스 확인이 필요할 수 있음
-latest_version="BIND 9.16.1" # 최신 버전 정보 예시
-
-if [[ "$dns_version" == *"$latest_version"* ]]; then
-    OK "DNS 서버가 최신 버전입니다: $dns_version"
-else
-    WARN "DNS 서버가 최신 버전이 아닐 수 있습니다: $dns_version"
+ps_dns_count=`ps -ef | grep -i 'named' | grep -v 'grep' | wc -l`
+	if [ $ps_dns_count -gt 0 ]; then
+		rpm_bind9_minor_version=(`rpm -qa 2>/dev/null | grep '^bind' | awk -F '9.' '{print $2}' | grep -v '^$' | uniq`)
+		dnf_bind_major_minor_version=(`dnf list installed bind* 2>/dev/null | grep -v 'Installed Packages' | awk -F : '{print $2}' | grep -v '^$' | uniq`)
+		if [ ${#rpm_bind9_minor_version[@]} -gt 0 ] && [ ${#dnf_bind_major_minor_version[@]} -gt 0 ]; then
+			for ((i=0; i<${#rpm_bind9_minor_version[@]}; i++))
+			do
+				if [[ ${rpm_bind9_minor_version[$i]} =~ 18.* ]]; then
+					rpm_bind9_patch_version=(`rpm -qa 2>/dev/null | grep '^bind' | awk -F '18.' '{print $2}' | grep -v '^$' | uniq`)
+					if [ ${#rpm_bind9_patch_version[@]} -gt 0 ]; then
+						for ((j=0; j<${#rpm_bind9_patch_version[@]}; j++))
+						do
+							if [[ ${rpm_bind9_patch_version[$j]} != [7-9]* ]] || [[ ${rpm_bind9_patch_version[$j]} != 1[0-6]* ]]; then
+								echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+								echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+								return 0
+							fi
+						done
+					else
+						echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+						echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+						return 0
+					fi
+				else
+					echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+					echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+					return 0
+				fi
+			done
+			for ((i=0; i<${#dnf_bind_major_minor_version[@]}; i++))
+			do
+				if [[ ${dnf_bind_major_minor_version[$i]} =~ 9.18.* ]]; then
+					dnf_bind_patch_version=(`dnf list installed bind* 2>/dev/null | grep -v 'Installed Packages' | awk -F : '{print $2}' | awk -F '18.' '{print $2}' | grep -v '^$' | uniq`)
+					if [ ${#dnf_bind_patch_version[@]} -gt 0 ]; then
+						for ((j=0; j<${#dnf_bind_patch_version[@]}; j++))
+						do
+							if [[ ${dnf_bind_patch_version[$j]} != [7-9]* ]] || [[ ${dnf_bind_patch_version[$j]} != 1[0-6]* ]]; then
+								echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+								echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+								return 0
+							fi
+						done
+					else
+						echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+						echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+						return 0
+					fi
+				else
+					echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+					echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+					return 0
+				fi
+			done
+		else
+			echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
+			echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+			return 0
+		fi		
+	fi
+	echo "※ U-33 결과 : 양호(Good)" >> $resultfile 2>&1
+	return 0N "DNS 서버가 최신 버전이 아닐 수 있습니다: $dns_version"
 fi
 
 cat $result
