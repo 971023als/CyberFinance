@@ -9,7 +9,7 @@ BAR
 
 CODE [SRV-064] 취약한 버전의 DNS 서비스 사용
 
-cat << EOF >> $result
+cat << EOF >> $TMP1
 [양호]: DNS 서비스가 최신 버전으로 업데이트되어 있는 경우
 [취약]: DNS 서비스가 최신 버전으로 업데이트되어 있지 않은 경우
 EOF
@@ -29,19 +29,16 @@ ps_dns_count=`ps -ef | grep -i 'named' | grep -v 'grep' | wc -l`
 						for ((j=0; j<${#rpm_bind9_patch_version[@]}; j++))
 						do
 							if [[ ${rpm_bind9_patch_version[$j]} != [7-9]* ]] || [[ ${rpm_bind9_patch_version[$j]} != 1[0-6]* ]]; then
-								echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-								echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+								WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 								return 0
 							fi
 						done
 					else
-						echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-						echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+						WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 						return 0
 					fi
 				else
-					echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-					echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+					WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 					return 0
 				fi
 			done
@@ -53,32 +50,28 @@ ps_dns_count=`ps -ef | grep -i 'named' | grep -v 'grep' | wc -l`
 						for ((j=0; j<${#dnf_bind_patch_version[@]}; j++))
 						do
 							if [[ ${dnf_bind_patch_version[$j]} != [7-9]* ]] || [[ ${dnf_bind_patch_version[$j]} != 1[0-6]* ]]; then
-								echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-								echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+								WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 								return 0
 							fi
 						done
 					else
-						echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-						echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+						WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 						return 0
 					fi
 				else
-					echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-					echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+					WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 					return 0
 				fi
 			done
 		else
-			echo "※ U-33 결과 : 취약(Vulnerable)" >> $resultfile 2>&1
-			echo " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $resultfile 2>&1
+			WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
 			return 0
 		fi		
 	fi
-	echo "※ U-33 결과 : 양호(Good)" >> $resultfile 2>&1
-	return 0N "DNS 서버가 최신 버전이 아닐 수 있습니다: $dns_version"
+	OK "※ U-33 결과 : 양호(Good)" >> $TMP1
+	return 0 "DNS 서버가 최신 버전이 아닐 수 있습니다: $dns_version"
 fi
 
-cat $result
+cat $TMP1
 
 echo ; echo

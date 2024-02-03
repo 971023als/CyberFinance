@@ -9,28 +9,26 @@ BAR
 
 CODE [SRV-066] DNS Zone Transfer 설정 미흡
 
-cat << EOF >> $result
+cat << EOF >> $TMP1
 [양호]: DNS Zone Transfer가 안전하게 제한되어 있는 경우
 [취약]: DNS Zone Transfer가 적절하게 제한되지 않은 경우
 EOF
 
 BAR
 
-# DNS 설정 파일 경로
-DNS_CONFIG_FILE="/etc/bind/named.conf.options" # BIND 예시, 실제 파일 경로는 다를 수 있음
+ps_dns_count=`ps -ef | grep -i 'named' | grep -v 'grep' | wc -l`
+	if [ $ps_dns_count -gt 0 ]; then
+		if [ -f /etc/named.conf ]; then
+			etc_namedconf_allowtransfer_count=`grep -vE '^#|^\s#' /etc/named.conf | grep -i 'allow-transfer' | grep -i 'any' | wc -l`
+			if [ $etc_namedconf_allowtransfer_count -gt 0 ]; then
+				WARN " /etc/named.conf 파일에 allow-transfer { any; } 설정이 있습니다." >> $TMP1
+				return 0
+			fi
+		fi
+	fi
+	OK "※ U-34 결과 : 양호(Good)" >> $TMP1
+	return 0
 
-# Zone Transfer 설정 확인
-if grep -E "allow-transfer" "$DNS_CONFIG_FILE"; then
-    transfer_setting=$(grep "allow-transfer" "$DNS_CONFIG_FILE")
-    if echo "$transfer_setting" | grep -q "{ none; };" || echo "$transfer_setting" | grep -q "{ localhost; };" || echo "$transfer_setting" | grep -q "{ localnets; };"; then
-        OK "DNS Zone Transfer가 안전하게 제한됨: $transfer_setting"
-    else
-        WARN "DNS Zone Transfer가 적절하게 제한되지 않음: $transfer_setting"
-    fi
-else
-    OK "DNS Zone Transfer가 명시적으로 허용되지 않음"
-fi
-
-cat $result
+cat $TMP1
 
 echo ; echo
