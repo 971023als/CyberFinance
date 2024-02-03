@@ -1,92 +1,52 @@
-rem windows server script edit 2020
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한을 요청합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-	del "getadmin.vbs"
-    exit /B
+# 관리자 권한 요청
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+{
+    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
 
-:gotAdmin
-chcp 437
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------end-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
-SRV-020 (Windows) 공유에 대한 접근 통제 미비
+# 환경 설정
+$computerName = $env:COMPUTERNAME
+$rawFolder = "C:\Window_${computerName}_raw"
+$resultFolder = "C:\Window_${computerName}_result"
 
-【 상세설명 】
-Windows의 공유 기능은 폴더, 디스크 드라이브, 프린터 등을 공유하여 다른 사용자들과 함께 사용 가능하며 접근통제가 미흡한 공유는 비인가 접근 위협이 존재하므로, 사용자 권한 및 사용자 그룹 설정 등 보안 설정의 적절성을 점검
+Remove-Item -Path $rawFolder -Recurse -ErrorAction SilentlyContinue
+Remove-Item -Path $resultFolder -Recurse -ErrorAction SilentlyContinue
+New-Item -Path $rawFolder -ItemType Directory
+New-Item -Path $resultFolder -ItemType Directory
+Remove-Item -Path "$resultFolder\W-Window-*.txt" -ErrorAction SilentlyContinue
 
-【 판단기준 】
-- 양호 : 공유폴더가 없거나, 공유 폴더의 접근 권한에 Everyone이 없는 등 접근 통제가 되어 있을 경우
-- 취약 : 공유폴더에 Everyone 권한이 존재하는 등 접근 통제가 되어 있지 않을 경우
+# 보안 정책 내보내기
+secedit /EXPORT /CFG "$rawFolder\Local_Security_Policy.txt"
 
-【 판단방법 】
-  1. 공유폴더 존재 유무 및 권한 확인|
-      ※ 시스템에서 설정한 "공유 폴더(ADMIN$, IPC$, C$ 등)" 을 제외한 폴더만 점검
-      ※ 시스템에서 설정한 "공유 폴더" 는 관리 목적으로 공유되어 있는 상태로 "공유 사용 권한" 및 "파일 보안" 설정 변경 불가
+# 비교 파일 생성
+New-Item -Path "$rawFolder\compare.txt" -ItemType File
 
-  ■ Windows 2008, 2008 R2, 2012, 2012 R2, 2016, 2019, 2022
-      ① cmd > net share
-              Share name   Resource                        Remark
+# 설치 경로 저장
+$installPath = (Get-Location).Path
+$installPath | Out-File "$rawFolder\install_path.txt"
 
-              -------------------------------------------------------------------------------
-              C$                  C:\                             기본 공유
-              IPC$                                                원격 IPC
-              ADMIN$          C:\WINDOWS          원격 관리
-              The command completed successfully.
+# 시스템 정보 조회
+systeminfo | Out-File "$rawFolder\systeminfo.txt"
 
-      ② 시작 > 실행 > fsmgmt.msc > 공유 폴더(로컬) > 공유 > 『공유 폴더」 마우스 오른쪽 버튼 클릭 > 속성 > "보안" 탭
-      ③ Everyone 권한이 설정되어 있는 공유 폴더 있는 지 확인
+# IIS 설정 검토
+$applicationHostConfig = Get-Content -Path $env:WinDir\System32\Inetsrv\Config\applicationHost.Config
+$applicationHostConfig | Out-File "$rawFolder\iis_setting.txt"
 
-【 조치방법 】
-  1. 공유 폴더에 불필요하게 부여되어 있는 Everyone 권한 제거
+# 공유폴더 및 권한 확인
+$shares = net share | Out-File "$env:TEMP\shares.txt"
+$shareCheck = Get-Content -Path "$env:TEMP\shares.txt" | Where-Object {$_ -notmatch "C\$|IPC\$|ADMIN\$"} | ForEach-Object {
+    $shareName, $sharePath = $_ -split '\s+', 2
+    $acl = icacls $sharePath
+    if ($acl -match "Everyone") {
+        Write-Output "취약한 공유폴더 발견: $shareName - Everyone 권한이 감지되었습니다."
+    } else {
+        Write-Output "$shareName - Everyone 권한이 없습니다. 양호합니다."
+    }
+}
 
-  2024-01-13 : (조치과정 삭제)
-echo -------------------------------------------end------------------------------------------
+# SMTP 서비스 실행 여부 확인
+"불필요한 SMTP 서비스 실행 여부를 확인합니다..." | Out-File "$resultFolder\W-Window-$computerName-rawdata.txt"
+Get-Service smtp | Out-File "$resultFolder\W-Window-$computerName-rawdata.txt" -Append
 
-echo --------------------------------------SRV-004 불필요한 SMTP 서비스 실행 여부------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+Write-Host "스크립트 실행이 완료되었습니다."
