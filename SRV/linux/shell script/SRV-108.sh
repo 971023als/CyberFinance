@@ -16,30 +16,33 @@ EOF
 
 BAR
 
-# 로그 파일 목록
-log_files=("/var/log/messages" "/var/log/secure" "/var/log/maillog" "/var/log/cron")
+filename="/etc/rsyslog.conf"
 
-# 각 로그 파일의 소유자 및 권한을 확인합니다.
-for file in "${log_files[@]}"; do
-  if [ -f "$file" ]; then
-    owner=$(stat -c '%U' "$file")
-    permissions=$(stat -c '%a' "$file")
+if [ ! -e "$filename" ]; then
+  WARN "$filename 가 존재하지 않습니다"
+fi
 
-    if [ "$owner" != "root" ]; then
-      WARN "$file 파일의 소유자가 root가 아닙니다."
-    else
-      OK "$file 파일의 소유자가 root입니다."
-    fi
+expected_content=(
+  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
+  "authpriv.* /var/log/secure"
+  "mail.* /var/log/maillog"
+  "cron.* /var/log/cron"
+  "*.alert /dev/console"
+  "*.emerg *"
+)
 
-    if [ "$permissions" -gt 640 ]; then
-      WARN "$file 파일의 권한이 640보다 큽니다."
-    else
-      OK "$file 파일의 권한이 640 이하입니다."
-    fi
-  else
-    WARN "$file 파일이 존재하지 않습니다."
+match=0
+for content in "${expected_content[@]}"; do
+  if grep -q "$content" "$filename"; then
+    match=$((match + 1))
   fi
 done
+
+if [ "$match" -eq "${#expected_content[@]}" ]; then
+  OK "$filename의 내용이 정확합니다."
+else
+  WARN "$filename의 내용이 잘못되었습니다."
+fi
 
 cat $result
 
