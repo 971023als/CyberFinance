@@ -9,20 +9,21 @@ BAR
 
 CODE [SRV-147] 불필요한 SNMP 서비스 실행
 
-cat << EOF >> $result
+cat << EOF >> $TMP1
 [양호]: SNMP 서비스가 비활성화되어 있는 경우
 [취약]: SNMP 서비스가 활성화되어 있는 경우
 EOF
 
 BAR
 
-# SNMP 서비스 상태 확인
-if systemctl is-active --quiet snmpd; then
-    WARN "SNMP 서비스가 활성화되어 있습니다."
+if [ `ps -ef | grep -i 'snmp' | grep -v 'grep' | wc -l` -gt 0 ]; then
+	WARN " SNMP 서비스를 사용하고 있습니다." >> $TMP1
+	return 0
 else
-    OK "SNMP 서비스가 비활성화되어 있습니다."
+	OK "※ U-66 결과 : 양호(Good)" >> $TMP1
+	return 0
 fi
 
-cat $result
+cat $TMP1
 
 echo ; echo

@@ -9,26 +9,22 @@ BAR
 
 CODE [SRV-142] 중복 UID가 부여된 계정 존재
 
-cat << EOF >> $result
+cat << EOF >> $TMP1
 [양호]: 중복 UID가 부여된 계정이 존재하지 않는 경우
 [취약]: 중복 UID가 부여된 계정이 존재하는 경우
 EOF
 
 BAR
 
-# /etc/passwd 파일에서 UID를 추출하고 중복 검사를 실시
-awk -F: '{print $3}' /etc/passwd | sort | uniq -d | while read uid
-do
-    if [ -n "$uid" ]; then
-        WARN "중복 UID ($uid) 가 존재합니다."
-    fi
-done
+if [ -f /etc/passwd ]; then
+		if [ `awk -F : '{print $3}' /etc/passwd | sort | uniq -d | wc -l` -gt 0 ]; then
+			WARN " 동일한 UID로 설정된 사용자 계정이 존재합니다." >> $TMP1
+			return 0
+		fi
+	fi
+	OK "※ U-52 결과 : 양호(Good)" >> $TMP1
+	return 0
 
-# 중복이 없는 경우
-if [ -z "$(awk -F: '{print $3}' /etc/passwd | sort | uniq -d)" ]; then
-    OK "중복 UID가 부여된 계정이 존재하지 않습니다."
-fi
-
-cat $result
+cat $TMP1
 
 echo ; echo
