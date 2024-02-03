@@ -16,14 +16,30 @@ EOF
 
 BAR
 
-# iptables 또는 nftables로 네트워크 접근 제한 설정 확인
-if iptables -L | grep -q REJECT; then
-  OK "iptables를 통한 네트워크 접근 제한이 설정되어 있습니다."
-elif nft list ruleset | grep -q reject; then
-  OK "nftables를 통한 네트워크 접근 제한이 설정되어 있습니다."
-else
-  WARN "네트워크 접근 제한이 설정되어 있지 않습니다."
-fi
+if [ -f /etc/hosts.deny ]; then
+		etc_hostsdeny_allall_count=`grep -vE '^#|^\s#' /etc/hosts.deny | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
+		if [ $etc_hostsdeny_allall_count -gt 0 ]; then
+			if [ -f /etc/hosts.allow ]; then
+				etc_hostsallow_allall_count=`grep -vE '^#|^\s#' /etc/hosts.allow | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
+				if [ $etc_hostsallow_allall_count -gt 0 ]; then
+					WARN " /etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다." >> $TMP1
+					return 0
+				else
+					OK "※ U-18 결과 : 양호(Good)" >> $TMP1
+					return 0
+				fi
+			else
+				OK "※ U-18 결과 : 양호(Good)" >> $TMP1
+				return 0
+			fi
+		else
+			WARN " /etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다." >> $TMP1
+			return 0
+		fi
+	else
+		WARN " /etc/hosts.deny 파일이 없습니다." >> $TMP1
+		return 0
+	fi
 
 cat $result
 

@@ -16,17 +16,46 @@ EOF
 
 BAR
 
-# /etc/pam.d/su 파일에서 su 명령에 대한 그룹 제한 설정을 확인합니다
-if grep -q "auth required pam_wheel.so use_uid" /etc/pam.d/su; then
-  # wheel 그룹에 속한 사용자만 su 명령 사용 가능
-  if grep -q "^wheel:" /etc/group; then
-    OK "SU 명령은 특정 그룹에 제한됩니다."
-  else
-    WARN "Wheel 그룹이 /etc/group에 존재하지 않습니다."
-  fi
-else
-  WARN "모든 사용자가 SU 명령을 사용할 수 있습니다."
-fi
+rpm_libpam_count=`rpm -qa 2>/dev/null | grep '^libpam' | wc -l`
+	dnf_libpam_count=`dnf list installed 2>/dev/null | grep -i '^libpam' | wc -l`
+	if [ $rpm_libpam_count -gt 0 ] && [ $dnf_libpam_count -gt 0 ]; then
+		# !!! pam_rootok.so 설정을 하지 않은 경우 하단의 첫 번째 if 문을 삭제하세요.
+		etc_pamd_su_rootokso_count=`grep -vE '^#|^\s#' /etc/pam.d/su | grep 'pam_rootok.so' | wc -l`
+		if [ $etc_pamd_su_rootokso_count -gt 0 ]; then
+			# !!! pam_wheel.so 설정에 trust 문구를 추가한 경우 하단의 if 문 조건절에 'grep 'trust'를 추가하세요.
+			etc_pamd_su_wheelso_count=`grep -vE '^#|^\s#' /etc/pam.d/su | grep 'pam_wheel.so' | wc -l`
+			if [ $etc_pamd_su_wheelso_count -eq 0 ]; then
+				WARN " /etc/pam.d/su 파일에 pam_wheel.so 모듈이 없습니다." >> $TMP1
+				return 0
+			fi
+		else
+			WARN " /etc/pam.d/su 파일에서 pam_rootok.so 모듈이 없습니다." >> $TMP1
+			return 0
+		fi
+	else
+		su_executables=("/bin/su" "/usr/bin/su")
+		if [ `which su 2>/dev/null | wc -l` -gt 0 ]; then
+			su_executables[${#su_executables[@]}]=`which su 2>/dev/null`
+		fi
+		for ((i=0; i<${#su_executables[@]}; i++))
+		do
+			if [ -f ${su_executables[$i]} ]; then
+				su_group_permission=`stat ${su_executables[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
+				if [ $su_group_permission -eq 5 ] || [ $su_group_permission -eq 4 ] || [ $su_group_permission -eq 1 ] || [ $su_group_permission -eq 0 ]; then
+					su_other_permission=`stat ${su_executables[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
+					if [ $su_other_permission -ne 0 ]; then
+						WARN " ${su_executables[$i]} 실행 파일의 다른 사용자(other)에 대한 권한 취약합니다." >> $TMP1
+						return 0
+					fi
+				else
+					WARN " ${su_executables[$i]} 실행 파일의 그룹 사용자(group)에 대한 권한 취약합니다." >> $TMP1
+					return 0
+				fi
+			fi
+		done
+	fi
+	OK "※ U-45 결과 : 양호(Good)" >> $TMP1
+	return 0
 
 cat $result
 
