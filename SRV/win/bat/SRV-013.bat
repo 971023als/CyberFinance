@@ -1,8 +1,7 @@
-rem windows server script edit 2020
 @echo off
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
-    echo °ü¸®ÀÚ ±ÇÇÑÀ» ¿äÃ»ÇÕ´Ï´Ù...
+    echo Requesting administrative privileges...
     goto UACPrompt
 ) else ( goto gotAdmin )
 :UACPrompt
@@ -10,7 +9,7 @@ if '%errorlevel%' NEQ '0' (
     set params = %*:"=""
     echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
     "getadmin.vbs"
-	del "getadmin.vbs"
+    del "getadmin.vbs"
     exit /B
 
 :gotAdmin
@@ -37,63 +36,62 @@ set "line=!line!%%a"
 )
 echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
 for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
+    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
 )
 for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
+    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
 )
 for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
+    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
 )
 for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
+    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
 )
 for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
+    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
 )
 type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
 echo ------------------------------------------end-------------------------------------------
 echo ------------------------------------------SRV-001------------------------------------------
-SRV-001 (Windows) SNMP Community ½ºÆ®¸µ ¼³Á¤ ¹ÌÈí
+SRV-001 (Windows) SNMP Community String Security Configuration
 
-¡¼ »ó¼¼¼³¸í ¡½
-SNMP ¼­ºñ½º´Â ³×Æ®¿öÅ© °ü¸® ¹× ³×Æ®¿öÅ© ÀåÄ¡ÀÇ µ¿ÀÛÀ» °¨½Ã/ÅëÇÒÇÏ´Â SNMP ÇÁ·ÎÅäÄİÀ» ±â¹İÀ¸·Î ÇÏ´Â ¼­ºñ½º·Î, SNMP Åë½Å ½Ã Á¢±Ù Çã¿ë ¿©ºÎ¸¦ °áÁ¤ÇÏ±â À§ÇÑ SNMP community stringÀÇ º¹Àâµµ°¡ ³·°Ô ¼³Á¤µÇ¾ú´ÂÁö Á¡°Ë
+Guideline Introduction:
+The SNMP service uses the SNMP protocol for network management and location monitoring/control. This guideline is for enhancing the security of SNMP community strings.
 
-¡¼ ÆÇ´Ü±âÁØ ¡½
-- ¾çÈ£ : SNMP Community String ÃÊ±â °ª(Public, Private)ÀÌ ¾Æ´Ï°í, ¾Æ·¡ÀÇ º¹Àâµµ¸¦ ¸¸Á· ÇÒ °æ¿ì
-- Ãë¾à : SNMP Community String ÃÊ±â °ª(Public, Private)ÀÌ°Å³ª, º¹Àâµµ¸¦ ¸¸Á·ÇÏÁö ¾ÊÀ» °æ¿ì
+Risk Assessment:
+- Action: Set SNMP Community String to something other than the default (Public, Private) with enhanced security.
+- Result: If SNMP Community String is set to default (Public, Private) or not secured.
 
-¡Ø (º¹Àâµµ) ±âº»°ª(public, private) ¹Ì»ç¿ë, ¿µ¹®ÀÚ, ¼ıÀÚ°¡ Æ÷ÇÔ 10ÀÚ¸® ÀÌ»ó ¶Ç´Â ¿µ¹®ÀÚ, ¼ıÀÚ, Æ¯¼ö¹®ÀÚ Æ÷ÇÔ 8ÀÚ¸® ÀÌ»ó
-¡Ø SNMP v3ÀÇ °æ¿ì º°µµ ÀÎÁõ ±â´ÉÀ» »ç¿ëÇÏ°í, ÇØ´ç ºñ¹Ğ¹øÈ£°¡ º¹Àâµµ¸¦ ¸¸Á·ÇÒ °æ¿ì "¾çÈ£"·Î ÆÇ´Ü
+Community String Security:
+Beyond the default (public, private), ensure complexity and length are sufficient â€“ at least 10 characters including letters, numbers, and special characters, or at least 8 characters if including mixed case and special characters. It is recommended to use SNMP v3 for enhanced security.
 
-¡¼ ÆÇ´Ü¹æ¹ı ¡½
-  1. SNMP ¼­ºñ½º ÀÇ SNMP Community String ÀÌ º¹Àâµµ¸¦ ¸¸Á·ÇÏ´ÂÁö È®ÀÎ
-      ¡Ø <registry_path> : HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities
-      ¡Ø ·¹Áö½ºÆ®¸® °ªÀÌ Á¸ÀçÇÏÁö ¾ÊÀ¸¸é SNMP ¼­ºñ½º°¡ ½ÇÇà ÁßÀÌ¾îµµ ¼­ºñ½º¸¦ »ç¿ëÇÒ ¼ö ¾øÀ¸¹Ç·Î "¾çÈ£" ·Î ÆÇ´Ü
+Mitigation Steps:
+1. Verify SNMP service and SNMP Community String security.
+    Registry Path: HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities
+    If no SNMP service is running, "Action" is recommended.
 
-  ¡á Windows 2008, 2008 R2, 2012, 2012 R2, 2016, 2019, 2022
-      ¨ç ½ÃÀÛ > ½ÇÇà > services.msc > ¼­ºñ½º > SNMP Service ¼Ó¼º > "º¸¾È" ÅÇ >
-      ¨è "¹Ş¾ÆµéÀÎ Ä¿¹Â´ÏÆ¼ ÀÌ¸§"  "> SNMP community string" Ç×¸ñ
-  ¶Ç´Â
-      cmd > reg query <registry_path>
-          <SNMP_community_string>     REG_DWORD    0x4
-  ¶Ç´Â
-      cmd > reg query <registry_path>
-          ERROR: The system was unable to find the specified registry key or value.
+For Windows 2008, 2008 R2, 2012, 2012 R2, 2016, 2019, 2022:
+    Control Panel > Administrative Tools > services.msc > Properties > SNMP Service > Security tab >
+    "Accepted community names" > "SNMP community string" entry
+Or:
+    cmd > reg query <registry_path>
+        <SNMP_community_string>     REG_DWORD    0x4
+Or:
+    cmd > reg query <registry_path>
+        ERROR: The system was unable to find the specified registry key or value.
 
-  ¡Ø "ValidCommunities" Key ÀÇ Value °ª
-      - ÀÌ¸§ : 
-      - Á¾·ù : REG_DWORD
-      - µ¥ÀÌÅÍ : 1(¾øÀ½), 2(¾Ë¸²), 4(ÀĞ±â Àü¿ë) 8(ÀĞ±â, ¾²±â), 16(ÀĞ±â, ¸¸µé±â)
+"ValidCommunities" Key and Value:
+    - Name: 
+    - Type: REG_DWORD
+    - Data: 1 (Read), 2 (Write), 4 (Create Delete) 8 (Create, Delete), 16 (Create, Delete, Notify)
 
-¡¼ Á¶Ä¡¹æ¹ı ¡½
-  1. SNMP Community String À» º¹Àâµµ¸¦ ¸¸Á·ÇÏ´Â °ªÀ¸·Î ¼³Á¤
-      ¡Ø À¯ÃßÇÏ±â ½¬¿î ¹®ÀÚ¿­(±â°ü¸í, ±â±â¸í µî) »ç¿ë ÀÚÁ¦ ¡æ ÀÏºÎ ±â°ü¿¡¼­ ¼öÁ¤ ±Ç°íÇÏ´Â ±âÁØ
-      ¡Ø "¾²±â" ±ÇÇÑÀÌ ÇÊ¿äÇÑ °æ¿ì°¡ ¾Æ´Ï¸é "ÀĞ±â Àü¿ë" ±ÇÇÑ ºÎ¿©
-      ¡Ø NMS, ¸ğ´ÏÅÍ¸µ µî ¸ñÀûÀ¸·Î SNMP ¼­ºñ½º¸¦ »ç¿ëÇÏ´Â °æ¿ì SNMP Manager ¿Í Agent ¿¡ °°Àº Community String ÀÌ ¼³Á¤µÇ¾î ÀÖ¾î¾ß ÀÎÁõ °¡´É
-  2. SNMP ¼­ºñ½º Àç½ÃÀÛ
-echo -------------------------------------------end------------------------------------------
+Configuration Recommendations:
+1. Apply settings to enhance the security of SNMP Community String.
+    It is recommended to use secure strings (passwords, keys) and set "read-only" where necessary.
+    If using SNMP service for management, ensure SNMP Manager and Agent have the same Community String configured for use.
+2. Update SNMP service configuration.
+echo -------------------------------------------end-------------------------------------------
 
-echo --------------------------------------SRV-004 ºÒÇÊ¿äÇÑ SMTP ¼­ºñ½º ½ÇÇà ¿©ºÎ------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+echo --------------------------------------SRV-004 Essential SMTP Service Status Check------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
