@@ -14,43 +14,42 @@ if '%errorlevel%' NEQ '0' (
     exit /B
 
 :gotAdmin
-:: Change code page to UTF-8 for better character encoding support
 chcp 65001
 color 02
 setlocal enabledelayedexpansion
-
-echo ------------------------------------------Setting---------------------------------------
-:: Cleanup old directories and setup new ones
+echo ------------------------------------------Setting up---------------------------------------
 if exist C:\Window_%COMPUTERNAME%_raw rd /S /Q C:\Window_%COMPUTERNAME%_raw
 if exist C:\Window_%COMPUTERNAME%_result rd /S /Q C:\Window_%COMPUTERNAME%_result
 mkdir C:\Window_%COMPUTERNAME%_raw
 mkdir C:\Window_%COMPUTERNAME%_result
-
-:: Security policy and system information export
 secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
 fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
 cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
 systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
 
-echo ------------------------------------------IIS Setting-----------------------------------
-:: Extract and process IIS settings
+echo ------------------------------------------IIS Configuration-----------------------------------
 type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
 findstr "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-:: Processing IIS path information
-for /F "delims=" %%a in (C:\Window_%COMPUTERNAME%_raw\iis_path1.txt) do (
+for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
     set "line=!line!%%a" 
 )
 echo !line! > C:\Window_%COMPUTERNAME%_raw\line.txt
-:: Splitting into multiple files for readability
 for /L %%i in (1,1,5) do (
-    if exist C:\Window_%COMPUTERNAME%_raw\path%%i.txt del C:\Window_%COMPUTERNAME%_raw\path%%i.txt
     for /F "tokens=%%i delims=*" %%a in (C:\Window_%COMPUTERNAME%_raw\line.txt) do (
         echo %%a >> C:\Window_%COMPUTERNAME%_raw\path%%i.txt
     )
 )
 type %WinDir%\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
 
-:: SNMP and SMTP sections remain largely unchanged but should ensure proper encoding and error handling
+echo ------------------------------------------Security Advisory-------------------------------------------
+
+echo Checking for shared directories with insecure permissions...
+:: Place your script for checking shared directories here
+
+echo ------------------------------------------SMTP Service Check---------------------------------------
+>> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt echo Checking SMTP service status...
+sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+echo -------------------------------------------------------------------------------- >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 
 echo Script execution completed.
 pause
