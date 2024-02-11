@@ -1,9 +1,9 @@
 @echo off
 
-:: ������ ���� Ȯ�� �� ��û
+:: 관리자 권한 확인 및 요청
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
-    echo ������ ������ ��û�մϴ�...
+    echo 관리자 권한을 요청합니다...
     goto UACPrompt
 ) else ( goto gotAdmin )
 
@@ -16,26 +16,26 @@ if '%errorlevel%' NEQ '0' (
     exit /B
 
 :gotAdmin
-:: ȯ�� ����
+:: 환경 설정
 chcp 437
 color 02
 setlocal enabledelayedexpansion
-echo ------------------------------------------Setting---------------------------------------
+echo ------------------------------------------설정 시작---------------------------------------
 rd /S /Q C:\Window_%COMPUTERNAME%_raw
 rd /S /Q C:\Window_%COMPUTERNAME%_result
 mkdir C:\Window_%COMPUTERNAME%_raw
 mkdir C:\Window_%COMPUTERNAME%_result
 del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
 
-:: ���� ��å �� �ý��� ���� ����
+:: 보안 정책 및 시스템 정보 내보내기
 secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
 fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
 cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
 for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y
 systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
 
-:: IIS ���� ����
-echo ------------------------------------------IIS Setting-----------------------------------
+:: IIS 설정 검사
+echo ------------------------------------------IIS 설정-----------------------------------
 type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
 type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
 set "line="
@@ -51,31 +51,30 @@ for /F "tokens=1-5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt
     echo %%e >> C:\Window_%COMPUTERNAME%_raw\path5.txt
 )
 type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------end-------------------------------------------
+echo ------------------------------------------설정 완료-------------------------------------------
 
-:: SNMP �� SMTP ���� ���� ����
-echo ------------------------------------------SNMP ���� ����------------------------------------------
+:: SNMP 및 SMTP 서비스 상태 점검
+echo ------------------------------------------SNMP 서비스 점검------------------------------------------
 reg query HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\PermittedManagers
 if %errorlevel% == 0 (
-    echo SNMP ������ ��ȣ�մϴ�. Ư�� ȣ��Ʈ�κ��͸� SNMP ��Ŷ�� �޾Ƶ��Դϴ�. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+    echo SNMP 서비스가 활성화되었습니다. 특정 호스트에서 SNMP 패킷을 수신할 수 있습니다. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 ) else (
-    echo SNMP ������ ����մϴ�.     ��� ȣ��Ʈ�κ��� SNMP ��Ŷ�� �޾Ƶ��� �� �ֽ��ϴ�. ��ġ�� �ʿ��մϴ�. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+    echo SNMP 서비스가 비활성화되었습니다. 모든 호스트에서 SNMP 패킷을 수신할 수 없습니다. 설정이 필요합니다. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 )
 echo --------------------------------------------------------------------------------
 
-echo --------------------------------------SMTP ���� ���� ���� ����--------------------------------------
+echo --------------------------------------SMTP 서비스 실행 상태 점검--------------------------------------
 sc query smtp | findstr /i "RUNNING"
 if %errorlevel% == 0 (
-    echo SMTP ���񽺰� ���� ���Դϴ�. ���ʿ��� ���, ���񽺸� ��Ȱ��ȭ�ϴ� ���� �����ϼ���. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+    echo SMTP 서비스가 실행 중입니다. 필요하지 않은 경우, 서비스를 비활성화하는 것을 고려해보세요. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 ) else (
-    echo SMTP ���񽺰� ���� ������ �ʽ��ϴ�. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+    echo SMTP 서비스가 실행 중이지 않습니다. >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
 )
 echo --------------------------------------------------------------------------------
 
-echo ����� C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt�� ����߽��ϴ�.
+echo 결과가 C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt에 저장되었습니다.
 
 :end
 endlocal
-echo ��ũ��Ʈ ������ �Ϸ�Ǿ����ϴ�.
+echo 스크립트 실행이 완료되었습니다.
 pause
-
