@@ -1,29 +1,45 @@
-#!/bin/bash
+import subprocess
+import os
 
-. function.sh
+def BAR():
+    print("=" * 40)
 
-TMP1=$(basename "$0").log
-> $TMP1
+def WARN(message):
+    return "WARNING: " + message
 
-BAR
+def OK(message):
+    return "OK: " + message
 
-CODE [SRV-015] 불필요한 NFS 서비스 실행
+# 결과 파일 초기화
+tmp1 = os.path.basename(__file__) + '.log'
+with open(tmp1, 'w') as f:
+    pass
 
-cat << EOF >> $TMP1
-[양호]: 불필요한 NFS 서비스 관련 데몬이 비활성화 되어 있는 경우
-[취약]: 불필요한 NFS 서비스 관련 데몬이 활성화 되어 있는 경우
-EOF
+BAR()
 
-BAR
+code = "[SRV-015] 불필요한 NFS 서비스 실행"
+with open(tmp1, 'a') as f:
+    f.write(f"{code}\n")
+    f.write("[양호]: 불필요한 NFS 서비스 관련 데몬이 비활성화 되어 있는 경우\n")
+    f.write("[취약]: 불필요한 NFS 서비스 관련 데몬이 활성화 되어 있는 경우\n")
 
-if [ `ps -ef | grep -iE 'nfs|rpc.statd|statd|rpc.lockd|lockd' | grep -ivE 'grep|kblockd|rstatd|' | wc -l` -gt 0 ]; then
-		WARN " 불필요한 NFS 서비스 관련 데몬이 실행 중입니다." >> $TMP1
-		return 0
-	else
-		OK "불필요한 NFS 서비스 관련 데몬이 비활성화" >> $TMP1
-		return 0
-	fi
+BAR()
 
-cat $result
+# NFS 서비스 관련 데몬 실행 여부 확인
+ps_output = subprocess.getoutput("ps -ef | grep -iE 'nfs|rpc.statd|statd|rpc.lockd|lockd' | grep -ivE 'grep|kblockd|rstatd|'")
+nfs_daemons = [line for line in ps_output.split('\n') if line]
 
-echo ; echo
+if nfs_daemons:
+    result = WARN(" 불필요한 NFS 서비스 관련 데몬이 실행 중입니다.")
+else:
+    result = OK("불필요한 NFS 서비스 관련 데몬이 비활성화")
+
+with open(tmp1, 'a') as f:
+    f.write(result + "\n")
+
+BAR()
+
+# 결과 출력
+with open(tmp1, 'r') as f:
+    print(f.read())
+print()

@@ -1,48 +1,64 @@
-#!/bin/bash
+import os
 
-. function.sh
+def BAR():
+    print("=" * 40)
 
-TMP1=$(basename "$0").log
-> $TMP1
+def WARN(message):
+    return "WARNING: " + message
 
-BAR
+def OK(message):
+    return "OK: " + message
 
-CODE [SRV-016] 불필요한 RPC서비스 활성화
+# 결과 파일 초기화
+tmp1 = os.path.basename(__file__) + '.log'
+with open(tmp1, 'w') as f:
+    pass
 
-cat << EOF >> $TMP1
-[양호]: 불필요한 RPC 서비스가 비활성화 되어 있는 경우
-[취약]: 불필요한 RPC 서비스가 활성화 되어 있는 경우
-EOF
+BAR()
 
-BAR
+code = "[SRV-016] 불필요한 RPC서비스 활성화"
+with open(tmp1, 'a') as f:
+    f.write(f"{code}\n")
+    f.write("[양호]: 불필요한 RPC 서비스가 비활성화 되어 있는 경우\n")
+    f.write("[취약]: 불필요한 RPC 서비스가 활성화 되어 있는 경우\n")
+
+BAR()
 
 # RPC 관련 서비스 목록
-rpc_services=("rpc.cmsd" "rpc.ttdbserverd" "sadmind" "rusersd" "walld" "sprayd" "rstatd" "rpc.nisd" "rexd" "rpc.pcnfsd" "rpc.statd" "rpc.ypupdated" "rpc.rquotad" "kcms_server" "cachefsd")
-	if [ -d /etc/xinetd.d ]; then
-		for ((i=0; i<${#rpc_services[@]}; i++))
-		do
-			if [ -f /etc/xinetd.d/${rpc_services[$i]} ]; then
-				etc_xinetdd_rpcservice_disable_count=`grep -vE '^#|^\s#' /etc/xinetd.d/${rpc_services[$i]} | grep -i 'disable' | grep -i 'yes' | wc -l`
-				if [ $etc_xinetdd_rpcservice_disable_count -eq 0 ]; then
-					WARN " 불필요한 RPC 서비스가 /etc/xinetd.d 디렉터리 내 서비스 파일에서 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			fi
-		done
-	fi
-	if [ -f /etc/inetd.conf ]; then
-		for ((i=0; i<${#rpc_services[@]}; i++))
-		do
-			etc_inetdconf_rpcservice_enable_count=`grep -vE '^#|^\s#' /etc/inetd.conf | grep -w ${rpc_services[$i]} | wc -l`
-			if [ $etc_inetdconf_rpcservice_enable_count -gt 0 ]; then
-				WARN " 불필요한 RPC 서비스가 /etc/inetd.conf 파일에서 실행 중입니다." >> $TMP1
-				return 0
-			fi
-		done
-	fi
-	OK "불필요한 RPC 서비스가 비활성화 되어 있는 경우" >> $TMP1
-	return 0
+rpc_services = ["rpc.cmsd", "rpc.ttdbserverd", "sadmind", "rusersd", "walld", "sprayd", "rstatd", "rpc.nisd", "rexd", "rpc.pcnfsd", "rpc.statd", "rpc.ypupdated", "rpc.rquotad", "kcms_server", "cachefsd"]
 
-cat $result
+# /etc/xinetd.d 디렉터리에서 RPC 서비스 검사
+if os.path.isdir("/etc/xinetd.d"):
+    for service in rpc_services:
+        service_file = f"/etc/xinetd.d/{service}"
+        if os.path.isfile(service_file):
+            with open(service_file, 'r') as f:
+                content = f.read()
+                if 'disable' in content and 'yes' not in content.lower():
+                    result = WARN(" 불필요한 RPC 서비스가 /etc/xinetd.d 디렉터리 내 서비스 파일에서 실행 중입니다.")
+                    break
+    else:
+        result = OK("불필요한 RPC 서비스가 비활성화 되어 있는 경우")
+else:
+    result = OK("불필요한 RPC 서비스가 비활성화 되어 있는 경우")
 
-echo ; echo
+# /etc/inetd.conf 파일에서 RPC 서비스 검사
+if os.path.isfile("/etc/inetd.conf"):
+    with open("/etc/inetd.conf", 'r') as f:
+        content = f.read()
+        for service in rpc_services:
+            if service in content:
+                result = WARN(" 불필요한 RPC 서비스가 /etc/inetd.conf 파일에서 실행 중입니다.")
+                break
+        else:
+            result = OK("불필요한 RPC 서비스가 비활성화 되어 있는 경우")
+
+with open(tmp1, 'a') as f:
+    f.write(result + "\n")
+
+BAR()
+
+# 결과 출력
+with open(tmp1, 'r') as f:
+    print(f.read())
+print()
