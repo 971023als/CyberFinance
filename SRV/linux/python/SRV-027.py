@@ -1,46 +1,55 @@
-#!/bin/bash
+def BAR():
+    print("=" * 40)
 
-. function.sh
+def WARN(message):
+    return f"WARNING: {message}\n"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def OK(message):
+    return f"OK: {message}\n"
 
-BAR
+def check_access_control():
+    hosts_deny_path = "/etc/hosts.deny"
+    hosts_allow_path = "/etc/hosts.allow"
 
-CODE [SRV-027] 서비스 접근 IP 및 포트 제한 미비
+    if os.path.isfile(hosts_deny_path):
+        with open(hosts_deny_path, 'r') as f:
+            deny_contents = f.read().replace(' ', '')
+            if 'ALL:ALL' in deny_contents.upper():
+                if os.path.isfile(hosts_allow_path):
+                    with open(hosts_allow_path, 'r') as f:
+                        allow_contents = f.read().replace(' ', '')
+                        if 'ALL:ALL' in allow_contents.upper():
+                            return WARN("/etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다.")
+                        else:
+                            return OK("※ U-18 결과 : 양호(Good)")
+                else:
+                    return OK("※ U-18 결과 : 양호(Good)")
+            else:
+                return WARN("/etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다.")
+    else:
+        return WARN("/etc/hosts.deny 파일이 없습니다.")
 
-cat << EOF >> $result
-[양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우
-[취약]: 서비스에 대한 IP 및 포트 접근 제한이 설정되지 않은 경우
-EOF
+# 결과 파일 초기화
+tmp1 = "SCRIPTNAME.log"  # 'SCRIPTNAME'을 실제 스크립트 이름으로 바꿔주세요.
+with open(tmp1, 'w') as f:
+    pass
 
-BAR
+BAR()
 
-if [ -f /etc/hosts.deny ]; then
-		etc_hostsdeny_allall_count=`grep -vE '^#|^\s#' /etc/hosts.deny | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
-		if [ $etc_hostsdeny_allall_count -gt 0 ]; then
-			if [ -f /etc/hosts.allow ]; then
-				etc_hostsallow_allall_count=`grep -vE '^#|^\s#' /etc/hosts.allow | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
-				if [ $etc_hostsallow_allall_count -gt 0 ]; then
-					WARN " /etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다." >> $TMP1
-					return 0
-				else
-					OK "※ U-18 결과 : 양호(Good)" >> $TMP1
-					return 0
-				fi
-			else
-				OK "※ U-18 결과 : 양호(Good)" >> $TMP1
-				return 0
-			fi
-		else
-			WARN " /etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다." >> $TMP1
-			return 0
-		fi
-	else
-		WARN " /etc/hosts.deny 파일이 없습니다." >> $TMP1
-		return 0
-	fi
+code = "[SRV-027] 서비스 접근 IP 및 포트 제한 미비"
+log_message = f"{code}\n[양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우\n[취약]: 서비스에 대한 IP 및 포트 접근 제한이 설정되지 않은 경우\n"
+with open(tmp1, 'a') as f:
+    f.write(log_message)
 
-cat $result
+BAR()
 
-echo ; echo
+result = check_access_control()
+with open(tmp1, 'a') as f:
+    f.write(result)
+
+BAR()
+
+# 최종 결과를 출력합니다.
+with open(tmp1, 'r') as f:
+    print(f.read())
+print()
