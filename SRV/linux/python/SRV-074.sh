@@ -1,39 +1,44 @@
-#!/bin/bash
+import pwd
+import grp
 
-. function.sh
+# 로그 파일 초기화 및 메시지 기록 함수
+log_file_path = "account_check.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def log_message(message):
+    with open(log_file_path, "a") as log_file:
+        log_file.write(message + "\n")
 
-BAR
+# 불필요하거나 관리되지 않는 계정 검사
+def check_unnecessary_accounts():
+    unnecessary_accounts = ['daemon', 'bin', 'sys', 'adm', 'listen', 'nobody', 'nobody4', 'noaccess', 'diag', 'operator', 'gopher', 'games', 'ftp', 'apache', 'httpd', 'www-data', 'mysql', 'mariadb', 'postgres', 'mail', 'postfix', 'news', 'lp', 'uucp', 'nuucp']
+    found_unnecessary_accounts = False
 
-CODE [SRV-074] 불필요하거나 관리되지 않는 계정 존재
+    for user in pwd.getpwall():
+        if user.pw_name in unnecessary_accounts:
+            log_message(f"불필요한 계정이 존재합니다: {user.pw_name}")
+            found_unnecessary_accounts = True
+            break
 
-cat << EOF >> $TMP1
-[양호]: 불필요하거나 관리되지 않는 계정이 존재하지 않는 경우
-[취약]: 불필요하거나 관리되지 않는 계정이 존재하는 경우
-EOF
+    if not found_unnecessary_accounts:
+        log_message("※ U-49 결과 : 양호(Good)")
 
-BAR
+    # 관리자 그룹에 불필요한 계정이 등록되어 있는지 검사
+    try:
+        root_group_members = grp.getgrnam("root").gr_mem
+        for account in unnecessary_accounts:
+            if account in root_group_members:
+                log_message(f"관리자 그룹(root)에 불필요한 계정이 등록되어 있습니다: {account}")
+                found_unnecessary_accounts = True
+                break
 
-if [ -f /etc/passwd ]; then
-		# !!! 불필요한 계정을 변경할 경우 하단의 grep 명령어를 수정하세요.
-		if [ `awk -F : '{print $1}' /etc/passwd | grep -wE 'daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp' | wc -l` -gt 0 ]; then
-			WARN " 불필요한 계정이 존재합니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-49 결과 : 양호(Good)" >> $TMP1
+        if not found_unnecessary_accounts:
+            log_message("※ U-50 결과 : 양호(Good)")
+    except KeyError:
+        log_message("root 그룹이 존재하지 않습니다.")
 
-if [ -f /etc/group ]; then
-		# !!! 불필요한 계정에 대한 변경은 하단의 grep 명령어를 수정하세요.
-		if [ `awk -F : '$1=="root" {gsub(" ", "", $0); print $4}' /etc/group | awk '{gsub(",","\n",$0); print}' | grep -wE 'daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp' | wc -l` -gt 0 ]; then
-			WARN " 관리자 그룹(root)에 불필요한 계정이 등록되어 있습니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-50 결과 : 양호(Good)" >> $TMP1
+# 실행
+check_unnecessary_accounts()
 
-cat $TMP1
-
-echo ; echo
+# 결과 출력
+with open(log_file_path, "r") as log_file:
+    print(log_file.read())
