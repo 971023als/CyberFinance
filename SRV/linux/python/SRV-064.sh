@@ -1,77 +1,45 @@
-#!/bin/bash
+import subprocess
+import re
 
-. function.sh
+def check_dns_version():
+    try:
+        # BIND 버전 확인을 위한 rpm 명령어 실행
+        rpm_output = subprocess.check_output(["rpm", "-qa"], universal_newlines=True)
+        # BIND 버전 확인을 위한 dnf 명령어 실행
+        dnf_output = subprocess.check_output(["dnf", "list", "installed", "bind*"], universal_newlines=True)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+        # rpm 명령어로 확인한 BIND 버전 패턴 매칭
+        rpm_bind_versions = re.findall(r'^bind.*9\.(\d+)\.(\d+).*$', rpm_output, re.MULTILINE)
+        # dnf 명령어로 확인한 BIND 버전 패턴 매칭
+        dnf_bind_versions = re.findall(r'^bind.*9\.(\d+)\.(\d+).*$', dnf_output, re.MULTILINE)
 
-BAR
+        # 최신 버전 확인 (예시: 9.18.7 이상)
+        for major, minor in rpm_bind_versions + dnf_bind_versions:
+            major, minor = int(major), int(minor)
+            if major < 18 or (major == 18 and minor < 7):
+                return False  # 취약: 최신 버전이 아님
+        return True  # 양호: 최신 버전임
+    except subprocess.CalledProcessError:
+        return None  # 오류: 버전 확인 실패
 
-CODE [SRV-064] 취약한 버전의 DNS 서비스 사용
+# 결과 로깅 함수
+def log_result(message, file_path):
+    with open(file_path, "a") as file:
+        file.write(message + "\n")
 
-cat << EOF >> $TMP1
-[양호]: DNS 서비스가 최신 버전으로 업데이트되어 있는 경우
-[취약]: DNS 서비스가 최신 버전으로 업데이트되어 있지 않은 경우
-EOF
+# 로그 파일 초기화
+log_file = "dns_version_check.log"
+open(log_file, "w").close()
 
-BAR
+# DNS 버전 검사 및 결과 로깅
+dns_version_check_result = check_dns_version()
+if dns_version_check_result is True:
+    log_result("OK: DNS 서비스가 최신 버전으로 업데이트되어 있는 경우", log_file)
+elif dns_version_check_result is False:
+    log_result("WARN: DNS 서비스가 최신 버전으로 업데이트되어 있지 않은 경우", log_file)
+else:
+    log_result("ERROR: DNS 서비스 버전 확인 중 오류 발생", log_file)
 
-ps_dns_count=`ps -ef | grep -i 'named' | grep -v 'grep' | wc -l`
-	if [ $ps_dns_count -gt 0 ]; then
-		rpm_bind9_minor_version=(`rpm -qa 2>/dev/null | grep '^bind' | awk -F '9.' '{print $2}' | grep -v '^$' | uniq`)
-		dnf_bind_major_minor_version=(`dnf list installed bind* 2>/dev/null | grep -v 'Installed Packages' | awk -F : '{print $2}' | grep -v '^$' | uniq`)
-		if [ ${#rpm_bind9_minor_version[@]} -gt 0 ] && [ ${#dnf_bind_major_minor_version[@]} -gt 0 ]; then
-			for ((i=0; i<${#rpm_bind9_minor_version[@]}; i++))
-			do
-				if [[ ${rpm_bind9_minor_version[$i]} =~ 18.* ]]; then
-					rpm_bind9_patch_version=(`rpm -qa 2>/dev/null | grep '^bind' | awk -F '18.' '{print $2}' | grep -v '^$' | uniq`)
-					if [ ${#rpm_bind9_patch_version[@]} -gt 0 ]; then
-						for ((j=0; j<${#rpm_bind9_patch_version[@]}; j++))
-						do
-							if [[ ${rpm_bind9_patch_version[$j]} != [7-9]* ]] || [[ ${rpm_bind9_patch_version[$j]} != 1[0-6]* ]]; then
-								WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-								return 0
-							fi
-						done
-					else
-						WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-					return 0
-				fi
-			done
-			for ((i=0; i<${#dnf_bind_major_minor_version[@]}; i++))
-			do
-				if [[ ${dnf_bind_major_minor_version[$i]} =~ 9.18.* ]]; then
-					dnf_bind_patch_version=(`dnf list installed bind* 2>/dev/null | grep -v 'Installed Packages' | awk -F : '{print $2}' | awk -F '18.' '{print $2}' | grep -v '^$' | uniq`)
-					if [ ${#dnf_bind_patch_version[@]} -gt 0 ]; then
-						for ((j=0; j<${#dnf_bind_patch_version[@]}; j++))
-						do
-							if [[ ${dnf_bind_patch_version[$j]} != [7-9]* ]] || [[ ${dnf_bind_patch_version[$j]} != 1[0-6]* ]]; then
-								WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-								return 0
-							fi
-						done
-					else
-						WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-					return 0
-				fi
-			done
-		else
-			WARN " BIND 버전이 최신 버전(9.18.7 이상)이 아닙니다." >> $TMP1
-			return 0
-		fi		
-	fi
-	OK "※ U-33 결과 : 양호(Good)" >> $TMP1
-	return 0 "DNS 서버가 최신 버전이 아닐 수 있습니다: $dns_version"
-fi
-
-cat $TMP1
-
-echo ; echo
+# 로그 파일 출력
+with open(log_file, "r") as file:
+    print(file.read())

@@ -1,31 +1,28 @@
-#!/bin/bash
+import re
 
-. function.sh
+# 로그 파일 초기화 및 메시지 기록 함수
+log_file_path = "password_storage_method_check.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def log_message(message):
+    with open(log_file_path, "a") as log_file:
+        log_file.write(message + "\n")
 
-BAR
+# 패스워드 저장 방식 검사
+def check_password_storage():
+    pam_file = "/etc/pam.d/common-password"
+    try:
+        with open(pam_file, "r") as file:
+            content = file.read()
+            if re.search(r"md5|des", content):
+                log_message("취약한 패스워드 해싱 알고리즘이 사용 중입니다: {}".format(pam_file))
+            else:
+                log_message("강력한 패스워드 해싱 알고리즘이 사용 중입니다: {}".format(pam_file))
+    except FileNotFoundError:
+        log_message("파일을 찾을 수 없습니다: {}".format(pam_file))
 
-CODE [SRV-070] 취약한 패스워드 저장 방식 사용
+# 실행
+check_password_storage()
 
-cat << EOF >> $result
-[양호]: 패스워드 저장에 강력한 해싱 알고리즘을 사용하는 경우
-[취약]: 패스워드 저장에 취약한 해싱 알고리즘을 사용하는 경우
-EOF
-
-BAR
-
-# 패스워드 해싱 알고리즘 확인
-PAM_FILE="/etc/pam.d/common-password"
-
-# MD5, DES와 같이 취약한 알고리즘을 확인합니다
-if grep -Eq "md5|des" "$PAM_FILE"; then
-    WARN "취약한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE"
-else
-    OK "강력한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE"
-fi
-
-cat $result
-
-echo ; echo
+# 결과 출력
+with open(log_file_path, "r") as log_file:
+    print(log_file.read())

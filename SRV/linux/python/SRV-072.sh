@@ -1,28 +1,24 @@
-#!/bin/bash
+# 로그 파일 초기화 및 메시지 기록 함수
+log_file_path = "administrator_account_check.log"
 
-. function.sh
+def log_message(message):
+    with open(log_file_path, "a") as log_file:
+        log_file.write(message + "\n")
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# 'Administrator' 계정 존재 여부 검사
+def check_administrator_account():
+    try:
+        with open("/etc/passwd", "r") as file:
+            if "Administrator" in file.read():
+                log_message("기본 'Administrator' 계정이 존재합니다.")
+            else:
+                log_message("기본 'Administrator' 계정이 존재하지 않습니다.")
+    except FileNotFoundError:
+        log_message("파일을 찾을 수 없습니다: /etc/passwd")
 
-BAR
+# 실행
+check_administrator_account()
 
-CODE [SRV-072] 기본 관리자 계정명(Administrator) 존재
-
-cat << EOF >> $result
-[양호]: 기본 'Administrator' 계정이 존재하지 않는 경우
-[취약]: 기본 'Administrator' 계정이 존재하는 경우
-EOF
-
-BAR
-
-# 'Administrator' 계정 확인
-if grep -qi "Administrator" /etc/passwd; then
-    WARN "기본 'Administrator' 계정이 존재합니다."
-else
-    OK "기본 'Administrator' 계정이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+# 결과 출력
+with open(log_file_path, "r") as log_file:
+    print(log_file.read())

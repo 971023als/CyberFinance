@@ -1,34 +1,36 @@
-#!/bin/bash
+import subprocess
+import re
 
-. function.sh
+def check_dns_zone_transfer(config_file):
+    try:
+        with open(config_file, 'r') as file:
+            content = file.read()
+            # Zone Transfer 설정 확인
+            if re.search(r"allow-transfer\s*{\s*any\s*;}", content, re.IGNORECASE):
+                return False  # 취약: Zone Transfer가 적절하게 제한되지 않음
+        return True  # 양호: Zone Transfer가 안전하게 제한됨
+    except FileNotFoundError:
+        return None  # 파일이 존재하지 않음
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# 결과 로깅 함수
+def log_result(message, file_path):
+    with open(file_path, "a") as file:
+        file.write(message + "\n")
 
-BAR
+# 로그 파일 초기화
+log_file = "dns_zone_transfer_check.log"
+open(log_file, "w").close()
 
-CODE [SRV-066] DNS Zone Transfer 설정 미흡
+# DNS Zone Transfer 검사 및 결과 로깅
+dns_config_file = "/etc/named.conf"
+zone_transfer_check_result = check_dns_zone_transfer(dns_config_file)
+if zone_transfer_check_result is True:
+    log_result("OK: DNS Zone Transfer가 안전하게 제한되어 있는 경우", log_file)
+elif zone_transfer_check_result is False:
+    log_result("WARN: DNS Zone Transfer가 적절하게 제한되지 않은 경우", log_file)
+else:
+    log_result("INFO: /etc/named.conf 파일이 존재하지 않습니다.", log_file)
 
-cat << EOF >> $TMP1
-[양호]: DNS Zone Transfer가 안전하게 제한되어 있는 경우
-[취약]: DNS Zone Transfer가 적절하게 제한되지 않은 경우
-EOF
-
-BAR
-
-ps_dns_count=`ps -ef | grep -i 'named' | grep -v 'grep' | wc -l`
-	if [ $ps_dns_count -gt 0 ]; then
-		if [ -f /etc/named.conf ]; then
-			etc_namedconf_allowtransfer_count=`grep -vE '^#|^\s#' /etc/named.conf | grep -i 'allow-transfer' | grep -i 'any' | wc -l`
-			if [ $etc_namedconf_allowtransfer_count -gt 0 ]; then
-				WARN " /etc/named.conf 파일에 allow-transfer { any; } 설정이 있습니다." >> $TMP1
-				return 0
-			fi
-		fi
-	fi
-	OK "※ U-34 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
-
-echo ; echo
+# 로그 파일 출력
+with open(log_file, "r") as file:
+    print(file.read())
