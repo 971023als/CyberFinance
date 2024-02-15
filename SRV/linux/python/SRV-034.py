@@ -1,47 +1,63 @@
-#!/bin/bash
+import os
 
-. function.sh
+def BAR():
+    print("=" * 40)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def log_message(message, file_path, mode='a'):
+    with open(file_path, mode) as f:
+        f.write(message + "\n")
 
-BAR
+def check_service_disabled(service_file, service_name):
+    with open(service_file, 'r') as file:
+        contents = file.read()
+        if 'disable = yes' in contents:
+            return True
+        else:
+            return False
 
-CODE [SRV-034] 불필요한 서비스 활성화
+# 결과 파일 초기화
+tmp1 = "SCRIPTNAME.log"  # 'SCRIPTNAME'을 실제 스크립트 이름으로 바꿔주세요.
+log_message("", tmp1, 'w')  # 로그 파일을 초기화합니다.
 
-cat << EOF >> $result
-[양호]: 불필요한 서비스가 비활성화된 경우
-[취약]: 불필요한 서비스가 활성화된 경우
-EOF
+BAR()
 
-BAR
+code = "[SRV-034] 불필요한 서비스 활성화"
+description = "[양호]: 불필요한 서비스가 비활성화된 경우\n[취약]: 불필요한 서비스가 활성화된 경우\n"
+log_message(f"{code}\n{description}", tmp1)
 
-r_command=("rsh" "rlogin" "rexec" "shell" "login" "exec")
-	if [ -d /etc/xinetd.d ]; then
-		for ((i=0; i<${#r_command[@]}; i++))
-		do
-			if [ -f /etc/xinetd.d/${r_command[$i]} ]; then
-				etc_xinetdd_rcommand_disable_count=`grep -vE '^#|^\s#' /etc/xinetd.d/${r_command[$i]} | grep -i 'disable' | grep -i 'yes' | wc -l`
-				if [ $etc_xinetdd_rcommand_disable_count -eq 0 ]; then
-					WARN " 불필요한 ${r_command[$i]} 서비스가 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			fi
-		done
-	fi
-	if [ -f /etc/inetd.conf ]; then
-		for ((i=0; i<${#r_command[@]}; i++))
-		do
-			etc_inetdconf_enable_count=`grep -vE '^#|^\s#' /etc/inetd.conf | grep ${r_command[$i]} | wc -l`
-			if [ $etc_inetdconf_enable_count -gt 0 ]; then
-				WARN " 불필요한 ${r_command[$i]} 서비스가 실행 중입니다." >> $TMP1
-				return 0
-			fi
-		done
-	fi
-	OK "※ U-21 결과 : 양호(Good)" >> $TMP1
-	return 0
+BAR()
 
-cat $result
+# 불필요한 서비스 리스트
+r_command = ["rsh", "rlogin", "rexec", "shell", "login", "exec"]
+services_checked = False
 
-echo ; echo
+if os.path.isdir("/etc/xinetd.d"):
+    for service in r_command:
+        service_file = f"/etc/xinetd.d/{service}"
+        if os.path.isfile(service_file):
+            if not check_service_disabled(service_file, service):
+                log_message(f"WARN: 불필요한 {service} 서비스가 실행 중입니다.", tmp1)
+                services_checked = True
+                break
+
+if not services_checked and os.path.isfile("/etc/inetd.conf"):
+    with open("/etc/inetd.conf", 'r') as file:
+        inetd_conf_content = file.readlines()
+        for service in r_command:
+            for line in inetd_conf_content:
+                if service in line and not line.strip().startswith("#"):
+                    log_message(f"WARN: 불필요한 {service} 서비스가 실행 중입니다.", tmp1)
+                    services_checked = True
+                    break
+            if services_checked:
+                break
+
+if not services_checked:
+    log_message("OK: ※ U-21 결과 : 양호(Good)", tmp1)
+
+BAR()
+
+# 최종 결과를 출력합니다.
+with open(tmp1, 'r') as f:
+    print(f.read())
+print()

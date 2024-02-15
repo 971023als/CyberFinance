@@ -1,86 +1,49 @@
-#!/bin/bash
+import subprocess
+import re
 
-. function.sh
+def BAR():
+    print("=" * 40)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def log_message(message, file_path, mode='a'):
+    with open(file_path, mode) as f:
+        f.write(message + "\n")
 
-BAR
+# 결과 파일 초기화
+tmp1 = "SCRIPTNAME.log"  # 'SCRIPTNAME'을 실제 스크립트 이름으로 바꿔주세요.
+log_message("", tmp1, 'w')  # 로그 파일을 초기화합니다.
 
-CODE [SRV-037] 취약한 FTP 서비스 실행
+BAR()
 
-cat << EOF >> $TMP1
-[양호]: FTP 서비스가 비활성화 되어 있는 경우
-[취약]: FTP 서비스가 활성화 되어 있는 경우
-EOF
+code = "[SRV-037] 취약한 FTP 서비스 실행"
+description = "[양호]: FTP 서비스가 비활성화 되어 있는 경우\n[취약]: FTP 서비스가 활성화 되어 있는 경우\n"
+log_message(f"{code}\n{description}", tmp1)
 
-BAR
+BAR()
 
-if [ -f /etc/services ]; then
-		ftp_port_count=`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="ftp" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}' | wc -l`
-		if [ $ftp_port_count -gt 0 ]; then
-			ftp_port=(`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="ftp" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}'`)
-			for ((i=0; i<${#ftp_port[@]}; i++))
-			do
-				netstat_ftp_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${ftp_port[$i]} " | wc -l`
-				if [ $netstat_ftp_count -gt 0 ]; then
-					WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-	fi
-	find_vsftpdconf_count=`find / -name 'vsftpd.conf' -type f 2>/dev/null | wc -l`
-	if [ $find_vsftpdconf_count -gt 0 ]; then
-		vsftpdconf_files=(`find / -name 'vsftpd.conf' -type f 2>/dev/null`)
-		for ((i=0; i<${#vsftpdconf_files[@]}; i++))
-		do
-			if [ -f ${vsftpdconf_files[$i]} ]; then
-				vsftpdconf_file_port_count=`grep -vE '^#|^\s#' ${vsftpdconf_files[$i]} | grep 'listen_port' | awk -F = '{gsub(" ", "", $0); print $2}' | wc -l`
-				if [ $vsftpdconf_file_port_count -gt 0 ]; then
-					ftp_port=(`grep -vE '^#|^\s#' ${vsftpdconf_files[$i]} | grep 'listen_port' | awk -F = '{gsub(" ", "", $0); print $2}'`)
-					for ((j=0; j<${#ftp_port[@]}; j++))
-					do
-						netstat_ftp_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${ftp_port[$j]} " | wc -l`
-						if [ $netstat_ftp_count -gt 0 ]; then
-							WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-							return 0
-						fi
-					done
-				fi
-			fi
-		done
-	fi
-	find_proftpdconf_count=`find / -name 'proftpd.conf' -type f 2>/dev/null | wc -l`
-	if [ $find_proftpdconf_count -gt 0 ]; then
-		proftpdconf_files=(`find / -name 'proftpd.conf' -type f 2>/dev/null`)
-		for ((i=0; i<${#proftpdconf_files[@]}; i++))
-		do
-			if [ -f ${proftpdconf_files[$i]} ]; then
-				proftpdconf_file_port_count=`grep -vE '^#|^\s#' ${proftpdconf_files[$i]} | grep 'Port' | awk '{print $2}' | wc -l`
-				if [ $proftpdconf_file_port_count -gt 0 ]; then
-					ftp_port=(`grep -vE '^#|^\s#' ${proftpdconf_files[$i]} | grep 'Port' | awk '{print $2}'`)
-					for ((j=0; j<${#ftp_port[@]}; j++))
-					do
-						netstat_ftp_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${ftp_port[$j]} " | wc -l`
-						if [ $netstat_ftp_count -gt 0 ]; then
-							WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-							return 0
-						fi
-					done
-				fi
-			fi
-		done
-	fi
-	ps_ftp_count=`ps -ef | grep -iE 'ftp|vsftpd|proftp' | grep -v 'grep' | wc -l`
-	if [ $ps_ftp_count -gt 0 ]; then
-		WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-61 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
+# FTP 서비스의 활성화 여부를 확인합니다.
+def check_ftp_service():
+    # netstat를 사용하여 FTP 포트(기본값 21)의 상태를 확인합니다.
+    netstat_output = subprocess.getoutput("netstat -nat")
+    # /etc/services에서 FTP 포트를 찾아 확인합니다.
+    with open('/etc/services', 'r') as services_file:
+        services_content = services_file.read()
+        ftp_ports = re.findall(r'^ftp\s+(\d+)/tcp', services_content, re.MULTILINE)
+        for port in ftp_ports:
+            if f":{port} " in netstat_output:
+                return "WARN: ftp 서비스가 실행 중입니다."
 
-cat $TMP1
+    # 프로세스 목록에서 FTP 관련 서비스를 찾습니다.
+    ps_output = subprocess.getoutput("ps -ef | grep -iE 'ftp|vsftpd|proftp' | grep -v 'grep'")
+    if ps_output:
+        return "WARN: ftp 서비스가 실행 중입니다."
 
-echo ; echo
+    return "OK: ※ U-61 결과 : 양호(Good)"
+
+result = check_ftp_service()
+log_message(result, tmp1)
+
+BAR()
+
+# 최종 결과를 출력합니다.
+with open(tmp1, 'r') as f:
+    print(f.read())
