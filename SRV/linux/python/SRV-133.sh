@@ -1,97 +1,52 @@
-#!/bin/bash
+import os
+import stat
+import subprocess
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_crontab_permissions():
+    crontab_paths = ["/usr/bin/crontab", "/usr/sbin/crontab", "/bin/crontab"]
+    crontab_found = False
 
-CODE [SRV-133] Cron 서비스 사용 계정 제한 미비
+    for path in crontab_paths:
+        if os.path.exists(path):
+            crontab_found = True
+            mode = os.stat(path).st_mode
+            if not (mode & stat.S_IWGRP) and not (mode & stat.S_IWOTH):
+                write_result(f"OK: {path} 명령어의 권한이 적절합니다.")
+            else:
+                write_result(f"WARN: {path} 명령어의 권한이 취약합니다.")
 
-cat << EOF >> $result
-[양호]: Cron 서비스 사용이 특정 계정으로 제한되어 있는 경우
-[취약]: Cron 서비스 사용이 제한되지 않은 경우
-EOF
+    if not crontab_found:
+        write_result("WARN: crontab 명령어가 시스템에 설치되어 있지 않습니다.")
 
-BAR
+def check_cron_files_permissions():
+    cron_dirs = ["/etc/cron.hourly", "/etc/cron.daily", "/etc/cron.weekly", "/etc/cron.monthly", "/var/spool/cron", "/var/spool/cron/crontabs"]
+    cron_files = ["/etc/crontab", "/etc/cron.allow", "/etc/cron.deny"]
 
-crontab_path=("/usr/bin/crontab" "/usr/sbin/crontab" "/bin/crontab")
-	if [ `which crontab 2>/dev/null | wc -l` -gt 0 ]; then
-		crontab_path[${#crontab_path[@]}]=`which crontab 2>/dev/null`
-	fi
-	for ((i=0; i<${#crontab_path[@]}; i++))
-	do
-		if [ -f ${crontab_path[$i]} ]; then
-			crontab_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,2)}'` # group, owner 권한만 추출함
-			if [ $crontab_permission -le 50 ]; then
-				crontab_group_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-				if [ $crontab_group_permission -eq 5 ] || [ $crontab_group_permission -eq 4 ] || [ $crontab_group_permission -eq 1 ] || [ $crontab_group_permission -eq 0 ]; then
-					crontab_other_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-					if [ $crontab_other_permission -ne 0 ]; then
-						WARN " ${crontab_path[$i]} 명령어의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${crontab_path[$i]} 명령어의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${crontab_path[$i]} 명령어의 권한이 750보다 큽니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	cron_directory=("/etc/cron.hourly" "/etc/cron.daily" "/etc/cron.weekly" "/etc/cron.monthly" "/var/spool/cron" "/var/spool/cron/crontabs")
-	cron_file=("/etc/crontab" "/etc/cron.allow" "/etc/cron.deny")
-	for ((i=0; i<${#cron_directory[@]}; i++))
-	do
-		cron_file_count=`find ${cron_directory[$i]} -type f 2>/dev/null | wc -l`
-		if [ $cron_file_count -gt 0 ]; then
-			cron_file2=(`find ${cron_directory[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#cron_file2[@]}; j++))
-			do
-				cron_file[${#cron_file[@]}]=${cron_file2[$j]}
-			done
-		fi
-	done
-	for ((i=0; i<${#cron_file[@]}; i++))
-	do
-		if [ -f ${cron_file[$i]} ]; then
-			cron_file_owner_name=`ls -l ${cron_file[$i]} | awk '{print $3}'`
-			if [[ $cron_file_owner_name =~ root ]]; then
-				cron_file_permission=`stat ${cron_file[$i]}| grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,3)}'`
-				if [ $cron_file_permission -le 640 ]; then
-					cron_file_owner_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,1)}'`
-					if [ $cron_file_owner_permission -eq 6 ] || [ $cron_file_owner_permission -eq 4 ] || [ $cron_file_owner_permission -eq 2 ] || [ $cron_file_owner_permission -eq 0 ]; then
-						cron_file_group_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-						if [ $cron_file_group_permission -eq 4 ] || [ $cron_file_group_permission -eq 0 ]; then
-							cron_file_other_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-							if [ $cron_file_other_permission -ne 0 ]; then
-								WARN " ${cron_file[$i]} 파일의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-								return 0
-							fi
-						else
-							WARN " ${cron_file[$i]} 파일의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-							return 0
-						fi
-					else
-						WARN " ${cron_file[$i]} 파일의 사용자(owner)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${cron_file[$i]} 파일의 권한이 640보다 큽니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${cron_file[$i]} 파일의 소유자(owner)가 root가 아닙니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	OK "※ U-22 결과 : 양호(Good)" >> $TMP1
-	return 0
+    for dir in cron_dirs:
+        if os.path.isdir(dir):
+            for root, dirs, files in os.walk(dir):
+                for name in files:
+                    cron_files.append(os.path.join(root, name))
 
-cat $result
+    for file in cron_files:
+        if os.path.exists(file):
+            mode = os.stat(file).st_mode
+            if (mode & stat.S_IRWXU) == stat.S_IRWXU and (mode & stat.S_IRWXG) == 0 and (mode & stat.S_IRWXO) == 0:
+                write_result(f"OK: {file} 파일의 권한이 적절합니다.")
+            else:
+                write_result(f"WARN: {file} 파일의 권한이 취약합니다.")
 
-echo ; echo
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_crontab_permissions()
+    check_cron_files_permissions()
+
+if __name__ == "__main__":
+    main()

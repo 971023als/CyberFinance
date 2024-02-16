@@ -1,38 +1,30 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_tcp_security_settings():
+    tcp_settings = [
+        "net.ipv4.tcp_syncookies",
+        "net.ipv4.tcp_max_syn_backlog",
+        "net.ipv4.tcp_synack_retries",
+        "net.ipv4.tcp_syn_retries"
+    ]
 
-CODE [SRV-135] TCP 보안 설정 미비
+    for setting in tcp_settings:
+        try:
+            value = subprocess.check_output(['sysctl', setting], text=True).strip()
+            write_result(f"OK: {setting} 설정이 존재합니다: {value}")
+        except subprocess.CalledProcessError as e:
+            write_result(f"WARN: {setting} 설정이 없습니다.")
 
-cat << EOF >> $result
-[양호]: 필수 TCP 보안 설정이 적절히 구성된 경우
-[취약]: 필수 TCP 보안 설정이 구성되지 않은 경우
-EOF
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_tcp_security_settings()
 
-BAR
-
-# TCP 보안 관련 설정 확인
-tcp_settings=(
-  "net.ipv4.tcp_syncookies"
-  "net.ipv4.tcp_max_syn_backlog"
-  "net.ipv4.tcp_synack_retries"
-  "net.ipv4.tcp_syn_retries"
-)
-
-for setting in "${tcp_settings[@]}"; do
-  value=$(sysctl $setting)
-  if [ -z "$value" ]; then
-    WARN "$setting 설정이 없습니다."
-  else
-    OK "$setting 설정이 존재합니다: $value"
-  fi
-done
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()

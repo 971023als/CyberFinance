@@ -1,39 +1,32 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_installed_antivirus():
+    antivirus_programs = ["clamav", "avast", "avg", "avira", "eset"]
+    installed_antivirus = []
 
-CODE [SRV-129] 백신 프로그램 미설치
+    for antivirus in antivirus_programs:
+        try:
+            subprocess.check_output(['command', '-v', antivirus], stderr=subprocess.STDOUT)
+            installed_antivirus.append(antivirus)
+        except subprocess.CalledProcessError:
+            continue
 
-cat << EOF >> $result
-[양호]: 백신 프로그램이 설치되어 있는 경우
-[취약]: 백신 프로그램이 설치되어 있지 않은 경우
-EOF
+    if not installed_antivirus:
+        write_result("WARN: 설치된 백신 프로그램이 없습니다.")
+    else:
+        installed_str = ", ".join(installed_antivirus)
+        write_result(f"OK: 설치된 백신 프로그램: {installed_str}")
 
-BAR
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_installed_antivirus()
 
-# 일반적으로 사용되는 백신 프로그램의 설치 여부를 확인합니다
-antivirus_programs=("clamav" "avast" "avg" "avira" "eset")
-
-installed_antivirus=()
-
-for antivirus in "${antivirus_programs[@]}"; do
-  if command -v $antivirus &> /dev/null; then
-    installed_antivirus+=("$antivirus")
-  fi
-done
-
-# 설치된 백신 프로그램이 있는지 확인합니다
-if [ ${#installed_antivirus[@]} -eq 0 ]; then
-  WARN "설치된 백신 프로그램이 없습니다."
-else
-  OK "설치된 백신 프로그램: ${installed_antivirus[*]}"
-fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()

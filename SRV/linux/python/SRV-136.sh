@@ -1,38 +1,37 @@
-#!/bin/bash
+import os
+import stat
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_shutdown_command():
+    shutdown_command = "/sbin/shutdown"
 
-CODE [SRV-136] 시스템 종료 권한 설정 미흡
+    # shutdown 명령의 존재 여부 확인
+    if not os.path.exists(shutdown_command):
+        write_result("WARN: shutdown 명령이 시스템에 존재하지 않습니다.")
+        return
 
-cat << EOF >> $result
-[양호]: 시스템 종료 권한이 적절히 제한된 경우
-[취약]: 시스템 종료 권한이 제한되지 않은 경우
-EOF
+    # shutdown 명령의 실행 가능 여부 확인
+    if not os.access(shutdown_command, os.X_OK):
+        write_result("WARN: shutdown 명령이 실행 가능하지 않습니다.")
+    else:
+        write_result("OK: shutdown 명령이 실행 가능합니다.")
 
-BAR
+    # shutdown 명령에 대한 권한 확인
+    permissions = oct(os.stat(shutdown_command).st_mode)[-3:]
+    if permissions[2] != '1' and permissions[2] != '5':  # 실행 권한이 없는 경우
+        write_result("WARN: shutdown 명령에 적절한 실행 권한이 설정되지 않았습니다.")
+    else:
+        write_result("OK: shutdown 명령에 적절한 실행 권한이 설정되어 있습니다.")
 
-# 시스템 종료 권한 관련 설정 확인
-shutdown_command="/sbin/shutdown"
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_shutdown_command()
 
-if [ ! -x "$shutdown_command" ]; then
-  WARN "shutdown 명령이 실행 가능하지 않습니다."
-else
-  OK "shutdown 명령이 실행 가능합니다."
-fi
-
-# shutdown 명령에 대한 권한 확인
-permissions=$(stat -c %A "$shutdown_command")
-if [[ "$permissions" != *x* ]]; then
-  WARN "shutdown 명령에 실행 권한이 없습니다."
-else
-  OK "shutdown 명령에 실행 권한이 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()

@@ -1,39 +1,33 @@
-#!/bin/bash
+import os
+import stat
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_backup_permissions():
+    backup_dirs = ["/path/to/backup/dir1", "/path/to/backup/dir2"]  # 백업 디렉토리 경로 예시
 
-CODE [SRV-138] 백업 및 복구 권한 설정 미흡
+    for dir_path in backup_dirs:
+        if os.path.isdir(dir_path):
+            mode = os.stat(dir_path).st_mode
+            permissions = oct(mode)[-3:]
+            owner = os.stat(dir_path).st_uid
 
-cat << EOF >> $result
-[양호]: 백업 및 복구 권한이 적절히 설정된 경우
-[취약]: 백업 및 복구 권한이 적절히 설정되지 않은 경우
-EOF
+            # 백업 디렉토리 소유자 및 권한 확인 (소유자 ID 대신 사용자 이름으로 비교하는 경우 os.geteuid() 등 사용)
+            if owner == os.geteuid() and int(permissions, 8) <= 0o700:
+                write_result(f"OK: {dir_path} 은 적절한 권한({permissions}) 및 소유자를 가집니다.")
+            else:
+                write_result(f"WARN: {dir_path} 은 부적절한 권한({permissions}) 또는 소유자를 가집니다.")
+        else:
+            write_result(f"INFO: {dir_path} 디렉토리가 존재하지 않습니다.")
 
-BAR
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_backup_permissions()
 
-# 백업 관련 디렉토리 및 파일 권한 확인
-backup_dirs=("/path/to/backup/dir1" "/path/to/backup/dir2") # 백업 디렉토리 예시
-
-for dir in "${backup_dirs[@]}"; do
-  if [ -d "$dir" ]; then
-    permissions=$(stat -c %a "$dir")
-    owner=$(stat -c %U "$dir")
-    # 백업 디렉토리 소유자 및 권한 확인
-    if [[ "$owner" == "backup_user" && "$permissions" -le 700 ]]; then
-      OK "$dir 은 적절한 권한($permissions) 및 소유자($owner)를 가집니다."
-    else
-      WARN "$dir 은 부적절한 권한($permissions) 또는 소유자($owner)를 가집니다."
-    fi
-  else
-    INFO "$dir 디렉토리가 존재하지 않습니다."
-  fi
-done
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()

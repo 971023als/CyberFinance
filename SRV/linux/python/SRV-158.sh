@@ -1,92 +1,37 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+def check_telnet_ftp_services():
+    # Telnet 및 FTP 포트 사용 여부 확인
+    telnet_ports = subprocess.getoutput("grep -vE '^#|^\\s#' /etc/services | awk 'tolower($1)==\"telnet\" {print $2}' | awk -F '/' 'tolower($2)==\"tcp\" {print $1}'").split()
+    ftp_ports = subprocess.getoutput("grep -vE '^#|^\\s#' /etc/services | awk 'tolower($1)==\"ftp\" {print $2}' | awk -F '/' 'tolower($2)==\"tcp\" {print $1}'").split()
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+    # Telnet 및 FTP 서비스 실행 여부 확인
+    for port in telnet_ports + ftp_ports:
+        if subprocess.getoutput(f"netstat -nat | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep \":{port} \""):
+            print(f"WARN: 서비스가 실행 중입니다. 포트: {port}")
+            return
 
-BAR
+    # vsftpd.conf 및 proftpd.conf 파일에서 포트 설정 검사
+    for conf_file in ('vsftpd.conf', 'proftpd.conf'):
+        conf_files = subprocess.getoutput(f"find / -name '{conf_file}' -type f 2>/dev/null").split('\n')
+        for file_path in conf_files:
+            if conf_file == 'vsftpd.conf':
+                conf_ports = subprocess.getoutput(f"grep -vE '^#|^\\s#' {file_path} | grep 'listen_port' | awk -F '=' '{{gsub(\" \", \"\", $0); print $2}}'").split()
+            else:  # proftpd.conf
+                conf_ports = subprocess.getoutput(f"grep -vE '^#|^\\s#' {file_path} | grep 'Port' | awk '{{print $2}}'").split()
 
-CODE [SRV-158] 불필요한 Telnet 서비스 실행
+            for port in conf_ports:
+                if subprocess.getoutput(f"netstat -nat | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep \":{port} \""):
+                    print(f"WARN: {conf_file} 서비스가 실행 중입니다. 포트: {port}")
+                    return
 
-cat << EOF >> $result
-[양호]: Telnet 서비스가 비활성화되어 있는 경우
-[취약]: Telnet 서비스가 활성화되어 있는 경우
-EOF
+    # Telnet 및 FTP 프로세스 실행 여부 확인
+    for service in ('telnet', 'ftp'):
+        if subprocess.getoutput(f"ps -ef | grep -i '{service}' | grep -v 'grep'"):
+            print(f"WARN: {service.capitalize()} 서비스가 실행 중입니다.")
+            return
 
-BAR
+    print("OK: Telnet 및 FTP 서비스가 비활성화되어 있습니다.")
 
-if [ -f /etc/services ]; then
-		telent_port_count=`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="telnet" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}' | wc -l`
-		if [ $telent_port_count -gt 0 ]; then
-			telent_port=(`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="telnet" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}'`)
-			for ((i=0; i<${#telent_port[@]}; i++))
-			do
-				netstat_telnet_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${telent_port[$i]} " | wc -l`
-				if [ $netstat_telnet_count -gt 0 ]; then
-					WARN " Telnet 서비스가 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-		ftp_port_count=`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="ftp" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}' | wc -l`
-		if [ $ftp_port_count -gt 0 ]; then
-			ftp_port=(`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="ftp" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}'`)
-			for ((i=0; i<${#ftp_port[@]}; i++))
-			do
-				netstat_ftp_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${ftp_port[$i]} " | wc -l`
-				if [ $netstat_ftp_count -gt 0 ]; then
-					WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-	fi
-	find_vsftpdconf_count=`find / -name 'vsftpd.conf' -type f 2>/dev/null | wc -l`
-	if [ $find_vsftpdconf_count -gt 0 ]; then
-		vsftpdconf_files=(`find / -name 'vsftpd.conf' -type f 2>/dev/null`)
-		for ((i=0; i<${#vsftpdconf_files[@]}; i++))
-		do
-			if [ -f ${vsftpdconf_files[$i]} ]; then
-				vsftpdconf_file_port_count=`grep -vE '^#|^\s#' ${vsftpdconf_files[$i]} | grep 'listen_port' | awk -F = '{gsub(" ", "", $0); print $2}' | wc -l`
-				if [ $vsftpdconf_file_port_count -gt 0 ]; then
-					telent_port=(`grep -vE '^#|^\s#' ${vsftpdconf_files[$i]} | grep 'listen_port' | awk -F = '{gsub(" ", "", $0); print $2}'`)
-					for ((j=0; j<${#telent_port[@]}; j++))
-					do
-						if [ `netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${telent_port[$j]} " | wc -l` -gt 0 ]; then
-							WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-							return 0
-						fi
-					done
-				fi
-			fi
-		done
-	fi
-	find_proftpdconf_count=`find / -name 'proftpd.conf' -type f 2>/dev/null | wc -l`
-	if [ $find_proftpdconf_count -gt 0 ]; then
-		proftpdconf_files=(`find / -name 'proftpd.conf' -type f 2>/dev/null`)
-		for ((i=0; i<${#proftpdconf_files[@]}; i++))
-		do
-			if [ -f ${proftpdconf_files[$i]} ]; then
-				if [ `grep -vE '^#|^\s#' ${proftpdconf_files[$i]} | grep 'Port' | awk '{print $2}' | wc -l` -gt 0 ]; then
-					telent_port=(`grep -vE '^#|^\s#' ${proftpdconf_files[$i]} | grep 'Port' | awk '{print $2}'`)
-					for ((j=0; j<${#telent_port[@]}; j++))
-					do
-						if [ `netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${telent_port[$j]} " | wc -l` -gt 0 ]; then
-							WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-							return 0
-						fi
-					done
-				fi
-			fi
-		done
-	fi
-	ps_telnet_count=`ps -ef | grep -i 'telnet' | grep -v 'grep' | wc -l`
-	if [ $ps_telnet_count -gt 0 ]; then
-		WARN " Telnet 서비스가 실행 중입니다." >> $TMP1
-		return 0
-	fi
-
-cat $TMP1
-
-echo ; echo
+if __name__ == "__main__":
+    check_telnet_ftp_services()

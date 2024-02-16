@@ -1,73 +1,47 @@
-#!/bin/bash
+import re
+import subprocess
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_account_lock_threshold():
+    files_to_check = ["/etc/pam.d/system-auth", "/etc/pam.d/password-auth"]
+    deny_modules = ["pam_tally2.so", "pam_faillock.so"]
+    settings_found = False
+    threshold_exceeded = False
 
-CODE [SRV-127] 계정 잠금 임계값 설정 미비
+    for file_path in files_to_check:
+        if not os.path.exists(file_path):
+            continue
 
-cat << EOF >> $result
-[양호]: 계정 잠금 임계값이 적절하게 설정된 경우
-[취약]: 계정 잠금 임계값이 적절하게 설정되지 않은 경우
-EOF
+        with open(file_path, 'r') as file:
+            file_content = file.read()
 
-BAR
+        for module in deny_modules:
+            if module in file_content:
+                settings_found = True
+                # Find all 'deny' settings for the module
+                deny_values = re.findall(rf"{module}.*deny=\d+", file_content)
+                for value in deny_values:
+                    # Extract the actual numeric value of 'deny'
+                    deny_count = int(re.search(r"deny=(\d+)", value).group(1))
+                    if deny_count >= 11:
+                        threshold_exceeded = True
+                        write_result(f"WARN: {file_path} 파일에 계정 잠금 임계값이 11회 이상으로 설정되어 있습니다.")
+                        return  # Early return on finding any threshold exceeded
 
-file_exists_count=0
-	deny_file_exists_count=0
-	no_settings_in_deny_file=0
-	deny_modules=("pam_tally2.so" "pam_faillock.so")
-	# /etc/pam.d/system-auth, /etc/pam.d/password-auth 파일 내 계정 잠금 임계값 설정 확인함
-	deny_settings_files=("/etc/pam.d/system-auth" "/etc/pam.d/password-auth")
-	for ((i=0; i<${#deny_settings_files[@]}; i++))
-	do
-		if [ -f ${deny_settings_files[$i]} ]; then
-			((file_exists_count++))
-			for ((j=0; j<${#deny_modules[@]}; j++))
-			do
-				((deny_file_exists_count++))
-				deny_settings_file_deny_count=`grep -vE '^#|^\s#' ${deny_settings_files[$i]} | grep -i ${deny_modules[$j]} | grep -i 'deny' | wc -l`
-				if [ $deny_settings_file_deny_count -gt 0 ]; then
-					deny_settings_file_deny_value=`grep -vE '^#|^\s#' ${deny_settings_files[$i]} | grep -i ${deny_modules[$j]} | grep -i 'deny' | awk -F 'deny' '{gsub(" ", "", $0); print substr($2,2,1)}'`
-					deny_settings_file_deny_second_value=`grep -vE '^#|^\s#' ${deny_settings_files[$i]} | grep -i ${deny_modules[$j]} | grep -i 'deny' | awk -F 'deny' '{gsub(" ", "", $0); print substr($2,3,1)}'`
-					deny_settings_file_deny_third_value=`grep -vE '^#|^\s#' ${deny_settings_files[$i]} | grep -i ${deny_modules[$j]} | grep -i 'deny' | awk -F 'deny' '{gsub(" ", "", $0); print substr($2,4,1)}'`
-					if [ $deny_settings_file_deny_value -eq 0 ]; then
-						continue
-					elif [ $deny_settings_file_deny_value -eq 1 ]; then
-						if [[ $deny_settings_file_deny_second_value =~ [1-9] ]]; then
-							WARN " ${deny_settings_files[$i]} 파일에 계정 잠금 임계값이 11회 이상으로 설정되어 있습니다." >> $TMP1
-							return 0
-						else
-							if [[ $deny_settings_file_deny_third_value =~ [0-9] ]]; then
-								WARN " ${deny_settings_files[$i]} 파일에 계정 잠금 임계값이 11회 이상으로 설정되어 있습니다." >> $TMP1
-								return 0
-							fi
-						fi
-					else
-						if [[ $deny_settings_file_deny_second_value =~ [0-9] ]]; then
-							WARN " ${deny_settings_files[$i]} 파일에 계정 잠금 임계값이 11회 이상으로 설정되어 있습니다." >> $TMP1
-							return 0
-						fi
-					fi
-				else
-					((no_settings_in_deny_file++))
-				fi
-			done
-		fi
-	done
-	if [ $file_exists_count -eq 0 ]; then
-		WARN " 계정 잠금 임계값을 설정하는 파일이 없습니다." >> $TMP1
-		return 0
-	elif [ $deny_file_exists_count -eq $no_settings_in_deny_file ]; then
-		WARN " 계정 잠금 임계값을 설정한 파일이 없습니다." >> $TMP1
-		return 0
-	fi
-	OK "※ U-03 결과 : 양호(Good)" >> $TMP1
-	return 0
+    if not settings_found:
+        write_result("WARN: 계정 잠금 임계값을 설정하는 파일이 없습니다.")
+    elif not threshold_exceeded:
+        write_result("OK: 계정 잠금 임계값이 적절하게 설정되어 있습니다.")
 
-cat $result
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_account_lock_threshold()
 
-echo ; echo
+if __name__ == "__main__":
+    main()

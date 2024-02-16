@@ -1,22 +1,21 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+def check_local_logon_policy():
+    # 예시: /etc/ssh/sshd_config 파일에서 PermitRootLogin 설정을 확인합니다.
+    sshd_config_path = '/etc/ssh/sshd_config'
+    try:
+        with open(sshd_config_path, 'r') as file:
+            for line in file:
+                if line.startswith('PermitRootLogin'):
+                    if 'yes' in line:
+                        print("취약: PermitRootLogin이 'yes'로 설정되어 있습니다.")
+                    else:
+                        print("양호: PermitRootLogin이 'no' 또는 제한적으로 설정되어 있습니다.")
+                    return
+    except FileNotFoundError:
+        print(f"파일을 찾을 수 없습니다: {sshd_config_path}")
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+    print("로컬 로그온 정책을 확인할 수 없습니다.")
 
-BAR
-
-CODE [SRV-150] 로컬 로그온 허용
-
-cat << EOF >> $result
-[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우
-[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우
-EOF
-
-BAR
-
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    check_local_logon_policy()

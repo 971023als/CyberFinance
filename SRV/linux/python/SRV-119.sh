@@ -1,31 +1,39 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+# 결과 파일 초기화
+script_name = "SCRIPTNAME.log"  # 실제 스크립트 이름으로 변경해야 합니다.
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def write_result(message):
+    with open(script_name, 'a') as f:
+        f.write(message + "\n")
 
-BAR
+def check_system_updates():
+    try:
+        result = subprocess.run(['apt-get', '-s', 'upgrade'], stdout=subprocess.PIPE, text=True)
+        update_status = result.stdout
+        if "0 upgraded" in update_status:
+            write_result("OK: 모든 패키지가 최신 상태입니다.")
+        else:
+            write_result(f"WARN: 일부 패키지가 업데이트되지 않았습니다: {update_status.splitlines()[1]}")
+    except Exception as e:
+        write_result(f"ERROR: 시스템 업데이트 상태 확인 중 오류 발생: {e}")
 
-CODE [SRV-119] 백신 프로그램 업데이트 미흡
+def check_security_policy():
+    policy_file = "/etc/security/policies.conf"
+    try:
+        with open(policy_file, 'r') as f:
+            policy_content = f.read()
+        if "important_security_policy" in policy_content:
+            write_result("OK: 중요 보안 정책이 설정됨")
+        else:
+            write_result("WARN: 중요 보안 정책이 /etc/security/policies.conf에 설정되지 않음")
+    except FileNotFoundError:
+        write_result("WARN: /etc/security/policies.conf 파일이 존재하지 않음")
 
-cat << EOF >> $result
-[양호]: 백신 프로그램이 최신 버전으로 업데이트 되어 있는 경우
-[취약]: 백신 프로그램이 최신 버전으로 업데이트 되어 있지 않은 경우
-EOF
+def main():
+    open(script_name, 'w').close()  # 결과 파일 초기화
+    check_system_updates()
+    check_security_policy()
 
-BAR
-
-# 백신 프로그램의 업데이트 상태를 확인합니다 (예시: ClamAV)
-clamav_version=$(clamscan --version)
-latest_clamav_version=$(curl -s https://www.clamav.net/downloads | grep -oP 'ClamAV \K[0-9.]+')
-
-if [ "$clamav_version" == "$latest_clamav_version" ]; then
-  OK "ClamAV가 최신 버전입니다: $clamav_version"
-else
-  WARN "ClamAV가 최신 버전이 아닙니다. 현재 버전: $clamav_version, 최신 버전: $latest_clamav_version"
-fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()

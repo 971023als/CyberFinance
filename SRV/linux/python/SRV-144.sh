@@ -1,29 +1,18 @@
-#!/bin/bash
+import os
+import subprocess
 
-. function.sh
+def check_unnecessary_files_in_dev():
+    try:
+        # /dev 디렉터리 내 파일 타입이 'file'인 항목을 찾습니다.
+        result = subprocess.check_output("find /dev -type f", shell=True, text=True)
+        if result.strip():
+            print("WARN: /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다.")
+            print("불필요한 파일 목록:")
+            print(result)
+        else:
+            print("OK: /dev 경로에 불필요한 파일이 존재하지 않습니다.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking for unnecessary files in /dev: {e}")
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-144] /dev 경로에 불필요한 파일 존재
-
-cat << EOF >> $TMP1
-[양호]: /dev 경로에 불필요한 파일이 존재하지 않는 경우
-[취약]: /dev 경로에 불필요한 파일이 존재하는 경우
-EOF
-
-BAR
-
-if [ `find /dev -type f 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-16 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-cat $TMP1
-
-echo ; echo
+if __name__ == "__main__":
+    check_unnecessary_files_in_dev()
