@@ -1,28 +1,24 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+# 결과 파일 초기화 및 기본 정보 추가
+script_name = "SCRIPTNAME"  # 실제 스크립트 이름으로 변경해야 합니다.
+tmp1 = f"{script_name}.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+with open(tmp1, 'w') as f:
+    f.write("CODE [SRV-103] LAN Manager 인증 수준 미흡\n\n")
+    f.write("[양호]: LAN Manager 인증 수준이 적절하게 설정되어 있는 경우\n")
+    f.write("[취약]: LAN Manager 인증 수준이 미흡하게 설정되어 있는 경우\n")
+    f.write("\n------------------------------------------------------------\n")
 
-BAR
+def check_lan_manager_auth_level():
+    # LAN Manager 인증 수준 검사 로직 구현
+    # 이 부분은 예시로, 실제 환경에서는 시스템의 설정을 직접 확인하는 로직이 필요합니다.
+    # 예시 결과를 출력합니다.
+    with open(tmp1, 'a') as f:
+        f.write("OK: LAN Manager 인증 수준이 적절하게 설정되어 있습니다.\n")
 
-CODE [SRV-103] LAN Manager 인증 수준 미흡
+def main():
+    check_lan_manager_auth_level()
 
-cat << EOF >> $result
-[양호]: LAN Manager 인증 수준이 적절하게 설정되어 있는 경우
-[취약]: LAN Manager 인증 수준이 미흡하게 설정되어 있는 경우
-EOF
-
-BAR
-
-# LAN Manager 인증 수준을 확인하는 코드
-# 예시: registry 값을 체크하거나, 관련 설정 파일을 검사
-# 이 부분은 시스템의 구체적인 설정 방법에 따라 달라질 수 있음
-
-# 예시 결과 출력
-OK "LAN Manager 인증 수준이 적절하게 설정되어 있습니다."
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()
