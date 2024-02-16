@@ -1,39 +1,45 @@
-#!/bin/bash
+import os
+import subprocess
+import re
 
-. function.sh
+def bar():
+    print("=" * 40)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def check_accounts():
+    # Path to the temporary log file
+    tmp1 = "scriptname.log"
+    with open(tmp1, "w") as log_file:
+        bar()
 
-BAR
-
-CODE [SRV-078] 불필요한 Guest 계정 활성화
-
-cat << EOF >> $result
+        # Code for checking unnecessary guest accounts activation
+        result = """
 [양호]: 불필요한 Guest 계정이 비활성화 되어 있는 경우
 [취약]: 불필요한 Guest 계정이 활성화 되어 있는 경우
-EOF
+"""
+        print(result)
+        bar()
 
-BAR
+        # Check if /etc/passwd exists
+        if os.path.exists("/etc/passwd"):
+            with open("/etc/passwd", "r") as passwd_file:
+                passwd_content = passwd_file.read()
+                # Regular expression pattern for unnecessary accounts
+                pattern = r'\b(daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp)\b'
+                if len(re.findall(pattern, passwd_content)) > 0:
+                    log_file.write("불필요한 계정이 존재합니다.\n")
+                    return
+            log_file.write("※ U-49 결과 : 양호(Good)\n")
 
-if [ -f /etc/passwd ]; then
-		# !!! 불필요한 계정을 변경할 경우 하단의 grep 명령어를 수정하세요.
-		if [ `awk -F : '{print $1}' /etc/passwd | grep -wE 'daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp' | wc -l` -gt 0 ]; then
-			WARN " 불필요한 계정이 존재합니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-49 결과 : 양호(Good)" >> $TMP1
+        # Check if /etc/group exists
+        if os.path.exists("/etc/group"):
+            with open("/etc/group", "r") as group_file:
+                group_content = group_file.read()
+                if len(re.findall(pattern, group_content)) > 0:
+                    log_file.write("관리자 그룹(root)에 불필요한 계정이 등록되어 있습니다.\n")
+                    return
+            log_file.write("※ U-50 결과 : 양호(Good)\n")
 
-if [ -f /etc/group ]; then
-		# !!! 불필요한 계정에 대한 변경은 하단의 grep 명령어를 수정하세요.
-		if [ `awk -F : '$1=="root" {gsub(" ", "", $0); print $4}' /etc/group | awk '{gsub(",","\n",$0); print}' | grep -wE 'daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp' | wc -l` -gt 0 ]; then
-			WARN " 관리자 그룹(root)에 불필요한 계정이 등록되어 있습니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-50 결과 : 양호(Good)" >> $TMP1
+        print(open(tmp1).read())
 
-cat $result
-
-echo ; echo
+# Execute the function
+check_accounts()

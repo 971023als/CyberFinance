@@ -1,37 +1,37 @@
-#!/bin/bash
+import subprocess
+import os
+import stat
 
-. function.sh
+def bar():
+    print("=" * 40)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def check_c_compiler_permissions():
+    tmp1 = "scriptname.log"
+    with open(tmp1, "w") as result:
+        bar()
 
-BAR
-
-CODE [SRV-087] C 컴파일러 존재 및 권한 설정 미흡
-
-cat << EOF >> $result
+        header = """
 [양호]: C 컴파일러가 존재하지 않거나, 적절한 권한으로 설정된 경우
 [취약]: C 컴파일러가 존재하며 권한 설정이 미흡한 경우
-EOF
+"""
+        result.write(header)
+        bar()
 
-BAR
+        try:
+            # Check for gcc compiler path
+            compiler_path = subprocess.check_output(["which", "gcc"], text=True).strip()
+            if compiler_path:
+                # Check compiler permissions
+                compiler_perms = os.stat(compiler_path).st_mode
+                if compiler_perms & 0o777 <= 0o755:
+                    result.write(f"OK: C 컴파일러(gcc)의 권한이 적절합니다. 권한: {oct(compiler_perms)[-3:]}\n")
+                else:
+                    result.write(f"WARN: C 컴파일러(gcc)의 권한이 부적절합니다. 권한: {oct(compiler_perms)[-3:]}\n")
+        except subprocess.CalledProcessError:
+            # gcc not found
+            result.write("OK: C 컴파일러(gcc)가 시스템에 설치되어 있지 않습니다.\n")
 
-# C 컴파일러 위치 확인
-COMPILER_PATH=$(which gcc)
+    with open(tmp1, "r") as file:
+        print(file.read())
 
-# 컴파일러 존재 여부 및 권한 확인
-if [ -z "$COMPILER_PATH" ]; then
-  OK "C 컴파일러(gcc)가 시스템에 설치되어 있지 않습니다."
-else
-  # 권한 확인
-  COMPILER_PERMS=$(stat -c "%a" "$COMPILER_PATH")
-  if [ "$COMPILER_PERMS" -le "755" ]; then
-    OK "C 컴파일러(gcc)의 권한이 적절합니다. 권한: $COMPILER_PERMS"
-  else
-    WARN "C 컴파일러(gcc)의 권한이 부적절합니다. 권한: $COMPILER_PERMS"
-  fi
-fi
-
-cat $result
-
-echo ; echo
+check_c_compiler_permissions()

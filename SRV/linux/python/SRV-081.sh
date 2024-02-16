@@ -1,97 +1,71 @@
-#!/bin/bash
+import os
+import subprocess
 
-. function.sh
+def bar():
+    print("=" * 40)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def check_crontab_permissions():
+    tmp1 = "scriptname.log"
+    with open(tmp1, "w") as log_file:
+        bar()
 
-BAR
-
-CODE [SRV-081] Crontab 설정파일 권한 설정 미흡
-
-cat << EOF >> $TMP1
+        header = """
 [양호]: Crontab 설정파일의 권한이 적절히 설정된 경우
 [취약]: Crontab 설정파일의 권한이 적절히 설정되지 않은 경우
-EOF
+"""
+        log_file.write(header)
+        bar()
 
-BAR
+        # Default crontab paths plus the one found by `which crontab`
+        crontab_paths = ["/usr/bin/crontab", "/usr/sbin/crontab", "/bin/crontab"]
+        which_crontab_path = subprocess.getoutput("which crontab")
+        if which_crontab_path:
+            crontab_paths.append(which_crontab_path)
 
-crontab_path=("/usr/bin/crontab" "/usr/sbin/crontab" "/bin/crontab")
-	if [ `which crontab 2>/dev/null | wc -l` -gt 0 ]; then
-		crontab_path[${#crontab_path[@]}]=`which crontab 2>/dev/null`
-	fi
-	for ((i=0; i<${#crontab_path[@]}; i++))
-	do
-		if [ -f ${crontab_path[$i]} ]; then
-			crontab_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,2)}'` # group, owner 권한만 추출함
-			if [ $crontab_permission -le 50 ]; then
-				crontab_group_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-				if [ $crontab_group_permission -eq 5 ] || [ $crontab_group_permission -eq 4 ] || [ $crontab_group_permission -eq 1 ] || [ $crontab_group_permission -eq 0 ]; then
-					crontab_other_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-					if [ $crontab_other_permission -ne 0 ]; then
-						WARN " ${crontab_path[$i]} 명령어의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${crontab_path[$i]} 명령어의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${crontab_path[$i]} 명령어의 권한이 750보다 큽니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	cron_directory=("/etc/cron.hourly" "/etc/cron.daily" "/etc/cron.weekly" "/etc/cron.monthly" "/var/spool/cron" "/var/spool/cron/crontabs")
-	cron_file=("/etc/crontab" "/etc/cron.allow" "/etc/cron.deny")
-	for ((i=0; i<${#cron_directory[@]}; i++))
-	do
-		cron_file_count=`find ${cron_directory[$i]} -type f 2>/dev/null | wc -l`
-		if [ $cron_file_count -gt 0 ]; then
-			cron_file2=(`find ${cron_directory[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#cron_file2[@]}; j++))
-			do
-				cron_file[${#cron_file[@]}]=${cron_file2[$j]}
-			done
-		fi
-	done
-	for ((i=0; i<${#cron_file[@]}; i++))
-	do
-		if [ -f ${cron_file[$i]} ]; then
-			cron_file_owner_name=`ls -l ${cron_file[$i]} | awk '{print $3}'`
-			if [[ $cron_file_owner_name =~ root ]]; then
-				cron_file_permission=`stat ${cron_file[$i]}| grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,3)}'`
-				if [ $cron_file_permission -le 640 ]; then
-					cron_file_owner_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,1)}'`
-					if [ $cron_file_owner_permission -eq 6 ] || [ $cron_file_owner_permission -eq 4 ] || [ $cron_file_owner_permission -eq 2 ] || [ $cron_file_owner_permission -eq 0 ]; then
-						cron_file_group_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-						if [ $cron_file_group_permission -eq 4 ] || [ $cron_file_group_permission -eq 0 ]; then
-							cron_file_other_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-							if [ $cron_file_other_permission -ne 0 ]; then
-								WARN " ${cron_file[$i]} 파일의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-								return 0
-							fi
-						else
-							WARN " ${cron_file[$i]} 파일의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-							return 0
-						fi
-					else
-						WARN " ${cron_file[$i]} 파일의 사용자(owner)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${cron_file[$i]} 파일의 권한이 640보다 큽니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${cron_file[$i]} 파일의 소유자(owner)가 root가 아닙니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	OK "※ U-22 결과 : 양호(Good)" >> $TMP1
-	return 0
+        # Check permissions for crontab command files
+        for path in crontab_paths:
+            if os.path.isfile(path):
+                stat_result = os.stat(path)
+                mode = stat_result.st_mode
+                if not (mode & 0o207):  # Checks if 'other' has no permissions
+                    if not (mode & 0o7070):  # Checks if 'group' has restricted permissions
+                        log_file.write(f"OK: {path} has secure permissions.\n")
+                    else:
+                        log_file.write(f"WARNING: {path} has insecure group permissions.\n")
+                else:
+                    log_file.write(f"WARNING: {path} has insecure permissions.\n")
 
-cat $TMP1
+        # Directories and files to check
+        cron_directories = ["/etc/cron.hourly", "/etc/cron.daily", "/etc/cron.weekly", "/etc/cron.monthly", "/var/spool/cron", "/var/spool/cron/crontabs"]
+        cron_files = ["/etc/crontab", "/etc/cron.allow", "/etc/cron.deny"]
 
-echo ; echo
+        # Find files in cron directories
+        for directory in cron_directories:
+            if os.path.isdir(directory):
+                for root, dirs, files in os.walk(directory):
+                    for name in files:
+                        cron_files.append(os.path.join(root, name))
+
+        # Check permissions for cron files
+        for cron_file in cron_files:
+            if os.path.isfile(cron_file):
+                stat_result = os.stat(cron_file)
+                owner = stat_result.st_uid
+                mode = stat_result.st_mode
+                if owner == 0:  # Checks if owner is root
+                    if not (mode & 0o22):  # Checks if 'other' has no write permission
+                        if not (mode & 0o220):  # Checks if 'group' has restricted permissions
+                            log_file.write(f"OK: {cron_file} has secure permissions.\n")
+                        else:
+                            log_file.write(f"WARNING: {cron_file} has insecure group permissions.\n")
+                    else:
+                        log_file.write(f"WARNING: {cron_file} has insecure permissions.\n")
+                else:
+                    log_file.write(f"WARNING: {cron_file} is not owned by root.\n")
+
+        log_file.write("※ U-22 결과 : 양호(Good)\n")
+
+    with open(tmp1, "r") as file:
+        print(file.read())
+
+check_crontab_permissions()

@@ -1,41 +1,40 @@
-#!/bin/bash
+import os
+import stat
 
-. function.sh
+def bar():
+    print("=" * 40)
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def check_startup_script_permissions():
+    tmp1 = "scriptname.log"
+    with open(tmp1, "w") as result:
+        bar()
 
-BAR
-
-CODE [SRV-083] 시스템 스타트업 스크립트 권한 설정 미흡
-
-cat << EOF >> $result
+        header = """
 [양호]: 시스템 스타트업 스크립트의 권한이 적절히 설정된 경우
 [취약]: 시스템 스타트업 스크립트의 권한이 적절히 설정되지 않은 경우
-EOF
+"""
+        result.write(header)
+        bar()
 
-BAR
+        # Directories to check for startup scripts
+        startup_dirs = ["/etc/init.d", "/etc/rc.d", "/etc/systemd", "/usr/lib/systemd"]
 
-# 시스템 스타트업 스크립트 디렉터리 목록
-STARTUP_DIRS=("/etc/init.d" "/etc/rc.d" "/etc/systemd" "/usr/lib/systemd")
+        for dir_path in startup_dirs:
+            if os.path.isdir(dir_path):
+                for root, dirs, files in os.walk(dir_path):
+                    for file in files:
+                        if file.endswith(".sh") or file.endswith(".service"):
+                            file_path = os.path.join(root, file)
+                            file_stat = os.stat(file_path)
+                            permissions = oct(file_stat.st_mode)[-3:]
+                            if int(permissions, 8) <= 0o755:
+                                result.write(f"OK: {file_path} 스크립트의 권한이 적절합니다. (권한: {permissions})\n")
+                            else:
+                                result.write(f"WARN: {file_path} 스크립트의 권한이 적절하지 않습니다. (권한: {permissions})\n")
+            else:
+                result.write(f"INFO: {dir_path} 디렉터리가 존재하지 않습니다.\n")
 
-# 각 스타트업 스크립트의 권한 확인
-for dir in "${STARTUP_DIRS[@]}"; do
-  if [ -d "$dir" ]; then
-    scripts=$(find "$dir" -type f -name "*.sh" -o -name "*.service")
-    for script in $scripts; do
-      permissions=$(stat -c "%a" "$script")
-      if [ "$permissions" -le "755" ]; then
-        OK "$script 스크립트의 권한이 적절합니다. (권한: $permissions)"
-      else
-        WARN "$script 스크립트의 권한이 적절하지 않습니다. (권한: $permissions)"
-      fi
-    done
-  else
-    INFO "$dir 디렉터리가 존재하지 않습니다."
-  fi
-done
+    with open(tmp1, "r") as file:
+        print(file.read())
 
-cat $result
-
-echo ; echo
+check_startup_script_permissions()

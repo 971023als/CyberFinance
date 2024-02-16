@@ -1,52 +1,57 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+# 파일 이름 설정 및 초기화
+script_name = "SCRIPTNAME"  # 실제 스크립트 이름으로 변경해야 합니다.
+tmp1 = f"{script_name}.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+def bar():
+    print("-" * 40)
 
-BAR
+def check_files_without_owner_or_group():
+    """소유자나 그룹이 존재하지 않는 파일 또는 디렉터리를 확인합니다."""
+    command = ['find', '/', '(', '-nouser', '-o', '-nogroup', ')']
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    return len(result.stdout.splitlines())
 
-CODE [SRV-095] 존재하지 않는 소유자 및 그룹 권한을 가진 파일 또는 디렉터리 존재
+def check_files_in_dev():
+    """/dev 디렉터리 내의 일반 파일을 확인합니다."""
+    command = ['find', '/dev', '-type', 'f']
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    return len(result.stdout.splitlines())
 
-cat << EOF >> $result
-[양호]: 시스템에 존재하지 않는 소유자나 그룹 권한을 가진 파일 또는 디렉터리가 없는 경우
-[취약]: 시스템에 존재하지 않는 소유자나 그룹 권한을 가진 파일 또는 디렉터리가 있는 경우
-EOF
+def check_home_directories():
+    """홈 디렉터리가 적절히 설정되지 않은 계정을 확인합니다."""
+    with open("/etc/passwd", "r") as passwd_file:
+        lines = passwd_file.readlines()
+    
+    homedirectory_null_count = sum(1 for line in lines if line.split(":")[6].strip() not in ["/bin/false", "/sbin/nologin"] and line.split(":")[5] == "")
+    homedirectory_slash_count = sum(1 for line in lines if line.split(":")[6].strip() not in ["/bin/false", "/sbin/nologin"] and line.split(":")[0] != "root" and line.split(":")[5] == "/")
+    
+    return homedirectory_null_count, homedirectory_slash_count
 
-BAR
+def main():
+    bar()
+    print("[SRV-095] 존재하지 않는 소유자 및 그룹 권한을 가진 파일 또는 디렉터리 존재")
+    bar()
+    
+    with open(tmp1, 'w') as file:
+        if check_files_without_owner_or_group() > 0:
+            file.write("WARN: 소유자가 존재하지 않는 파일 및 디렉터리가 존재합니다.\n")
+        else:
+            file.write("OK: ※ U-06 결과 : 양호(Good)\n")
+        
+        if check_files_in_dev() > 0:
+            file.write("WARN: /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다.\n")
+        else:
+            file.write("OK: ※ U-16 결과 : 양호(Good)\n")
+        
+        homedirectory_null_count, homedirectory_slash_count = check_home_directories()
+        if homedirectory_null_count > 0:
+            file.write("WARN: 홈 디렉터리가 존재하지 않는 계정이 있습니다.\n")
+        elif homedirectory_slash_count > 0:
+            file.write("WARN: 관리자 계정(root)이 아닌데 홈 디렉터리가 '/'로 설정된 계정이 있습니다.\n")
+        else:
+            file.write("OK: ※ U-58 결과 : 양호(Good)\n")
 
-if [ `find / \( -nouser -or -nogroup \) 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " 소유자가 존재하지 않는 파일 및 디렉터리가 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-06 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-if [ `find /dev -type f 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-16 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-homedirectory_null_count=`awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" && $6==null' /etc/passwd | wc -l`
-	if [ $homedirectory_null_count -gt 0 ]; then
-		WARN " 홈 디렉터리가 존재하지 않는 계정이 있습니다." >> $TMP1
-		return 0
-	else
-		homedirectory_slash_count=`awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" && $1!="root" && $6=="/"' /etc/passwd | wc -l`
-		if [ $homedirectory_slash_count -gt 0 ]; then
-			WARN " 관리자 계정(root)이 아닌데 홈 디렉터리가 '/'로 설정된 계정이 있습니다." >> $TMP1
-			return 0
-		else
-			OK "※ U-58 결과 : 양호(Good)" >> $TMP1
-			return 0
-		fi
-	fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    main()
