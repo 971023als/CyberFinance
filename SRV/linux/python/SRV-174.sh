@@ -1,30 +1,18 @@
-#!/bin/bash
+import subprocess
 
-. function.sh
+def check_dns_service_status(service_name="named"):
+    try:
+        # DNS 서비스 상태 확인
+        result = subprocess.run(['systemctl', 'is-active', service_name], stdout=subprocess.PIPE, text=True)
+        service_status = result.stdout.strip()
+        
+        if service_status == "active":
+            print("WARN: DNS 서비스({})가 활성화되어 있습니다.".format(service_name))
+        else:
+            print("OK: DNS 서비스({})가 비활성화되어 있습니다.".format(service_name))
+            
+    except subprocess.CalledProcessError as e:
+        print("ERROR: DNS 서비스 상태 확인 중 오류가 발생했습니다. (에러코드: {})".format(e.returncode))
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-174] 불필요한 DNS 서비스 실행
-
-cat << EOF >> $result
-[양호]: DNS 서비스가 비활성화되어 있는 경우
-[취약]: DNS 서비스가 활성화되어 있는 경우
-EOF
-
-BAR
-
-# DNS 서비스 상태 확인 (named 서비스 예시)
-dns_service_status=$(systemctl is-active named)
-
-if [ "$dns_service_status" == "active" ]; then
-    WARN "DNS 서비스(named)가 활성화되어 있습니다."
-else
-    OK "DNS 서비스(named)가 비활성화되어 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    check_dns_service_status()

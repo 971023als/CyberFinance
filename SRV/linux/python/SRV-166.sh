@@ -1,31 +1,25 @@
-#!/bin/bash
+import os
 
-. function.sh
+def check_hidden_files_and_dirs():
+    hidden_files = []
+    hidden_dirs = []
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+    for root, dirs, files in os.walk("/"):
+        for name in files:
+            if name.startswith("."):
+                hidden_files.append(os.path.join(root, name))
+        for name in dirs:
+            if name.startswith("."):
+                hidden_dirs.append(os.path.join(root, name))
 
-BAR
+    if hidden_files or hidden_dirs:
+        print("WARN: 다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다:")
+        for file in hidden_files:
+            print(f"파일: {file}")
+        for dir in hidden_dirs:
+            print(f"디렉터리: {dir}")
+    else:
+        print("OK: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다.")
 
-CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
-
-cat << EOF >> $result
-[양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
-[취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
-EOF
-
-BAR
-
-# 시스템에서 숨김 파일 및 디렉터리 검색
-hidden_files=$(find / -name ".*" -type f)
-hidden_dirs=$(find / -name ".*" -type d)
-
-if [ -z "$hidden_files" ] && [ -z "$hidden_dirs" ]; then
-    OK "불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다."
-else
-    WARN "다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: $hidden_files $hidden_dirs"
-fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    check_hidden_files_and_dirs()

@@ -1,31 +1,21 @@
-#!/bin/bash
+def check_unnecessary_shell_accounts():
+    with open("/etc/passwd", "r") as passwd_file:
+        accounts = passwd_file.readlines()
 
-. function.sh
+    unnecessary_shells = ["/bin/false", "/sbin/nologin"]
+    warning_accounts = []
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+    for account in accounts:
+        fields = account.strip().split(":")
+        if fields[0] in ["daemon", "bin", "sys", "adm", "listen", "nobody", "nobody4", "noaccess", "diag", "operator", "gopher", "games", "ftp", "apache", "httpd", "www-data", "mysql", "mariadb", "postgres", "mail", "postfix", "news", "lp", "uucp", "nuucp"] and fields[-1] not in unnecessary_shells:
+            warning_accounts.append(account)
 
-BAR
+    if warning_accounts:
+        print("WARN: 로그인이 필요하지 않은 불필요한 계정에 /bin/false 또는 /sbin/nologin 쉘이 부여되지 않았습니다.")
+        for account in warning_accounts:
+            print(account.strip())
+    else:
+        print("OK: 불필요하게 Shell이 부여된 계정이 존재하지 않습니다.")
 
-CODE [SRV-165] 불필요하게 Shell이 부여된 계정 존재
-
-cat << EOF >> $TMP1
-[양호]: 불필요하게 Shell이 부여된 계정이 존재하지 않는 경우
-[취약]: 불필요하게 Shell이 부여된 계정이 존재하는 경우
-EOF
-
-BAR
-
-if [ -f /etc/passwd ]; then
-		# !!! 불필요한 계정에 대한 변경은 하단의 grep 명령어를 수정하세요.
-		if [ `grep -E '^(daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp):' /etc/passwd | awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" {print}' | wc -l` -gt 0 ]; then
-			WARN " 로그인이 필요하지 않은 불필요한 계정에 /bin/false 또는 /sbin/nologin 쉘이 부여되지 않았습니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-53 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
-
-echo ; echo
+if __name__ == "__main__":
+    check_unnecessary_shell_accounts()

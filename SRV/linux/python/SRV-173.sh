@@ -1,36 +1,17 @@
-#!/bin/bash
+def check_dns_dynamic_updates(dns_config_path="/etc/bind/named.conf"):
+    try:
+        with open(dns_config_path, 'r') as dns_config_file:
+            dns_config_contents = dns_config_file.read()
+            
+            # 동적 업데이트 설정 확인
+            if "allow-update" in dns_config_contents:
+                dynamic_updates = [line.strip() for line in dns_config_contents.split('\n') if "allow-update" in line]
+                print("WARN: DNS 동적 업데이트 설정이 취약합니다:", dynamic_updates)
+            else:
+                print("OK: DNS 동적 업데이트가 안전하게 구성되어 있습니다.")
+                
+    except FileNotFoundError:
+        print("INFO: DNS 설정 파일이 존재하지 않습니다.")
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-173] DNS 서비스의 취약한 동적 업데이트 설정
-
-cat << EOF >> $result
-[양호]: DNS 동적 업데이트가 안전하게 구성된 경우
-[취약]: DNS 동적 업데이트가 취약하게 구성된 경우
-EOF
-
-BAR
-
-# DNS 설정 파일 경로
-dns_config="/etc/bind/named.conf"
-
-# 동적 업데이트 설정 확인
-if [ -f "$dns_config" ]; then
-    dynamic_updates=$(grep "allow-update" "$dns_config")
-    if [ -z "$dynamic_updates" ]; then
-        OK "DNS 동적 업데이트가 안전하게 구성되어 있습니다."
-    else
-        WARN "DNS 동적 업데이트 설정이 취약합니다: $dynamic_updates"
-    fi
-else
-    INFO "DNS 설정 파일이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+if __name__ == "__main__":
+    check_dns_dynamic_updates()
