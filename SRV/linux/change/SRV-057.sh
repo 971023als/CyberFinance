@@ -7,28 +7,22 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-057] 웹 서비스 경로 내 파일의 접근 통제 미흡
-
-cat << EOF >> $result
-[양호]: 웹 서비스 경로 내 파일의 접근 권한이 적절하게 설정된 경우
-[취약]: 웹 서비스 경로 내 파일의 접근 권한이 적절하게 설정되지 않은 경우
-EOF
-
-BAR
+echo "[SRV-057] 웹 서비스 경로 내 파일의 접근 통제 조치" >> $TMP1
 
 # 웹 서비스 경로 설정
 WEB_SERVICE_PATH="/var/www/html" # 실제 경로에 맞게 조정하세요.
 
-# 웹 서비스 경로 내 파일 접근 권한 확인
-# 예: 파일 권한이 755 이상으로 설정되어 있는지 확인
-incorrect_permissions=$(find "$WEB_SERVICE_PATH" -type f ! -perm -755)
+# 웹 서비스 경로 내 파일 접근 권한 설정
+# 모든 파일에 대해 755 권한 설정
+find "$WEB_SERVICE_PATH" -type f -exec chmod 755 {} \;
 
-if [ -n "$incorrect_permissions" ]; then
-    WARN "웹 서비스 경로 내에 부적절한 파일 권한이 있습니다."
-else
-    OK "웹 서비스 경로 내의 모든 파일의 권한이 적절하게 설정되어 있습니다."
-fi
+# 모든 디렉토리에 대해 755 권한 설정
+find "$WEB_SERVICE_PATH" -type d -exec chmod 755 {} \;
 
-cat $result
+echo "웹 서비스 경로($WEB_SERVICE_PATH) 내의 모든 파일 및 디렉토리의 권한을 755으로 설정했습니다." >> $TMP1
+
+BAR
+
+cat "$TMP1"
 
 echo ; echo
