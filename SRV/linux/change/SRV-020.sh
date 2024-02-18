@@ -7,62 +7,33 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-020] 공유에 대한 접근 통제 미비
+echo "[SRV-020] 공유에 대한 접근 통제 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: NFS 또는 SMB/CIFS 공유에 대한 접근 통제가 적절하게 설정된 경우
-[취약]: NFS 또는 SMB/CIFS 공유에 대한 접근 통제가 미비한 경우
-EOF
+# NFS 공유 접근 통제 강화
+NFS_EXPORTS_FILE="/etc/exports"
+if [ -f "$NFS_EXPORTS_FILE" ]; then
+    # 'everyone' 또는 'public' 설정 제거 (예시)
+    sed -i '/everyone/d' "$NFS_EXPORTS_FILE"
+    sed -i '/public/d' "$NFS_EXPORTS_FILE"
+    echo "NFS 서비스에서 공유 접근 통제를 강화하였습니다: $NFS_EXPORTS_FILE" >> $TMP1
+else
+    echo "NFS 서비스 설정 파일($NFS_EXPORTS_FILE)을 찾을 수 없습니다." >> $TMP1
+fi
+
+# SMB/CIFS 공유 접근 통제 강화
+SMB_CONF_FILE="/etc/samba/smb.conf"
+if [ -f "$SMB_CONF_FILE" ]; then
+    # 'guest ok = yes' 설정을 'no'로 변경 (예시)
+    sed -i 's/guest ok = yes/guest ok = no/g' "$SMB_CONF_FILE"
+    # 'public = yes' 설정을 'no'로 변경 (예시)
+    sed -i 's/public = yes/public = no/g' "$SMB_CONF_FILE"
+    echo "SMB/CIFS 서비스에서 공유 접근 통제를 강화하였습니다: $SMB_CONF_FILE" >> $TMP1
+else
+    echo "SMB/CIFS 서비스 설정 파일($SMB_CONF_FILE)을 찾을 수 없습니다." >> $TMP1
+fi
 
 BAR
 
-# NFS와 SMB/CIFS 설정 파일을 확인합니다.
-NFS_EXPORTS_FILE="/etc/exports"
-SMB_CONF_FILE="/etc/samba/smb.conf"
+cat "$TMP1"
 
-check_access_control() {
-  file=$1
-  service_name=$2
-
-  if [ -f "$file" ]; then
-    # 공유 설정에 'everyone' 또는 비슷한 느슨한 설정이 있는지 확인합니다.
-    if grep -E "everyone|public" "$file"; then
-      WARN "$service_name 서비스에서 느슨한 공유 접근 통제가 발견됨: $file"
-    else
-      OK "$service_name 서비스에서 공유 접근 통제가 적절함: $file"
-    fi
-  else
-    INFO "$service_name 서비스 설정 파일($file)을 찾을 수 없습니다."
-  fi
-}
-
-check_nfs_shares() {
-  # NFS 공유 목록을 확인합니다.
-  showmount -e localhost > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-    WARN "NFS 서비스에서 공유 목록이 발견됨"
-    showmount -e localhost
-  else
-    OK "NFS 서비스에서 공유 목록이 발견되지 않음"
-  fi
-}
-
-check_smb_shares() {
-  # Samba 공유 목록을 확인합니다.
-  smbclient -L localhost -N > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-    WARN "SMB/CIFS 서비스에서 공유 목록이 발견됨"
-    smbclient -L localhost -N
-  else
-    OK "SMB/CIFS 서비스에서 공유 목록이 발견되지 않음"
-  fi
-}
-
-check_access_control "$NFS_EXPORTS_FILE" "NFS"
-check_access_control "$SMB_CONF_FILE" "SMB/CIFS"
-check_nfs_shares
-check_smb_shares
-
-cat $result
-
-echo ; echo
+echo

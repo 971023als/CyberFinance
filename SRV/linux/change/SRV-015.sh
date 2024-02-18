@@ -7,23 +7,22 @@ TMP1=$(basename "$0").log
 
 BAR
 
-CODE [SRV-015] 불필요한 NFS 서비스 실행
+echo "[SRV-015] 불필요한 NFS 서비스 실행 조치" >> $TMP1
 
-cat << EOF >> $TMP1
-[양호]: 불필요한 NFS 서비스 관련 데몬이 비활성화 되어 있는 경우
-[취약]: 불필요한 NFS 서비스 관련 데몬이 활성화 되어 있는 경우
-EOF
+# NFS 서비스 관련 데몬 비활성화
+systemctl is-active --quiet nfs-server && systemctl stop nfs-server && systemctl disable nfs-server
+systemctl is-active --quiet rpcbind && systemctl stop rpcbind && systemctl disable rpcbind
+systemctl is-active --quiet rpc-statd && systemctl stop rpc-statd && systemctl disable rpc-statd
+systemctl is-active --quiet nfs-lock && systemctl stop nfs-lock && systemctl disable nfs-lock
+systemctl is-active --quiet rpc-idmapd && systemctl stop rpc-idmapd && systemctl disable rpc-idmapd
+
+if [ $? -eq 0 ]; then
+    OK "불필요한 NFS 서비스 관련 데몬을 비활성화하였습니다." >> $TMP1
+else
+    WARN "불필요한 NFS 서비스 관련 데몬 비활성화에 실패하였습니다. 수동 조치가 필요합니다." >> $TMP1
+fi
 
 BAR
 
-if [ `ps -ef | grep -iE 'nfs|rpc.statd|statd|rpc.lockd|lockd' | grep -ivE 'grep|kblockd|rstatd|' | wc -l` -gt 0 ]; then
-		WARN " 불필요한 NFS 서비스 관련 데몬이 실행 중입니다." >> $TMP1
-		return 0
-	else
-		OK "불필요한 NFS 서비스 관련 데몬이 비활성화" >> $TMP1
-		return 0
-	fi
-
-cat $result
-
+cat $TMP1
 echo ; echo

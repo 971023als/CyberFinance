@@ -7,36 +7,17 @@ TMP1=$(basename "$0").log
 
 BAR
 
-CODE [SRV-022] 계정의 비밀번호 미설정, 빈 암호 사용 관리 미흡
+echo "[SRV-022] 계정의 비밀번호 설정 및 빈 암호 사용 관리 조치" >> $TMP1
 
-cat << EOF >> $TMP1
-[양호]: 모든 계정에 비밀번호가 설정되어 있고 빈 비밀번호를 사용하는 계정이 없는 경우
-[취약]: 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 있는 경우
-EOF
-
-BAR
-
-"CODE [SRV-022] 계정의 비밀번호 미설정, 빈 암호 사용 관리 미흡" >> $TMP1
-
-# /etc/shadow 파일을 확인하여 빈 비밀번호가 설정된 계정을 찾습니다.
-empty_passwords=0
+# /etc/shadow 파일을 확인하여 빈 비밀번호가 설정된 계정을 찾고, 비밀번호를 설정합니다.
 while IFS=: read -r user enc_passwd rest; do
-    if [[ "$enc_passwd" == "" ]]; then
-        echo "WARN 비밀번호가 설정되지 않은 계정: $user" >> $TMP1
-        empty_passwords=$((empty_passwords + 1))
-    elif [[ "$enc_passwd" == "!" || "$enc_passwd" == "*" ]]; then
-        echo "OK 비밀번호가 잠긴 계정: $user" >> $TMP1
-    else
-        echo "OK 비밀번호가 설정된 계정: $user" >> $TMP1
+    if [[ "$enc_passwd" == "" || "$enc_passwd" == "!" || "$enc_passwd" == "*" ]]; then
+        # 비밀번호를 설정하는 명령어 예시: passwd $user
+        # 실제 사용 시에는 안전한 방법으로 비밀번호를 설정하거나 관리자에게 알림을 보내야 합니다.
+        echo "WARN: $user 계정에 비밀번호가 설정되지 않았습니다. 관리자가 비밀번호를 설정해야 합니다." >> $TMP1
+        # passwd --lock $user # 계정 잠금을 해제하고 비밀번호를 설정하려면 이 주석을 해제하고 적절한 비밀번호 설정 명령을 추가하세요.
     fi
 done < /etc/shadow
-
-# 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 있는지 확인합니다.
-if [ $empty_passwords -gt 0 ]; then
-    echo "[결과] 취약: 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 존재합니다." >> $TMP1
-else
-    echo "[결과] 양호: 모든 계정에 비밀번호가 설정되어 있고 빈 비밀번호를 사용하는 계정이 없습니다." >> $TMP1
-fi
 
 BAR
 

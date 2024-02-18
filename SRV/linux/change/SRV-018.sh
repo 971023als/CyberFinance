@@ -7,36 +7,27 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-018] 불필요한 하드디스크 기본 공유 활성화
+echo "[SRV-018] 불필요한 하드디스크 기본 공유 비활성화 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: NFS 또는 SMB/CIFS의 불필요한 하드디스크 공유가 비활성화된 경우
-[취약]: NFS 또는 SMB/CIFS에서 불필요한 하드디스크 기본 공유가 활성화된 경우
-EOF
+# NFS 공유 비활성화
+NFS_EXPORTS_FILE="/etc/exports"
+if [ -f "$NFS_EXPORTS_FILE" ]; then
+    sed -i '/^\s*\/.*$/d' "$NFS_EXPORTS_FILE"
+    echo "NFS 서비스에서 불필요한 공유를 비활성화하였습니다: $NFS_EXPORTS_FILE" >> $TMP1
+else
+    echo "NFS 서비스 설정 파일($NFS_EXPORTS_FILE)을 찾을 수 없습니다." >> $TMP1
+fi
+
+# SMB/CIFS 공유 비활성화
+SMB_CONF_FILE="/etc/samba/smb.conf"
+if [ -f "$SMB_CONF_FILE" ]; then
+    sed -i '/^\s*\[.*\]$/,/^\s*path\s*=/ s/^/#/' "$SMB_CONF_FILE"
+    echo "SMB/CIFS 서비스에서 불필요한 공유를 비활성화하였습니다: $SMB_CONF_FILE" >> $TMP1
+else
+    echo "SMB/CIFS 서비스 설정 파일($SMB_CONF_FILE)을 찾을 수 없습니다." >> $TMP1
+fi
 
 BAR
-
-# NFS와 SMB/CIFS 설정 파일을 확인합니다.
-NFS_EXPORTS_FILE="/etc/exports"
-SMB_CONF_FILE="/etc/samba/smb.conf"
-
-check_share_activation() {
-  file=$1
-  service_name=$2
-
-  if [ -f "$file" ]; then
-    if grep -E "^\s*\/" "$file" > /dev/null; then
-      WARN "$service_name 서비스에서 불필요한 공유가 활성화되어 있습니다: $file"
-    else
-      OK "$service_name 서비스에서 불필요한 공유가 비활성화되어 있습니다: $file"
-    fi
-  else
-    INFO "$service_name 서비스 설정 파일($file)을 찾을 수 없습니다."
-  fi
-}
-
-check_share_activation "$NFS_EXPORTS_FILE" "NFS"
-check_share_activation "$SMB_CONF_FILE" "SMB/CIFS"
 
 cat "$TMP1"
 
