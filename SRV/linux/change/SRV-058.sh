@@ -4,31 +4,37 @@
 
 BAR
 
-CODE [SRV-058] 웹 서비스의 불필요한 스크립트 매핑 존재
+echo "웹 서비스의 불필요한 스크립트 매핑 제거 조치" >> $result
 
-cat << EOF >> $result
-[양호]: 웹 서비스에서 불필요한 스크립트 매핑이 존재하지 않는 경우
-[취약]: 웹 서비스에서 불필요한 스크립트 매핑이 존재하는 경우
-EOF
-
-BAR
-
-# Apache 또는 Nginx 웹 서비스의 스크립트 매핑 설정 확인
+# Apache 설정 파일 경로
 APACHE_CONFIG_FILE="/etc/apache2/apache2.conf"
+# Nginx 설정 파일 경로
 NGINX_CONFIG_FILE="/etc/nginx/nginx.conf"
 
-# Apache에서 스크립트 매핑 설정 확인
-if grep -E "AddHandler|AddType" "$APACHE_CONFIG_FILE"; then
-    WARN "Apache에서 불필요한 스크립트 매핑이 발견됨: $APACHE_CONFIG_FILE"
-else
-    OK "Apache에서 불필요한 스크립트 매핑이 발견되지 않음: $APACHE_CONFIG_FILE"
+# Apache에서 불필요한 스크립트 매핑 제거
+if [ -f "$APACHE_CONFIG_FILE" ]; then
+    # AddHandler 및 AddType 지시어 제거
+    sed -i '/AddHandler/d' "$APACHE_CONFIG_FILE"
+    sed -i '/AddType/d' "$APACHE_CONFIG_FILE"
+    echo "Apache 설정에서 불필요한 스크립트 매핑을 제거했습니다: $APACHE_CONFIG_FILE" >> $result
 fi
 
-# Nginx에서 스크립트 매핑 설정 확인
-if grep -E "location ~ \.php$" "$NGINX_CONFIG_FILE"; then
-    WARN "Nginx에서 불필요한 PHP 스크립트 매핑이 발견됨: $NGINX_CONFIG_FILE"
-else
-    OK "Nginx에서 불필요한 PHP 스크립트 매핑이 발견되지 않음: $NGINX_CONFIG_FILE"
+# Nginx에서 불필요한 PHP 스크립트 매핑 제거
+if [ -f "$NGINX_CONFIG_FILE" ]; then
+    # PHP 스크립트 매핑이 포함된 location 블록 제거
+    # 주의: 이 조치는 PHP 처리가 필요하지 않은 경우에만 적용해야 합니다.
+    sed -i '/location ~ \.php$/{N;N;N;N;d;}' "$NGINX_CONFIG_FILE"
+    echo "Nginx 설정에서 불필요한 PHP 스크립트 매핑을 제거했습니다: $NGINX_CONFIG_FILE" >> $result
+fi
+
+# 서비스 재시작
+if systemctl is-active --quiet apache2; then
+    systemctl restart apache2
+    echo "Apache 서비스를 재시작했습니다." >> $result
+fi
+if systemctl is-active --quiet nginx; then
+    systemctl restart nginx
+    echo "Nginx 서비스를 재시작했습니다." >> $result
 fi
 
 cat $result

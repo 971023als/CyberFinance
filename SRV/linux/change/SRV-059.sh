@@ -7,33 +7,40 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-059] 웹 서비스 서버 명령 실행 기능 제한 설정 미흡
+echo "[SRV-059] 웹 서비스 서버 명령 실행 기능 제한 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: 웹 서비스에서 서버 명령 실행 기능이 적절하게 제한된 경우
-[취약]: 웹 서비스에서 서버 명령 실행 기능의 제한이 미흡한 경우
-EOF
+# Apache 설정 파일 경로
+APACHE_CONFIG_FILE="/etc/apache2/apache2.conf"
+# Nginx 설정 파일 경로
+NGINX_CONFIG_FILE="/etc/nginx/nginx.conf"
+
+# Apache에서 서버 명령 실행 제한 설정
+if [ -f "$APACHE_CONFIG_FILE" ]; then
+    # ScriptAlias 지시어 제거
+    sed -i '/ScriptAlias/d' "$APACHE_CONFIG_FILE"
+    echo "Apache 설정에서 ScriptAlias를 제거하여 서버 명령 실행을 제한했습니다: $APACHE_CONFIG_FILE" >> $TMP1
+fi
+
+# Nginx에서 FastCGI 스크립트 실행 제한 설정
+if [ -f "$NGINX_CONFIG_FILE" ]; then
+    # fastcgi_pass 지시어가 포함된 블록을 주석 처리
+    # 주의: 이 조치는 FastCGI를 사용하는 유효한 애플리케이션이 없는 경우에만 적용해야 합니다.
+    sed -i '/fastcgi_pass/s/^/#/' "$NGINX_CONFIG_FILE"
+    echo "Nginx 설정에서 fastcgi_pass를 주석 처리하여 FastCGI를 통한 서버 명령 실행을 제한했습니다: $NGINX_CONFIG_FILE" >> $TMP1
+fi
+
+# 서비스 재시작
+if systemctl is-active --quiet apache2; then
+    systemctl restart apache2
+    echo "Apache 서비스를 재시작했습니다." >> $TMP1
+fi
+if systemctl is-active --quiet nginx; then
+    systemctl restart nginx
+    echo "Nginx 서비스를 재시작했습니다." >> $TMP1
+fi
 
 BAR
 
-# Apache 또는 Nginx 웹 서비스의 서버 명령 실행 제한 설정 확인
-APACHE_CONFIG_FILE="/etc/apache2/apache2.conf"
-NGINX_CONFIG_FILE="/etc/nginx/nginx.conf"
-
-# Apache에서 서버 명령 실행 제한 확인
-if grep -E "^[ \t]*ScriptAlias" "$APACHE_CONFIG_FILE"; then
-    WARN "Apache에서 서버 명령 실행이 허용될 수 있습니다: $APACHE_CONFIG_FILE"
-else
-    OK "Apache에서 서버 명령 실행 기능이 적절하게 제한됩니다: $APACHE_CONFIG_FILE"
-fi
-
-# Nginx에서 FastCGI 스크립트 실행 제한 확인
-if grep -E "fastcgi_pass" "$NGINX_CONFIG_FILE"; then
-    WARN "Nginx에서 FastCGI를 통한 서버 명령 실행이 허용될 수 있습니다: $NGINX_CONFIG_FILE"
-else
-    OK "Nginx에서 FastCGI를 통한 서버 명령 실행 기능이 적절하게 제한됩니다: $NGINX_CONFIG_FILE"
-fi
-
-cat $result
+cat "$TMP1"
 
 echo ; echo
