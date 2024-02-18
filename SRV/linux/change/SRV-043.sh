@@ -7,48 +7,36 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-043] 웹 서비스 경로 내 불필요한 파일 존재
+echo "[SRV-043] 웹 서비스 경로 내 불필요한 파일 제거 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: 웹 서비스 경로에 불필요한 파일이 존재하지 않는 경우
-[취약]: 웹 서비스 경로에 불필요한 파일이 존재하는 경우
-EOF
+# Apache 설정 파일에서 DocumentRoot 경로 식별
+DOCUMENT_ROOTS=($(grep -Ri 'DocumentRoot' /etc/apache2 /etc/httpd 2>/dev/null | grep -v '#' | awk '{print $2}' | sort | uniq))
+
+# 불필요한 파일 유형 정의 (예: 백업 파일, 임시 파일 등)
+UNNECESSARY_FILES=("*.bak" "*.tmp" "*.swp")
+
+# DocumentRoot 경로 내 불필요한 파일 제거
+for doc_root in "${DOCUMENT_ROOTS[@]}"; do
+    for file_type in "${UNNECESSARY_FILES[@]}"; do
+        # 해당 유형의 파일 찾기 및 제거
+        find "$doc_root" -type f -name "$file_type" -exec rm -f {} +
+    done
+    echo "조치: $doc_root 내 불필요한 파일 유형($file_type) 제거 완료." >> $TMP1
+done
+
+# Apache 서비스 재시작
+if systemctl is-active --quiet apache2; then
+    systemctl restart apache2
+    echo "Apache2 서비스가 재시작되었습니다." >> $TMP1
+elif systemctl is-active --quiet httpd; then
+    systemctl restart httpd
+    echo "HTTPD 서비스가 재시작되었습니다." >> $TMP1
+else
+    echo "Apache/HTTPD 서비스가 설치되지 않았거나 인식할 수 없습니다." >> $TMP1
+fi
 
 BAR
 
-webconf_files=(".htaccess" "httpd.conf" "apache2.conf")
-	file_exists_count=0
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			((file_exists_count++))
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				webconf_file_documentroot_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'DocumentRoot' | grep '/' | wc -l`
-				if [ $webconf_file_documentroot_count -gt 0 ]; then
-					webconf_file_documentroot_basic_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'DocumentRoot' | grep '/' | awk '{gsub(/"/, "", $0); print $2}' | grep -E '/usr/local/apache/htdocs|/usr/local/apache2/htdocs|/var/www/html' | wc -l`
-					if [ $webconf_file_documentroot_basic_count -gt 0 ]; then 
-						WARN " Apache DocumentRoot를 기본 디렉터리로 설정했습니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " Apache DocumentRoot를 설정하지 않았습니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-	done
-	ps_apache_count=`ps -ef | grep -iE 'httpd|apache2' | grep -v 'grep' | wc -l`
-	if [ $ps_apache_count -gt 0 ] && [ $file_exists_count -eq 0 ]; then
-		WARN " Apache 서비스를 사용하고, DocumentRoot를 설정하는 파일이 없습니다." >> $TMP1
-		return 0
-	else
-		OK "양호(Good)" >> $TMP1
-		return 0
-	fi
-
-cat $result
+cat "$TMP1"
 
 echo ; echo
