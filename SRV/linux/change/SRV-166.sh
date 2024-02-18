@@ -1,31 +1,10 @@
 #!/bin/bash
 
-. function.sh
+# 숨김 파일 및 디렉터리 검색 후 로그 파일에 기록
+find / -name ".*" -type f > hidden_files.log
+find / -name ".*" -type d > hidden_dirs.log
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo "숨김 파일 목록: hidden_files.log"
+echo "숨김 디렉터리 목록: hidden_dirs.log"
 
-BAR
-
-CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
-
-cat << EOF >> $result
-[양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
-[취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
-EOF
-
-BAR
-
-# 시스템에서 숨김 파일 및 디렉터리 검색
-hidden_files=$(find / -name ".*" -type f)
-hidden_dirs=$(find / -name ".*" -type d)
-
-if [ -z "$hidden_files" ] && [ -z "$hidden_dirs" ]; then
-    OK "불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다."
-else
-    WARN "다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: $hidden_files $hidden_dirs"
-fi
-
-cat $result
-
-echo ; echo
+echo "검토 후 불필요한 항목을 수동으로 제거하십시오."

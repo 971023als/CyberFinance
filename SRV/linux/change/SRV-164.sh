@@ -1,32 +1,33 @@
 #!/bin/bash
 
-. function.sh
+# 구성원이 존재하지 않는 그룹을 찾음
+unnecessary_groups=($(awk -F: '($3>=500) && ($4=="") {print $1}' /etc/group))
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# 불필요한 그룹이 없는지 확인
+if [ ${#unnecessary_groups[@]} -eq 0 ]; then
+    echo "※ U-51 결과 : 양호(Good) - 불필요한 그룹이 존재하지 않습니다."
+    exit 0
+fi
 
-BAR
+# 불필요한 그룹을 사용자에게 보여주고 제거 확인
+echo "다음 그룹은 구성원이 존재하지 않습니다:"
+for group in "${unnecessary_groups[@]}"; do
+    echo "$group"
+done
 
-CODE [SRV-164] 구성원이 존재하지 않는 GID 존재
-
-cat << EOF >> $TMP1
-[양호]: 시스템에 구성원이 존재하지 않는 그룹(GID)가 존재하지 않는 경우
-[취약]: 시스템에 구성원이 존재하지 않는 그룹(GID)이 존재하는 경우
-EOF
-
-BAR
-
-unnecessary_groups=(`grep -vE '^#|^\s#' /etc/group | awk -F : '$3>=500 && $4==null {print $3}' | uniq`)
-	for ((i=0; i<${#unnecessary_groups[@]}; i++))
-	do
-		if [ `awk -F : '{print $4}' /etc/passwd | uniq | grep ${unnecessary_groups[$i]} | wc -l` -eq 0 ]; then
-			WARN " 불필요한 그룹이 존재합니다." >> $TMP1
-			return 0
-		fi
-	done
-	OK "※ U-51 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
-
-echo ; echo
+read -p "위 그룹을 모두 제거하시겠습니까? (y/N) " answer
+case $answer in
+    [Yy]* )
+        for group in "${unnecessary_groups[@]}"; do
+            groupdel "$group"
+            if [ $? -eq 0 ]; then
+                echo "$group 그룹을 성공적으로 제거하였습니다."
+            else
+                echo "$group 그룹 제거에 실패하였습니다."
+            fi
+        done
+        ;;
+    * )
+        echo "그룹 제거가 취소되었습니다."
+        ;;
+esac
