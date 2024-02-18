@@ -1,41 +1,41 @@
 #!/bin/bash
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
+# 결과 파일 정의
+TMP1="$(SCRIPTNAME).log"
 > $TMP1
 
-BAR
+echo "Cron 서비스 로깅 설정 점검" >> $TMP1
+echo "=====================================" >> $TMP1
 
-CODE [SRV-112] Cron 서비스 로깅 미설정
-
-cat << EOF >> $result
-[양호]: Cron 서비스 로깅이 적절하게 설정되어 있는 경우
-[취약]: Cron 서비스 로깅이 적절하게 설정되어 있지 않은 경우
-EOF
-
-BAR
-
-# rsyslog.conf 파일에서 Cron 로깅 설정 확인
+# rsyslog.conf 파일에서 Cron 로깅 설정 확인 및 수정
 rsyslog_conf="/etc/rsyslog.conf"
+cron_log_conf="cron.* /var/log/cron"
+
 if [ ! -f "$rsyslog_conf" ]; then
-  WARN "rsyslog.conf 파일이 존재하지 않습니다."
+  echo "rsyslog.conf 파일이 존재하지 않습니다." >> $TMP1
 else
   if grep -q "cron.*" "$rsyslog_conf"; then
-    OK "Cron 로깅이 rsyslog.conf에서 설정되었습니다."
+    echo "Cron 로깅이 rsyslog.conf에서 이미 설정되었습니다." >> $TMP1
   else
-    WARN "Cron 로깅이 rsyslog.conf에서 설정되지 않았습니다."
+    echo "Cron 로깅이 rsyslog.conf에서 설정되지 않았습니다. 설정을 추가합니다." >> $TMP1
+    echo "$cron_log_conf" >> "$rsyslog_conf"
+    systemctl restart rsyslog
+    echo "Cron 로깅 설정을 추가하고 rsyslog 서비스를 재시작했습니다." >> $TMP1
   fi
 fi
 
-# Cron 로그 파일 존재 여부 확인
+# Cron 로그 파일 존재 여부 확인 및 생성
 cron_log="/var/log/cron"
 if [ ! -f "$cron_log" ]; then
-  WARN "Cron 로그 파일이 존재하지 않습니다."
+  echo "Cron 로그 파일이 존재하지 않습니다. 파일을 생성합니다." >> $TMP1
+  touch "$cron_log"
+  chmod 600 "$cron_log"
+  chown root:root "$cron_log"
+  echo "Cron 로그 파일을 생성하고 적절한 권한을 설정했습니다." >> $TMP1
 else
-  OK "Cron 로그 파일이 존재합니다."
+  echo "Cron 로그 파일이 존재합니다." >> $TMP1
 fi
 
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+cat $TMP1
+echo
