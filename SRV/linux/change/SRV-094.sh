@@ -7,46 +7,29 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-094] crontab 참조파일 권한 설정 미흡
+echo "Crontab 파일 및 참조 파일 권한 설정 검사" >> $TMP1
+echo "======================================" >> $TMP1
 
-cat << EOF >> $result
-[양호]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있는 경우
-[취약]: 로그 기록 정책이 정책에 따라 설정되어 수립되어 있지 않은 경우
-EOF
+# Crontab 파일 및 주요 참조 파일 목록
+files=("/etc/crontab" "/etc/cron.hourly" "/etc/cron.daily" "/etc/cron.weekly" "/etc/cron.monthly" "/etc/cron.d")
 
-BAR
-
-# /etc/rsyslog.conf 파일의 존재 여부 및 내용을 확인합니다
-filename="/etc/rsyslog.conf"
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-else
-  # 필요한 로그 설정 내용을 배열로 정의합니다
-  expected_content=(
-    "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-    "authpriv.* /var/log/secure"
-    "mail.* /var/log/maillog"
-    "cron.* /var/log/cron"
-    "*.alert /dev/console"
-    "*.emerg *"
-  )
-
-  # 파일 내에서 각 설정이 존재하는지 확인합니다
-  match=0
-  for content in "${expected_content[@]}"; do
-    if grep -q "$content" "$filename"; then
-      match=$((match + 1))
+# 각 파일의 권한을 검사하고 조치합니다.
+for file in "${files[@]}"; do
+    if [ -f "$file" ]; then
+        # 파일 권한을 확인합니다.
+        permissions=$(stat -c "%a" "$file")
+        # 파일의 권한이 640 이하인지 확인합니다. (root 소유 및 그룹 읽기 권한만 허용)
+        if [ "$permissions" -le "640" ]; then
+            OK "$file 권한이 적절합니다. (권한: $permissions)" >> $TMP1
+        else
+            WARN "$file 권한이 부적절합니다. (권한: $permissions). 권한을 조정합니다." >> $TMP1
+            chmod 640 "$file"
+            echo "$file 권한을 640으로 조정했습니다." >> $TMP1
+        fi
+    else
+        INFO "$file 파일이 존재하지 않습니다." >> $TMP1
     fi
-  done
+done
 
-  # 모든 필요한 설정이 존재하는지 결과를 출력합니다
-  if [ "$match" -eq "${#expected_content[@]}" ]; then
-    OK "$filename의 내용이 정확합니다."
-  else
-    WARN "$filename의 내용에 일부 설정이 누락되었습니다."
-  fi
-fi
-
-cat $result
-
-echo ; echo
+cat $TMP1
+echo
