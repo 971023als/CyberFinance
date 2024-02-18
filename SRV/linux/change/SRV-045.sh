@@ -7,44 +7,38 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-045] 웹 서비스 프로세스 권한 제한 미비
+echo "[SRV-045] 웹 서비스 프로세스 권한 제한 설정 조치" >> $TMP1
 
-cat << EOF >> $TMP1
-[양호]: 웹 서비스 프로세스가 root 권한으로 실행되지 않는 경우
-[취약]: 웹 서비스 프로세스가 root 권한으로 실행되는 경우
-EOF
+# Apache 설정 파일 경로
+APACHE_CONFIG_FILE="/etc/apache2/apache2.conf"
+
+# root 권한이 아닌 사용자와 그룹으로 Apache를 실행하도록 설정
+# 일반적으로 'www-data' 또는 'apache' 사용자 및 그룹이 사용됩니다.
+WEB_USER="www-data"
+WEB_GROUP="www-data"
+
+# Apache 설정 파일에서 User 및 Group 지시어를 찾아 수정하거나 추가
+if grep -q "^User" "$APACHE_CONFIG_FILE"; then
+    sed -i "s/^User .*/User $WEB_USER/" "$APACHE_CONFIG_FILE"
+else
+    echo "User $WEB_USER" >> "$APACHE_CONFIG_FILE"
+fi
+
+if grep -q "^Group" "$APACHE_CONFIG_FILE"; then
+    sed -i "s/^Group .*/Group $WEB_GROUP/" "$APACHE_CONFIG_FILE"
+else
+    echo "Group $WEB_GROUP" >> "$APACHE_CONFIG_FILE"
+fi
+
+echo "조치: Apache 데몬이 $WEB_USER 사용자 및 $WEB_GROUP 그룹으로 구동되도록 설정되었습니다." >> $TMP1
+
+# Apache 서비스 재시작
+systemctl restart apache2
+
+echo "Apache 서비스가 재시작되었습니다." >> $TMP1
 
 BAR
 
-webconf_files=(".htaccess" "httpd.conf" "apache2.conf")
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				webconf_file_group_root_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -B 1 '^\s*Group' | grep 'root' | wc -l`
-				if [ $webconf_file_group_root_count -gt 0 ]; then
-					WARN " Apache 데몬이 root 권한으로 구동되도록 설정되어 있습니다." >> $TMP1
-					return 0
-				else
-					webconf_file_group_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep '^\s*Group' | awk '{print $2}' | sed 's/{//' | sed 's/}//' | wc -l`
-					if [ $webconf_file_group_count -gt 0 ]; then
-						webconf_file_group=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep '^\s*Group' | awk '{print $2}' | sed 's/{//' | sed 's/}//'`
-						webconf_file_group_root_count=`eval echo $webconf_file_group | grep 'root' | wc -l`
-						if [ $webconf_file_group_root_count -gt 0 ]; then
-							WARN " Apache 데몬이 root 권한으로 구동되도록 설정되어 있습니다." >> $TMP1
-							return 0
-						fi
-					fi
-				fi
-			done
-		fi
-	done
-	OK "※ 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
+cat "$TMP1"
 
 echo ; echo
