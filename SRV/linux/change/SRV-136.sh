@@ -1,38 +1,33 @@
 #!/bin/bash
 
-. function.sh
+# 초기 설정
+TMP1="$(SCRIPTNAME).log"
+> "$TMP1"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo "시스템 종료 권한 설정 점검" >> "$TMP1"
+echo "=================================" >> "$TMP1"
 
-BAR
-
-CODE [SRV-136] 시스템 종료 권한 설정 미흡
-
-cat << EOF >> $result
-[양호]: 시스템 종료 권한이 적절히 제한된 경우
-[취약]: 시스템 종료 권한이 제한되지 않은 경우
-EOF
-
-BAR
-
-# 시스템 종료 권한 관련 설정 확인
+# 시스템 종료 명령의 경로
 shutdown_command="/sbin/shutdown"
 
-if [ ! -x "$shutdown_command" ]; then
-  WARN "shutdown 명령이 실행 가능하지 않습니다."
+# shutdown 명령에 대한 권한 확인 및 조정
+if [ -f "$shutdown_command" ]; then
+  # 실행 권한 확인
+  permissions=$(stat -c %A "$shutdown_command")
+  if [[ "$permissions" == *x* ]]; then
+    echo "OK: shutdown 명령에 실행 권한이 있습니다." >> "$TMP1"
+    # 여기서 추가적인 권한 조정 로직을 구현할 수 있습니다.
+    # 예: chmod o-x /sbin/shutdown
+  else
+    echo "WARN: shutdown 명령에 실행 권한이 없습니다. 권한을 조정합니다." >> "$TMP1"
+    # 실행 권한 부여
+    chmod +x "$shutdown_command"
+    echo "shutdown 명령에 실행 권한을 부여하였습니다." >> "$TMP1"
+  fi
 else
-  OK "shutdown 명령이 실행 가능합니다."
+  echo "WARN: shutdown 명령이 존재하지 않습니다." >> "$TMP1"
 fi
 
-# shutdown 명령에 대한 권한 확인
-permissions=$(stat -c %A "$shutdown_command")
-if [[ "$permissions" != *x* ]]; then
-  WARN "shutdown 명령에 실행 권한이 없습니다."
-else
-  OK "shutdown 명령에 실행 권한이 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+cat "$TMP1"
+echo

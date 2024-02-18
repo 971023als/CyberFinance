@@ -1,38 +1,46 @@
 #!/bin/bash
 
-. function.sh
+# 초기 설정
+TMP1="$(SCRIPTNAME).log"
+> "$TMP1"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo "TCP 보안 설정 점검" >> "$TMP1"
+echo "=================================" >> "$TMP1"
 
-BAR
-
-CODE [SRV-135] TCP 보안 설정 미비
-
-cat << EOF >> $result
-[양호]: 필수 TCP 보안 설정이 적절히 구성된 경우
-[취약]: 필수 TCP 보안 설정이 구성되지 않은 경우
-EOF
-
-BAR
-
-# TCP 보안 관련 설정 확인
-tcp_settings=(
-  "net.ipv4.tcp_syncookies"
-  "net.ipv4.tcp_max_syn_backlog"
-  "net.ipv4.tcp_synack_retries"
-  "net.ipv4.tcp_syn_retries"
+# 필수 TCP 보안 설정 및 권장 값
+declare -A tcp_settings=(
+  ["net.ipv4.tcp_syncookies"]="1"
+  ["net.ipv4.tcp_max_syn_backlog"]="1024"
+  ["net.ipv4.tcp_synack_retries"]="2"
+  ["net.ipv4.tcp_syn_retries"]="5"
 )
 
-for setting in "${tcp_settings[@]}"; do
-  value=$(sysctl $setting)
-  if [ -z "$value" ]; then
-    WARN "$setting 설정이 없습니다."
+# TCP 보안 설정 확인 및 수정
+for setting in "${!tcp_settings[@]}"; do
+  current_value=$(sysctl -n $setting 2>/dev/null)
+  recommended_value=${tcp_settings[$setting]}
+
+  if [ "$current_value" != "$recommended_value" ]; then
+    # 설정을 권장 값으로 변경
+    sysctl -w $setting=$recommended_value >/dev/null
+    echo "WARN: $setting 설정이 적절하지 않았습니다. 권장 값($recommended_value)으로 변경하였습니다." >> "$TMP1"
   else
-    OK "$setting 설정이 존재합니다: $value"
+    echo "OK: $setting 설정이 적절합니다. 현재 값: $current_value" >> "$TMP1"
   fi
 done
 
-cat $result
+# 변경된 설정을 /etc/sysctl.conf에도 적용
+for setting in "${!tcp_settings[@]}"; do
+  if grep -q "^$setting" /etc/sysctl.conf; then
+    sed -i "s/^$setting=.*/$setting=${tcp_settings[$setting]}/" /etc/sysctl.conf
+  else
+    echo "$setting=${tcp_settings[$setting]}" >> /etc/sysctl.conf
+  fi
+done
 
-echo ; echo
+# 변경된 설정 적용
+sysctl -p > /dev/null 2>&1
+
+# 결과 파일 출력
+cat "$TMP1"
+echo
