@@ -9,7 +9,7 @@ BAR
 
 CODE [SRV-003] SNMP 접근 통제 미설정
 
-cat << EOF >> $result
+cat << EOF >> $TMP1
 
 [양호]: SNMP 접근 제어가 적절하게 설정된 경우
 [취약]: SNMP 접근 제어가 설정되지 않거나 미흡한 경우
@@ -21,19 +21,20 @@ BAR
 "[SRV-003] SNMP 접근 통제 미설정" >> $TMP1
 
 SNMPD_CONF="/etc/snmp/snmpd.conf"
-ACCESS_CONTROL_STRING="com2sec"
+ACCESS_CONTROL_STRING="com2sec notConfigUser default public"
 
-# SNMPD 설정 파일에서 com2sec가 적절하게 설정되었는지 확인합니다
-if grep -q "^$ACCESS_CONTROL_STRING" "$SNMPD_CONF"; then
-   # 여기서 추가적인 확인 로직을 넣을 수 있습니다, 예를 들어:
-   # if grep -E "^$ACCESS_CONTROL_STRING[[:space:]]+[^default]" "$SNMPD_CONF"; then
-   OK "SNMP 접근 제어가 적절하게 설정됨"
+# SNMP 접근 통제가 설정되지 않은 경우 적절한 접근 통제 설정을 추가합니다
+if ! grep -q "^com2sec" "$SNMPD_CONF"; then
+    echo "$ACCESS_CONTROL_STRING" >> "$SNMPD_CONF"
+    WARN "SNMP 접근 제어가 자동으로 설정됨: $ACCESS_CONTROL_STRING" >> $TMP1
+    # SNMP 서비스 재시작 또는 리로드
+    systemctl restart snmpd
 else
-   WARN "SNMP 접근 제어가 설정되지 않음"
+    OK "SNMP 접근 제어가 이미 적절하게 설정됨" >> $TMP1
 fi
 
 BAR
 
-cat $result
+cat $TMP1
 
 echo ; echo
