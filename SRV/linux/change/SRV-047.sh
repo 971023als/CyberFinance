@@ -7,45 +7,43 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-047] 웹 서비스 경로 내 불필요한 링크 파일 존재
+echo "[SRV-047] 웹 서비스 경로 내 불필요한 심볼릭 링크 파일 제거 및 설정 조치" >> $TMP1
 
-cat << EOF >> $TMP1
-[양호]: 웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하지 않는 경우
-[취약]: 웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하는 경우
-EOF
+# Apache 설정 파일 경로
+APACHE_CONFIG_FILES=("/etc/apache2/apache2.conf" "/etc/apache2/sites-available/*" "/etc/httpd/conf/httpd.conf" "/etc/httpd/conf.d/*")
+
+# 심볼릭 링크 사용 제한 설정 적용
+for config_file in "${APACHE_CONFIG_FILES[@]}"; do
+    if [ -f "$config_file" ] || [ -d "$config_file" ]; then
+        # FollowSymLinks 옵션을 SymLinksIfOwnerMatch로 변경하여 보안 강화
+        sed -i 's/Options .*FollowSymLinks/Options -Indexes +SymLinksIfOwnerMatch/g' "$config_file"
+        echo "조치: $config_file 파일에서 심볼릭 링크 사용 제한 설정을 적용했습니다." >> $TMP1
+    fi
+done
+
+# DocumentRoot 경로 식별 및 불필요한 심볼릭 링크 제거
+DOCUMENT_ROOT=$(grep -Ri 'DocumentRoot' /etc/apache2 /etc/httpd 2>/dev/null | grep -v '#' | awk '{print $2}' | sort | uniq)
+for doc_root in $DOCUMENT_ROOT; do
+    if [ -d "$doc_root" ]; then
+        # 불필요한 심볼릭 링크 찾기 및 제거
+        find "$doc_root" -type l -exec rm -f {} \;
+        echo "조치: $doc_root 경로 내 불필요한 심볼릭 링크 파일을 제거했습니다." >> $TMP1
+    fi
+done
+
+# Apache 서비스 재시작
+if systemctl is-active --quiet apache2; then
+    systemctl restart apache2
+    echo "Apache2 서비스가 재시작되었습니다." >> $TMP1
+elif systemctl is-active --quiet httpd; then
+    systemctl restart httpd
+    echo "HTTPD 서비스가 재시작되었습니다." >> $TMP1
+else
+    echo "Apache/HTTPD 서비스가 설치되지 않았거나 인식할 수 없습니다." >> $TMP1
+fi
 
 BAR
 
-webconf_files=(".htaccess" "httpd.conf" "apache2.conf" "userdir.conf")
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				if [[ ${find_webconf_files[$j]} =~ userdir.conf ]]; then
-					userdirconf_disabled_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'userdir' | grep -i 'disabled' | wc -l`
-					if [ $userdirconf_disabled_count -eq 0 ]; then
-						userdirconf_followsymlinks_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'Options' | grep -iv '\-FollowSymLinks' | grep -i 'FollowSymLinks' | wc -l`
-						if [ $userdirconf_followsymlinks_count -gt 0 ]; then
-							WARN " Apache 설정 파일에 심볼릭 링크 사용을 제한하도록 설정하지 않습니다." >> $TMP1
-							return 0
-						fi
-					fi
-				else
-					webconf_file_followSymlinks_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'Options' | grep -iv '\-FollowSymLinks' | grep -i 'FollowSymLinks' | wc -l`
-					if [ $webconf_file_followSymlinks_count -gt 0 ]; then
-						WARN " Apache 설정 파일에 심볼릭 링크 사용을 제한하도록 설정하지 않습니다." >> $TMP1
-						return 0
-					fi
-				fi
-			done
-		fi
-	done
-	OK "※ U-39 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
+cat "$TMP1"
 
 echo ; echo

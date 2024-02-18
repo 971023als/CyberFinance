@@ -7,51 +7,41 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-048] 불필요한 웹 서비스 실행
+echo "[SRV-048] 불필요한 웹 서비스 실행 방지 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: 불필요한 웹 서비스가 실행되지 않고 있는 경우
-[취약]: 불필요한 웹 서비스가 실행되고 있는 경우
-EOF
+# Apache 홈 디렉터리 식별
+APACHE_HOME_DIRS=("/etc/apache2" "/etc/httpd" "/usr/local/apache2" "/usr/local/httpd")
+
+# 불필요한 파일 및 디렉터리 목록
+UNNECESSARY_DIRS=("manual" "cgi-bin" "icons")
+
+# Apache 홈 디렉터리에서 불필요한 파일 및 디렉터리 제거
+for apache_dir in "${APACHE_HOME_DIRS[@]}"; do
+    if [ -d "$apache_dir" ]; then
+        for dir in "${UNNECESSARY_DIRS[@]}"; do
+            if [ -d "$apache_dir/$dir" ]; then
+                rm -rf "$apache_dir/$dir"
+                echo "제거: $apache_dir/$dir" >> $TMP1
+            fi
+        done
+    fi
+done
+
+echo "모든 불필요한 파일 및 디렉터리가 Apache 홈 디렉터리에서 제거되었습니다." >> $TMP1
+
+# Apache 서비스 재시작
+if systemctl is-active --quiet apache2; then
+    systemctl restart apache2
+    echo "Apache2 서비스가 재시작되었습니다." >> $TMP1
+elif systemctl is-active --quiet httpd; then
+    systemctl restart httpd
+    echo "HTTPD 서비스가 재시작되었습니다." >> $TMP1
+else
+    echo "Apache/HTTPD 서비스가 설치되지 않았거나 인식할 수 없습니다." >> $TMP1
+fi
 
 BAR
 
-# 웹 서비스 목록
-serverroot_directory=()
-	webconf_files=(".htaccess" "httpd.conf" "apache2.conf")
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				webconf_serverroot_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep 'ServerRoot' | grep '/' | wc -l`
-				if [ $webconf_serverroot_count -gt 0 ]; then
-					serverroot_directory[${#serverroot_directory[@]}]=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep 'ServerRoot' | grep '/' | awk '{gsub(/"/, "", $0); print $2}'`
-				fi
-			done
-		fi
-	done
-	apache2_serverroot_count=`apache2 -V 2>/dev/ull | grep -i 'root' | awk -F '"' '{gsub(" ", "", $0); print $2}' | wc -l`
-	if [ $apache2_serverroot_count -gt 0 ];then
-		serverroot_directory[${#serverroot_directory[@]}]=`apache2 -V 2>/dev/ull | grep -i 'root' | awk -F '"' '{gsub(" ", "", $0); print $2}'`
-	fi
-	httpd_serverroot_count=`httpd -V 2>/dev/ull | grep -i 'root' | awk -F '"' '{gsub(" ", "", $0); print $2}' | wc -l`
-	if [ $httpd_serverroot_count -gt 0 ]; thend
-		serverroot_directory[${#serverroot_directory[@]}]=`httpd -V 2>/dev/ull | grep -i 'root' | awk -F '"' '{gsub(" ", "", $0); print $2}'`
-	fi
-	for ((i=0; i<${#serverroot_directory[@]}; i++))
-	do
-		manual_file_exists_count=`find ${serverroot_directory[$i]} -name 'manual' -type f 2>/dev/null | wc -l`
-		if [ $manual_file_exists_count -gt 0 ]; then
-			WARN " Apache 홈 디렉터리 내 기본으로 생성되는 불필요한 파일 및 디렉터리가 제거되어 있지 않습니다." >> $TMP1
-			return 0
-		fi
-	done
-	OK "결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $result
+cat "$TMP1"
 
 echo ; echo
