@@ -1,62 +1,38 @@
 #!/bin/bash
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
+# 초기 설정
+TMP1="$(SCRIPTNAME).log"
 > $TMP1
 
-BAR
+echo "SU 명령 사용가능 그룹 제한 점검" >> $TMP1
+echo "=================================" >> $TMP1
 
-CODE [SRV-131] SU 명령 사용가능 그룹 제한 미비
+# /etc/pam.d/su 파일 점검
+if [ -f /etc/pam.d/su ]; then
+    # pam_wheel.so 모듈 존재 여부 확인
+    if grep -q "auth.*required.*pam_wheel.so use_uid" /etc/pam.d/su; then
+        echo "OK: /etc/pam.d/su 파일에 pam_wheel.so 모듈이 적절하게 설정되어 있습니다." >> $TMP1
+    else
+        echo "WARN: /etc/pam.d/su 파일에 pam_wheel.so 모듈 설정이 미비합니다." >> $TMP1
+    fi
+else
+    echo "WARN: /etc/pam.d/su 파일이 존재하지 않습니다." >> $TMP1
+fi
 
-cat << EOF >> $result
-[양호]: SU 명령을 특정 그룹에만 허용한 경우
-[취약]: SU 명령을 모든 사용자가 사용할 수 있는 경우
-EOF
+# su 실행 파일 권한 점검
+su_path=$(which su)
+if [ -n "$su_path" ]; then
+    su_permissions=$(stat -c "%A" $su_path)
+    # su 실행 파일이 그룹과 다른 사용자에 의해 실행될 수 없도록 설정되어 있는지 확인
+    if [[ $su_permissions == -* ]]; then
+        echo "OK: $su_path 실행 파일의 권한이 적절하게 설정되어 있습니다. (권한: $su_permissions)" >> $TMP1
+    else
+        echo "WARN: $su_path 실행 파일의 권한 설정이 미비합니다. (권한: $su_permissions)" >> $TMP1
+    fi
+else
+    echo "INFO: su 실행 파일이 시스템에 존재하지 않습니다." >> $TMP1
+fi
 
-BAR
-
-rpm_libpam_count=`rpm -qa 2>/dev/null | grep '^libpam' | wc -l`
-	dnf_libpam_count=`dnf list installed 2>/dev/null | grep -i '^libpam' | wc -l`
-	if [ $rpm_libpam_count -gt 0 ] && [ $dnf_libpam_count -gt 0 ]; then
-		# !!! pam_rootok.so 설정을 하지 않은 경우 하단의 첫 번째 if 문을 삭제하세요.
-		etc_pamd_su_rootokso_count=`grep -vE '^#|^\s#' /etc/pam.d/su | grep 'pam_rootok.so' | wc -l`
-		if [ $etc_pamd_su_rootokso_count -gt 0 ]; then
-			# !!! pam_wheel.so 설정에 trust 문구를 추가한 경우 하단의 if 문 조건절에 'grep 'trust'를 추가하세요.
-			etc_pamd_su_wheelso_count=`grep -vE '^#|^\s#' /etc/pam.d/su | grep 'pam_wheel.so' | wc -l`
-			if [ $etc_pamd_su_wheelso_count -eq 0 ]; then
-				WARN " /etc/pam.d/su 파일에 pam_wheel.so 모듈이 없습니다." >> $TMP1
-				return 0
-			fi
-		else
-			WARN " /etc/pam.d/su 파일에서 pam_rootok.so 모듈이 없습니다." >> $TMP1
-			return 0
-		fi
-	else
-		su_executables=("/bin/su" "/usr/bin/su")
-		if [ `which su 2>/dev/null | wc -l` -gt 0 ]; then
-			su_executables[${#su_executables[@]}]=`which su 2>/dev/null`
-		fi
-		for ((i=0; i<${#su_executables[@]}; i++))
-		do
-			if [ -f ${su_executables[$i]} ]; then
-				su_group_permission=`stat ${su_executables[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-				if [ $su_group_permission -eq 5 ] || [ $su_group_permission -eq 4 ] || [ $su_group_permission -eq 1 ] || [ $su_group_permission -eq 0 ]; then
-					su_other_permission=`stat ${su_executables[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-					if [ $su_other_permission -ne 0 ]; then
-						WARN " ${su_executables[$i]} 실행 파일의 다른 사용자(other)에 대한 권한 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${su_executables[$i]} 실행 파일의 그룹 사용자(group)에 대한 권한 취약합니다." >> $TMP1
-					return 0
-				fi
-			fi
-		done
-	fi
-	OK "※ U-45 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+cat $TMP1
+echo
