@@ -1,30 +1,22 @@
 #!/bin/bash
 
-. function.sh
+# 로그 파일 경로 설정
+LOG_FILE="duplicate_uid_accounts.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# 로그 파일 초기화
+> "$LOG_FILE"
 
-BAR
+# /etc/passwd 파일에서 UID를 추출하고, 중복된 UID를 가진 계정 식별
+awk -F: '{print $3}' /etc/passwd | sort | uniq -d | while read uid; do
+    echo "중복 UID 발견: $uid" >> "$LOG_FILE"
+    grep ":$uid:" /etc/passwd >> "$LOG_FILE"
+done
 
-CODE [SRV-142] 중복 UID가 부여된 계정 존재
-
-cat << EOF >> $TMP1
-[양호]: 중복 UID가 부여된 계정이 존재하지 않는 경우
-[취약]: 중복 UID가 부여된 계정이 존재하는 경우
-EOF
-
-BAR
-
-if [ -f /etc/passwd ]; then
-		if [ `awk -F : '{print $3}' /etc/passwd | sort | uniq -d | wc -l` -gt 0 ]; then
-			WARN " 동일한 UID로 설정된 사용자 계정이 존재합니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-52 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
-
-echo ; echo
+# 중복 UID가 식별되었는지 확인
+if [ -s "$LOG_FILE" ]; then
+    echo "중복 UID가 있는 계정이 로깅되었습니다. 로그 파일을 확인해 주세요: $LOG_FILE"
+    echo "수동 조치가 필요합니다. 각 계정을 검토하고 적절한 조치를 취하세요."
+else
+    echo "중복 UID가 있는 계정이 없습니다. 시스템이 양호한 상태입니다."
+    rm "$LOG_FILE"
+fi

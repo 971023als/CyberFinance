@@ -16,12 +16,18 @@ EOF
 
 BAR
 
-if [ `ps -ef | grep -i 'snmp' | grep -v 'grep' | wc -l` -gt 0 ]; then
-	WARN " SNMP 서비스를 사용하고 있습니다." >> $TMP1
-	return 0
+# SNMP 서비스 상태 확인 및 비활성화
+if systemctl is-active --quiet snmpd; then
+    WARN "SNMP 서비스를 사용하고 있습니다. 비활성화를 시도합니다." >> $TMP1
+    systemctl stop snmpd
+    systemctl disable snmpd
+    if systemctl is-active --quiet snmpd; then
+        WARN "SNMP 서비스 비활성화에 실패했습니다." >> $TMP1
+    else
+        OK "SNMP 서비스가 성공적으로 비활성화되었습니다." >> $TMP1
+    fi
 else
-	OK "※ U-66 결과 : 양호(Good)" >> $TMP1
-	return 0
+    OK "※ U-66 결과 : 양호(Good)" >> $TMP1
 fi
 
 cat $TMP1

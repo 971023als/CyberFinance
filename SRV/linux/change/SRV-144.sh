@@ -1,29 +1,32 @@
 #!/bin/bash
 
-. function.sh
+# 백업 디렉터리 설정
+BACKUP_DIR="/backup/dev"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# 백업 디렉터리가 존재하지 않으면 생성
+if [ ! -d "$BACKUP_DIR" ]; then
+    echo "백업 디렉터리 $BACKUP_DIR 생성 중..."
+    mkdir -p "$BACKUP_DIR"
+fi
 
-BAR
+# /dev 디렉터리 내 불필요한 파일 검색 및 백업 후 제거
+find /dev -type f -print0 | while IFS= read -r -d '' file; do
+    # 백업 파일 경로 설정
+    BACKUP_FILE="$BACKUP_DIR$(echo $file | sed 's/^\///')"
+    BACKUP_FILE_DIR=$(dirname "$BACKUP_FILE")
 
-CODE [SRV-144] /dev 경로에 불필요한 파일 존재
+    # 백업 파일 디렉터리가 존재하지 않으면 생성
+    if [ ! -d "$BACKUP_FILE_DIR" ]; then
+        mkdir -p "$BACKUP_FILE_DIR"
+    fi
 
-cat << EOF >> $TMP1
-[양호]: /dev 경로에 불필요한 파일이 존재하지 않는 경우
-[취약]: /dev 경로에 불필요한 파일이 존재하는 경우
-EOF
+    # 파일을 백업 디렉터리로 복사
+    echo "파일 백업: $file -> $BACKUP_FILE"
+    cp -a "$file" "$BACKUP_FILE"
 
-BAR
+    # 원본 파일 삭제
+    echo "불필요한 파일 제거: $file"
+    rm -f "$file"
+done
 
-if [ `find /dev -type f 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-16 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-cat $TMP1
-
-echo ; echo
+echo "불필요한 파일 제거 작업 완료."
