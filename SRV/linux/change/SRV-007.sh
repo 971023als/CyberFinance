@@ -16,16 +16,18 @@ EOF
 BAR
 
 "[SRV-007] 취약한 버전의 SMTP 서비스 사용" >> $TMP1
-# Check Sendmail version
+
+# Check and upgrade Sendmail version
 SENDMAIL_VERSION=$(/usr/lib/sendmail -d0.1 -bt < /dev/null 2>&1 | grep Version | awk '{print $2}')
 SENDMAIL_MIN_VERSION="8.14.9"
 
-# Version comparison function
 version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
 
 if [ -n "$SENDMAIL_VERSION" ]; then
     if version_gt $SENDMAIL_MIN_VERSION $SENDMAIL_VERSION; then
-        WARN "Sendmail 버전이 취약합니다. 현재 버전: $SENDMAIL_VERSION, 권장 최소 버전: $SENDMAIL_MIN_VERSION" >> $TMP1
+        WARN "Sendmail 버전이 취약합니다. 업그레이드를 시도합니다." >> $TMP1
+        yum update sendmail -y || apt-get install sendmail -y
+        OK "Sendmail 업그레이드 시도됨" >> $TMP1
     else
         OK "Sendmail 버전이 안전합니다. 현재 버전: $SENDMAIL_VERSION" >> $TMP1
     fi
@@ -33,7 +35,7 @@ else
     INFO "Sendmail이 설치되어 있지 않습니다." >> $TMP1
 fi
 
-# Check Postfix version
+# Check and upgrade Postfix version
 POSTFIX_VERSION=$(postconf -d mail_version 2>/dev/null)
 POSTFIX_SAFE_VERSIONS=("2.5.13" "2.6.10" "2.7.4" "2.8.3")
 
@@ -48,7 +50,9 @@ if [ -n "$POSTFIX_VERSION" ]; then
     if $POSTFIX_VERSION_SAFE; then
         OK "Postfix 버전이 안전합니다. 현재 버전: $POSTFIX_VERSION" >> $TMP1
     else
-        WARN "Postfix 버전이 취약할 수 있습니다. 현재 버전: $POSTFIX_VERSION" >> $TMP1
+        WARN "Postfix 버전이 취약할 수 있습니다. 업그레이드를 시도합니다." >> $TMP1
+        yum update postfix -y || apt-get install postfix -y
+        OK "Postfix 업그레이드 시도됨" >> $TMP1
     fi
 else
     INFO "Postfix가 설치되어 있지 않습니다." >> $TMP1
