@@ -1,31 +1,25 @@
 #!/bin/bash
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
+# 결과 파일 초기화
+TMP1="$(SCRIPTNAME).log"
 > $TMP1
 
-BAR
+echo "백신 프로그램 업데이트 상태 점검" >> $TMP1
+echo "=====================================" >> $TMP1
 
-CODE [SRV-119] 백신 프로그램 업데이트 미흡
+# ClamAV 버전 확인
+clamav_version=$(clamscan --version | grep -oP 'ClamAV \K[0-9.]+')
 
-cat << EOF >> $result
-[양호]: 백신 프로그램이 최신 버전으로 업데이트 되어 있는 경우
-[취약]: 백신 프로그램이 최신 버전으로 업데이트 되어 있지 않은 경우
-EOF
+# 최신 ClamAV 버전 확인 (예시 URL, 실제 URL은 변경될 수 있음)
+latest_clamav_version=$(curl -s https://www.clamav.net/downloads | grep -oP 'Latest stable release is ClamAV \K[0-9.]+')
 
-BAR
-
-# 백신 프로그램의 업데이트 상태를 확인합니다 (예시: ClamAV)
-clamav_version=$(clamscan --version)
-latest_clamav_version=$(curl -s https://www.clamav.net/downloads | grep -oP 'ClamAV \K[0-9.]+')
-
+# 버전 비교 및 결과 출력
 if [ "$clamav_version" == "$latest_clamav_version" ]; then
-  OK "ClamAV가 최신 버전입니다: $clamav_version"
+  echo "OK: ClamAV가 최신 버전입니다. 현재 버전: $clamav_version" >> $TMP1
 else
-  WARN "ClamAV가 최신 버전이 아닙니다. 현재 버전: $clamav_version, 최신 버전: $latest_clamav_version"
+  echo "WARN: ClamAV가 최신 버전이 아닙니다. 현재 버전: $clamav_version, 최신 버전: $latest_clamav_version" >> $TMP1
 fi
 
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+cat $TMP1
+echo
