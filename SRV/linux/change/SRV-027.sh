@@ -7,40 +7,20 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-027] 서비스 접근 IP 및 포트 제한 미비
+echo "[SRV-027] 서비스 접근 IP 및 포트 제한 미비 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우
-[취약]: 서비스에 대한 IP 및 포트 접근 제한이 설정되지 않은 경우
-EOF
+# /etc/hosts.deny 파일 설정: 모든 접근을 기본적으로 거부
+echo "ALL: ALL" > /etc/hosts.deny
+echo "모든 접속을 거부하는 규칙을 /etc/hosts.deny에 설정하였습니다." >> $TMP1
+
+# /etc/hosts.allow 파일 설정: 필요한 서비스 및 IP에 대해서만 접근을 허용
+# 예시로 SSH 서비스에 대한 특정 IP 접근만을 허용하는 경우입니다.
+# 실제 환경에 맞게 필요한 서비스와 IP 또는 네트워크를 설정해야 합니다.
+echo "sshd: 192.168.0.0/24" > /etc/hosts.allow
+echo "SSH 서비스에 대한 192.168.0.0/24 네트워크에서의 접근만을 허용하는 규칙을 /etc/hosts.allow에 설정하였습니다." >> $TMP1
 
 BAR
 
-if [ -f /etc/hosts.deny ]; then
-		etc_hostsdeny_allall_count=`grep -vE '^#|^\s#' /etc/hosts.deny | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
-		if [ $etc_hostsdeny_allall_count -gt 0 ]; then
-			if [ -f /etc/hosts.allow ]; then
-				etc_hostsallow_allall_count=`grep -vE '^#|^\s#' /etc/hosts.allow | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
-				if [ $etc_hostsallow_allall_count -gt 0 ]; then
-					WARN " /etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다." >> $TMP1
-					return 0
-				else
-					OK "※ U-18 결과 : 양호(Good)" >> $TMP1
-					return 0
-				fi
-			else
-				OK "※ U-18 결과 : 양호(Good)" >> $TMP1
-				return 0
-			fi
-		else
-			WARN " /etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다." >> $TMP1
-			return 0
-		fi
-	else
-		WARN " /etc/hosts.deny 파일이 없습니다." >> $TMP1
-		return 0
-	fi
-
-cat $result
+cat "$TMP1"
 
 echo ; echo

@@ -7,41 +7,37 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-035] 취약한 서비스 활성화
+echo "[SRV-035] 취약한 서비스 비활성화 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: 취약한 서비스가 비활성화된 경우
-[취약]: 취약한 서비스가 활성화된 경우
-EOF
+# 취약한 서비스 목록
+services=("echo" "discard" "daytime" "chargen")
+
+# /etc/xinetd.d 디렉터리 내의 서비스 비활성화
+if [ -d /etc/xinetd.d ]; then
+    for service in "${services[@]}"; do
+        if [ -f /etc/xinetd.d/$service ]; then
+            # 해당 서비스가 비활성화되어 있지 않은 경우, 비활성화합니다.
+            sed -i 's/disable[ \t]*=[ \t]*no/disable = yes/' /etc/xinetd.d/$service
+            echo "조치: $service 서비스가 /etc/xinetd.d 내에서 비활성화되었습니다." >> $TMP1
+        fi
+    done
+fi
+
+# /etc/inetd.conf 파일 내의 서비스 비활성화
+if [ -f /etc/inetd.conf ]; then
+    for service in "${services[@]}"; do
+        # 해당 서비스가 파일에 존재하는 경우, 주석 처리하여 비활성화합니다.
+        if grep -q "$service" /etc/inetd.conf; then
+            sed -i "/$service/s/^/#/" /etc/inetd.conf
+            echo "조치: $service 서비스가 /etc/inetd.conf 파일 내에서 비활성화되었습니다." >> $TMP1
+        fi
+    done
+fi
+
+echo "모든 취약한 서비스에 대한 비활성화 조치가 완료되었습니다." >> $TMP1
 
 BAR
 
-services=("echo" "discard" "daytime" "chargen")
-	if [ -d /etc/xinetd.d ]; then
-		for ((i=0; i<${#services[@]}; i++))
-		do
-			if [ -f /etc/xinetd.d/${services[$i]} ]; then
-				etc_xinetdd_service_disable_yes_count=`grep -vE '^#|^\s#' /etc/xinetd.d/${services[$i]} | grep -i 'disable' | grep -i 'yes' | wc -l`
-				if [ $service_disable_yes_count -eq 0 ]; then
-					WARN " ${services[$i]} 서비스가 /etc/xinetd.d 디렉터리 내 서비스 파일에서 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			fi
-		done
-	fi
-	if [ -f /etc/inetd.conf ]; then
-		for ((i=0; i<${#services[@]}; i++))
-		do
-			etc_inetdconf_enable_count=`grep -vE '^#|^\s#' /etc/inetd.conf | grep  ${services[$i]} | wc -l`
-			if [ $etc_inetdconf_enable_count -gt 0 ]; then
-				WARN " ${services[$i]} 서비스가 /etc/inetd.conf 파일에서 실행 중입니다." >> $TMP1
-				return 0
-			fi
-		done
-	fi
-	OK "※ U-23 결과 : 양호(Good)" >> $TMP1
-	return 0
-
-cat $result
+cat "$TMP1"
 
 echo ; echo

@@ -7,31 +7,32 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-029] SMB 세션 중단 관리 설정 미비
+echo "[SRV-029] SMB 세션 중단 관리 설정 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: SMB 서비스의 세션 중단 시간이 적절하게 설정된 경우
-[취약]: SMB 서비스의 세션 중단 시간 설정이 미비한 경우
-EOF
+# SMB 설정 파일 경로
+SMB_CONF_FILE="/etc/samba/smb.conf"
+
+# 설정할 SMB 세션 중단 시간 (예: 15분)
+DEADTIME=15
+
+# deadtime 설정 확인 및 추가/수정
+if grep -q "^[\t ]*deadtime" "$SMB_CONF_FILE"; then
+    # deadtime 설정이 이미 존재하면, 값을 업데이트합니다.
+    sed -i "s/^\([\t ]*deadtime\).*/\1 = $DEADTIME/" "$SMB_CONF_FILE"
+    echo "조치: 기존 deadtime 설정을 $DEADTIME 분으로 업데이트하였습니다." >> $TMP1
+else
+    # deadtime 설정이 없는 경우, 파일 끝에 추가합니다.
+    echo -e "\ndeadtime = $DEADTIME" >> "$SMB_CONF_FILE"
+    echo "조치: deadtime 설정을 $DEADTIME 분으로 $SMB_CONF_FILE 파일에 추가하였습니다." >> $TMP1
+fi
+
+# SMB 서비스 재시작
+systemctl restart smbd
+
+echo "SMB 서비스가 재시작되었습니다." >> $TMP1
 
 BAR
 
-# SMB 설정 파일을 확인합니다.
-SMB_CONF_FILE="/etc/samba/smb.conf"
-
-# SMB 세션 중단 시간 설정을 확인합니다.
-# 여기서는 'deadtime' 설정을 예로 듭니다.
-if grep -q "^deadtime" "$SMB_CONF_FILE"; then
-    deadtime=$(grep "^deadtime" "$SMB_CONF_FILE" | awk '{print $NF}')
-    if [ "$deadtime" -gt 0 ]; then
-        OK "SMB 세션 중단 시간(deadtime)이 적절하게 설정되어 있습니다: $deadtime 분"
-    else
-        WARN "SMB 세션 중단 시간(deadtime) 설정이 미비합니다."
-    fi
-else
-    WARN "SMB 세션 중단 시간(deadtime) 설정이 '$SMB_CONF_FILE' 파일에 존재하지 않습니다."
-fi
-
-cat $result
+cat "$TMP1"
 
 echo ; echo
