@@ -1,31 +1,31 @@
 #!/bin/bash
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
+# 패스워드 저장 방식 강화 스크립트
+TMP1=$(basename "$0").log
 > $TMP1
 
-BAR
+echo "패스워드 저장 방식 강화 시작..." >> $TMP1
 
-CODE [SRV-070] 취약한 패스워드 저장 방식 사용
-
-cat << EOF >> $result
-[양호]: 패스워드 저장에 강력한 해싱 알고리즘을 사용하는 경우
-[취약]: 패스워드 저장에 취약한 해싱 알고리즘을 사용하는 경우
-EOF
-
-BAR
-
-# 패스워드 해싱 알고리즘 확인
+# PAM 비밀번호 해싱 알고리즘 설정 파일
 PAM_FILE="/etc/pam.d/common-password"
 
-# MD5, DES와 같이 취약한 알고리즘을 확인합니다
+# 취약한 해싱 알고리즘(md5, des) 사용 여부 확인 및 강력한 알고리즘(예: SHA-512)으로 교체
 if grep -Eq "md5|des" "$PAM_FILE"; then
-    WARN "취약한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE"
+    echo "취약한 패스워드 해싱 알고리즘을 강력한 알고리즘으로 교체합니다." >> $TMP1
+    
+    # MD5 및 DES 알고리즘을 SHA-512로 교체
+    sed -i 's/md5/sha512/g' $PAM_FILE
+    sed -i 's/des/sha512/g' $PAM_FILE
+
+    # 변경 사항 확인
+    if grep -Eq "sha512" "$PAM_FILE"; then
+        echo "패스워드 저장에 강력한 해싱 알고리즘(SHA-512)이 적용되었습니다: $PAM_FILE" >> $TMP1
+    else
+        echo "패스워드 해싱 알고리즘 변경에 실패했습니다. 수동으로 확인이 필요합니다: $PAM_FILE" >> $TMP1
+    fi
 else
-    OK "강력한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE"
+    echo "이미 강력한 패스워드 해싱 알고리즘이 사용 중입니다: $PAM_FILE" >> $TMP1
 fi
 
-cat $result
-
+cat "$TMP1"
 echo ; echo

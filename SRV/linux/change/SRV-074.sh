@@ -1,39 +1,33 @@
 #!/bin/bash
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
+TMP1="check_unnecessary_accounts.log"
 > $TMP1
 
-BAR
-
-CODE [SRV-074] 불필요하거나 관리되지 않는 계정 존재
-
-cat << EOF >> $TMP1
-[양호]: 불필요하거나 관리되지 않는 계정이 존재하지 않는 경우
-[취약]: 불필요하거나 관리되지 않는 계정이 존재하는 경우
-EOF
-
-BAR
+echo "불필요하거나 관리되지 않는 계정 검사 시작..." >> $TMP1
 
 if [ -f /etc/passwd ]; then
-		# !!! 불필요한 계정을 변경할 경우 하단의 grep 명령어를 수정하세요.
-		if [ `awk -F : '{print $1}' /etc/passwd | grep -wE 'daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp' | wc -l` -gt 0 ]; then
-			WARN " 불필요한 계정이 존재합니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-49 결과 : 양호(Good)" >> $TMP1
+    # 시스템에서 제거해야 할 불필요한 계정 목록
+    unnecessary_accounts="daemon bin sys adm listen nobody nobody4 noaccess diag operator gopher games ftp apache httpd www-data mysql mariadb postgres mail postfix news lp uucp nuucp"
+    for account in $unnecessary_accounts; do
+        if grep -qwE "^$account:" /etc/passwd; then
+            echo "경고: 불필요한 계정($account)이 존재합니다. 해당 계정을 제거하는 것이 권장됩니다." >> $TMP1
+            # 사용자 계정을 제거하기 위한 명령어 예시 (주의: 실제로 실행하기 전에 반드시 검토하세요)
+            # userdel $account
+        fi
+    done
+fi
 
 if [ -f /etc/group ]; then
-		# !!! 불필요한 계정에 대한 변경은 하단의 grep 명령어를 수정하세요.
-		if [ `awk -F : '$1=="root" {gsub(" ", "", $0); print $4}' /etc/group | awk '{gsub(",","\n",$0); print}' | grep -wE 'daemon|bin|sys|adm|listen|nobody|nobody4|noaccess|diag|operator|gopher|games|ftp|apache|httpd|www-data|mysql|mariadb|postgres|mail|postfix|news|lp|uucp|nuucp' | wc -l` -gt 0 ]; then
-			WARN " 관리자 그룹(root)에 불필요한 계정이 등록되어 있습니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-50 결과 : 양호(Good)" >> $TMP1
+    # 관리자 그룹(root)에 등록되어 있으면 안 되는 계정 목록
+    root_unnecessary_accounts="daemon bin sys adm listen nobody nobody4 noaccess diag operator gopher games ftp apache httpd www-data mysql mariadb postgres mail postfix news lp uucp nuucp"
+    for account in $root_unnecessary_accounts; do
+        if grep -q "^root:.*$account" /etc/group; then
+            echo "경고: 관리자 그룹(root)에 불필요한 계정($account)이 등록되어 있습니다. 해당 계정을 관리자 그룹에서 제거하는 것이 권장됩니다." >> $TMP1
+            # 관리자 그룹에서 사용자 계정을 제거하기 위한 명령어 예시 (주의: 실제로 실행하기 전에 반드시 검토하세요)
+            # gpasswd -d $account root
+        fi
+    done
+fi
 
-cat $TMP1
-
-echo ; echo
+cat "$TMP1"
+echo "검사 완료"
