@@ -24,13 +24,21 @@ BAR
 # SNMP service running check
 ps_snmp_count=$(ps -ef | grep -i 'snmp' | grep -v 'grep' | wc -l)
 
+snmpdconf_file="/etc/snmp/snmpd.conf" # Default path for Linux; adjust for other OS as needed
+
 if [ $ps_snmp_count -gt 0 ]; then
-    # Check SNMP configuration file for Set Community string
-    snmpdconf_file="/etc/snmp/snmpd.conf" # Default path for Linux; adjust for other OS as needed
     if [ -f "$snmpdconf_file" ]; then
-        # Check for "public" or "private" strings being used
         if grep -qiE 'public|private' $snmpdconf_file; then
-            WARN "기본 SNMP Set Community 스트링(public/private)이 사용됨" >> $TMP1
+            # Generate a new complex Community string
+            new_community=$(openssl rand -hex 8)
+            
+            # Replace "public" and "private" strings with the new complex Community string
+            sed -i -e "s/public/$new_community/g" -e "s/private/$new_community/g" $snmpdconf_file
+            
+            WARN "기본 SNMP Set Community 스트링(public/private)이 복잡한 값으로 변경됨: $new_community" >> $TMP1
+            
+            # Restart SNMP service to apply changes
+            systemctl restart snmpd
         else
             OK "기본 SNMP Set Community 스트링(public/private)이 사용되지 않음" >> $TMP1
         fi
@@ -46,4 +54,3 @@ BAR
 cat $TMP1
 
 echo ; echo
-
