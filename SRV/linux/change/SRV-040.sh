@@ -7,45 +7,32 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-040] 웹 서비스 디렉터리 리스팅 방지 설정 미흡
+echo "[SRV-040] 웹 서비스 디렉터리 리스팅 방지 설정 조치" >> $TMP1
 
-cat << EOF >> $TMP1
-[양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우
-[취약]: 웹 서비스 디렉터리 리스팅 방지 설정이 미흡한 경우
-EOF
+# Apache 설정 파일 검색 및 수정
+webconf_files=("/etc/apache2/apache2.conf" "/etc/apache2/conf-available/*" "/etc/apache2/sites-available/*" "/etc/httpd/conf/httpd.conf" "/etc/httpd/conf.d/*")
+
+for file_path in "${webconf_files[@]}"; do
+    if [ -f $file_path ] || [ -d $file_path ]; then
+        # 디렉터리 리스팅 방지 설정 적용
+        grep -rl "Options Indexes" $file_path | xargs sed -i 's/Options Indexes/Options -Indexes/g'
+        echo "조치: $file_path 내 디렉터리 리스팅이 방지되도록 설정되었습니다." >> $TMP1
+    fi
+done
+
+# Apache 서비스 재시작
+if systemctl is-active --quiet apache2; then
+    systemctl restart apache2
+    echo "Apache 서비스가 재시작되었습니다." >> $TMP1
+elif systemctl is-active --quiet httpd; then
+    systemctl restart httpd
+    echo "HTTPD 서비스가 재시작되었습니다." >> $TMP1
+else
+    echo "Apache/HTTPD 서비스가 설치되지 않았거나 인식할 수 없습니다." >> $TMP1
+fi
 
 BAR
 
-webconf_files=(".htaccess" "httpd.conf" "apache2.conf" "userdir.conf")
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				if [[ ${find_webconf_files[$j]} =~ userdir.conf ]]; then
-					userdirconf_disabled_count=`grep -vE '^#|^\s#'  ${find_webconf_files[$j]} | grep -i 'userdir' | grep -i 'disabled' | wc -l`
-					if [ $userdirconf_disabled_count -eq 0 ]; then
-						userdirconf_indexes_count=`grep -vE '^#|^\s#'  ${find_webconf_files[$j]} | grep -i 'Options' | grep -iv '\-indexes' | grep -i 'indexes' | wc -l`
-						if [ $userdirconf_indexes_count -gt 0 ]; then
-							WARN " Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다." >> $TMP1
-							return 0
-						fi
-					fi
-				else
-					webconf_file_indexes_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'Options' | grep -iv '\-indexes' | grep -i 'indexes' | wc -l`
-					if [ $webconf_file_indexes_count -gt 0 ]; then
-						WARN " Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다." >> $TMP1
-						return 0
-					fi
-				fi
-			done
-		fi
-	done
-	OK "※ 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
+cat "$TMP1"
 
 echo ; echo

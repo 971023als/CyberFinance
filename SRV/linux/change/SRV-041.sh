@@ -7,29 +7,36 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-041] 웹 서비스의 CGI 스크립트 관리 미흡
+echo "[SRV-041] 웹 서비스의 CGI 스크립트 관리 조치" >> $TMP1
 
-cat << EOF >> $result
-[양호]: CGI 스크립트 관리가 적절하게 설정된 경우
-[취약]: CGI 스크립트 관리가 미흡한 경우
-EOF
+# Apache 설정 파일 경로
+APACHE_CONFIG_FILE="/etc/apache2/apache2.conf"
+
+# CGI 실행 관련 설정을 제한적으로 변경합니다.
+# 여기서는 모든 'Options ExecCGI' 설정을 제거하고, 특정 디렉토리만 CGI를 실행할 수 있도록 설정합니다.
+# 모든 'Options ExecCGI' 설정 제거
+sed -i '/Options.*ExecCGI/d' "$APACHE_CONFIG_FILE"
+
+# 'AddHandler' 및 'ScriptAlias' 지시어 제거
+sed -i '/AddHandler cgi-script/d' "$APACHE_CONFIG_FILE"
+sed -i '/ScriptAlias/d' "$APACHE_CONFIG_FILE"
+
+# CGI 스크립트를 실행할 수 있는 안전한 디렉토리 설정 예시
+# 안전한 디렉토리 예시: /usr/lib/cgi-bin
+echo "<Directory /usr/lib/cgi-bin>" >> "$APACHE_CONFIG_FILE"
+echo "    Options +ExecCGI" >> "$APACHE_CONFIG_FILE"
+echo "    AddHandler cgi-script .cgi .pl" >> "$APACHE_CONFIG_FILE"
+echo "</Directory>" >> "$APACHE_CONFIG_FILE"
+
+echo "Apache 설정에서 CGI 스크립트 실행이 제한되었습니다." >> $TMP1
+
+# Apache 서비스 재시작
+systemctl restart apache2
+
+echo "Apache 서비스가 재시작되었습니다." >> $TMP1
 
 BAR
 
-# Apache 설정 파일 확인
-APACHE_CONFIG_FILE="/etc/apache2/apache2.conf"
-
-# CGI 스크립트 실행 및 관리 설정 확인
-# 예: 'ExecCGI' 옵션 및 'AddHandler' 또는 'ScriptAlias' 지시어를 확인
-cgi_exec_option=$(grep -E "^[ \t]*Options.*ExecCGI" "$APACHE_CONFIG_FILE")
-cgi_handler_directive=$(grep -E "(AddHandler cgi-script|ScriptAlias)" "$APACHE_CONFIG_FILE")
-
-if [ -n "$cgi_exec_option" ] || [ -n "$cgi_handler_directive" ]; then
-    WARN "Apache에서 CGI 스크립트 실행이 허용되어 있습니다: $cgi_exec_option, $cgi_handler_directive"
-else
-    OK "Apache에서 CGI 스크립트 실행이 적절하게 제한되어 있습니다."
-fi
-
-cat $result
+cat "$TMP1"
 
 echo ; echo
