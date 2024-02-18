@@ -7,32 +7,40 @@ TMP1=$(SCRIPTNAME).log
 
 BAR
 
-CODE [SRV-062] DNS 서비스 정보 노출
-
-cat << EOF >> $result
-[양호]: DNS 서비스 정보가 안전하게 보호되고 있는 경우
-[취약]: DNS 서비스 정보가 노출되고 있는 경우
-EOF
-
-BAR
+echo "[SRV-062] DNS 서비스 정보 보호 조치" >> $TMP1
 
 # DNS 설정 파일 경로
 DNS_CONFIG_FILE="/etc/bind/named.conf"  # BIND 사용 예시, 실제 환경에 따라 달라질 수 있음
 
-# 버전 정보 숨김 옵션 확인
-if grep -qE "version \"none\"" "$DNS_CONFIG_FILE"; then
-    OK "DNS 서비스에서 버전 정보가 숨겨져 있습니다."
+# 버전 정보 숨김 설정 추가
+if ! grep -qE "version \"none\"" "$DNS_CONFIG_FILE"; then
+    echo 'options { version "none"; };' >> "$DNS_CONFIG_FILE"
+    echo "DNS 서비스의 버전 정보 숨김 옵션을 추가했습니다." >> $TMP1
 else
-    WARN "DNS 서비스에서 버전 정보가 노출될 수 있습니다."
+    echo "DNS 서비스의 버전 정보 숨김 옵션은 이미 설정되어 있습니다." >> $TMP1
 fi
 
-# 불필요한 전송 허용 확인
-if grep -qE "allow-transfer" "$DNS_CONFIG_FILE"; then
-    WARN "DNS 서비스에서 불필요한 Zone Transfer가 허용될 수 있습니다."
+# 불필요한 Zone Transfer 제한 설정 확인 및 추가
+if ! grep -qE "allow-transfer" "$DNS_CONFIG_FILE"; then
+    echo 'options { allow-transfer { none; }; };' >> "$DNS_CONFIG_FILE"
+    echo "DNS 서비스에서 불필요한 Zone Transfer 제한 옵션을 추가했습니다." >> $TMP1
 else
-    OK "DNS 서비스에서 불필요한 Zone Transfer가 제한됩니다."
+    echo "DNS 서비스에서 불필요한 Zone Transfer 제한 옵션은 이미 설정되어 있습니다." >> $TMP1
 fi
 
-cat $result
+# DNS 서비스 재시작 (BIND 사용 예시)
+if systemctl is-active --quiet bind9; then
+    systemctl restart bind9
+    echo "BIND DNS 서비스를 재시작했습니다." >> $TMP1
+elif systemctl is-active --quiet named; then
+    systemctl restart named
+    echo "BIND DNS 서비스(named)를 재시작했습니다." >> $TMP1
+else
+    echo "DNS 서비스(BIND)가 실행 중이지 않거나, 서비스 명이 다릅니다." >> $TMP1
+fi
+
+BAR
+
+cat "$TMP1"
 
 echo ; echo
