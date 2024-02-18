@@ -1,52 +1,54 @@
 #!/bin/bash
 
+# 함수 라이브러리를 로드합니다.
 . function.sh
 
+# 임시 로그 파일을 초기화합니다.
 TMP1=$(SCRIPTNAME).log
 > $TMP1
 
-BAR
-
-CODE [SRV-095] 존재하지 않는 소유자 및 그룹 권한을 가진 파일 또는 디렉터리 존재
-
-cat << EOF >> $result
-[양호]: 시스템에 존재하지 않는 소유자나 그룹 권한을 가진 파일 또는 디렉터리가 없는 경우
-[취약]: 시스템에 존재하지 않는 소유자나 그룹 권한을 가진 파일 또는 디렉터리가 있는 경우
-EOF
+# 로그 분리를 위한 함수
+BAR() {
+    echo "==================================================" >> $TMP1
+}
 
 BAR
+echo "존재하지 않는 소유자 및 그룹 권한을 가진 파일 또는 디렉터리 검사" >> $TMP1
+BAR
 
-if [ `find / \( -nouser -or -nogroup \) 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " 소유자가 존재하지 않는 파일 및 디렉터리가 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-06 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
+# 존재하지 않는 사용자나 그룹의 파일 및 디렉터리 검사
+orphans=$(find / \( -nouser -or -nogroup \) -print 2>/dev/null)
+if [ -n "$orphans" ]; then
+    WARN "소유자 또는 그룹이 존재하지 않는 파일 및 디렉터리가 있습니다." >> $TMP1
+    echo "$orphans" >> $TMP1
+else
+    OK "소유자 또는 그룹이 존재하지 않는 파일 또는 디렉터리가 없습니다." >> $TMP1
+fi
 
-if [ `find /dev -type f 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-16 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
+BAR
+echo "/dev 디렉터리 내 적절하지 않은 파일 검사" >> $TMP1
+BAR
 
-homedirectory_null_count=`awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" && $6==null' /etc/passwd | wc -l`
-	if [ $homedirectory_null_count -gt 0 ]; then
-		WARN " 홈 디렉터리가 존재하지 않는 계정이 있습니다." >> $TMP1
-		return 0
-	else
-		homedirectory_slash_count=`awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" && $1!="root" && $6=="/"' /etc/passwd | wc -l`
-		if [ $homedirectory_slash_count -gt 0 ]; then
-			WARN " 관리자 계정(root)이 아닌데 홈 디렉터리가 '/'로 설정된 계정이 있습니다." >> $TMP1
-			return 0
-		else
-			OK "※ U-58 결과 : 양호(Good)" >> $TMP1
-			return 0
-		fi
-	fi
+# /dev 디렉터리 내에 적절하지 않은 파일 검사
+if find /dev -type f -exec test ! -c {} \; -print 2>/dev/null | grep -q .; then
+    WARN "/dev 디렉터리에 적절하지 않은 파일이 존재합니다." >> $TMP1
+else
+    OK "/dev 디렉터리에 적절하지 않은 파일이 존재하지 않습니다." >> $TMP1
+fi
 
-cat $result
+BAR
+echo "사용자 홈 디렉터리 설정 검사" >> $TMP1
+BAR
 
-echo ; echo
+# 홈 디렉터리가 없거나, 루트(/)로 설정된 계정 검사
+while IFS=: read -r user _ _ _ _ home _; do
+    if [ "$home" == "" ] || [ "$home" == "/" -a "$user" != "root" ]; then
+        WARN "계정 $user 의 홈 디렉터리가 적절하지 않게 설정되었습니다: $home" >> $TMP1
+    fi
+done < /etc/passwd
+
+OK "모든 사용자의 홈 디렉터리가 적절히 설정되었습니다." >> $TMP1
+
+# 결과 출력
+cat $TMP1
+echo
