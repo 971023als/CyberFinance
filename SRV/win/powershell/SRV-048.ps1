@@ -1,64 +1,54 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-048_log.txt"
+"" | Set-Content $TMP1
 
-:gotAdmin
-chcp 437
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------설정 시작---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS 설정 정보-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------설정 종료-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
-echo SRV-001 (Windows) SNMP 커뮤니티 설정 검토
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-SNMP 서비스 설정과 커뮤니티 문자열의 안전한 사용에 대한 지침을 제공합니다. 기본 문자열 대신 복잡하고 안전한 문자열을 사용하세요.
+Function Write-Result {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
 
-echo -------------------------------------------종료------------------------------------------
+Write-BAR
 
-echo --------------------------------------SRV-004 필수 SMTP 서비스 상태 확인------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+@"
+[양호]: 불필요한 웹 서비스가 실행되지 않고 있는 경우
+[취약]: 불필요한 웹 서비스가 실행되고 있는 경우
+"@ | Out-File -FilePath $TMP1 -Append
+
+Write-BAR
+
+# 웹 서비스 설정 파일 목록
+$webconfFiles = @(".htaccess", "httpd.conf", "apache2.conf")
+$serverRootDirectories = @()
+
+# 설정 파일 검색 및 ServerRoot 디렉토리 찾기
+foreach ($file in $webconfFiles) {
+    $findWebconfFiles = Get-ChildItem -Path C:\ -Filter $file -Recurse -ErrorAction SilentlyContinue
+    foreach ($f in $findWebconfFiles) {
+        $content = Get-Content $f.FullName
+        foreach ($line in $content) {
+            if ($line -match "ServerRoot") {
+                $serverRootDirectories += $line -replace '.*ServerRoot\s+"', '' -replace '"', ''
+            }
+        }
+    }
+}
+
+# Apache 및 Httpd ServerRoot 설정 확인
+# PowerShell에서 직접 Apache 및 Httpd 명령을 실행하여 ServerRoot를 가져오는 것은 일반적이지 않으므로, 이 부분은 실제 환경에 맞게 조정할 필요가 있습니다.
+
+# ServerRoot 디렉토리 내 manual 디렉토리 검사
+foreach ($dir in $serverRootDirectories) {
+    $manualDirExists = Test-Path -Path "$dir\manual" -ErrorAction SilentlyContinue
+    if ($manualDirExists) {
+        Write-Result "WARN: Apache 홈 디렉터리 내 기본으로 생성되는 불필요한 파일 및 디렉터리가 제거되어 있지 않습니다."
+        return
+    }
+}
+
+Write-Result "OK: 결과 : 양호(Good)"
+
+Get-Content $TMP1 | Write-Output
