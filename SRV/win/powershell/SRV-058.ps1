@@ -1,40 +1,34 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+Function Write-BAR {
+    "-------------------------------------------------" | Out-Host
+}
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+# 결과 메시지 출력
+Write-BAR
 
-:gotAdmin
-chcp 949 >nul
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+@"
+[양호]: IIS 웹 서비스에서 불필요한 스크립트 매핑이 존재하지 않는 경우
+[취약]: IIS 웹 서비스에서 불필요한 스크립트 매핑이 존재하는 경우
+"@ | Out-Host
 
-echo ------------------------------------------IIS 설정 정보 수집-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path.txt
+Write-BAR
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토--------------------------------
-:: SNMP 설정 검토가 필요합니다 (실제 스크립트에서 구현 필요)
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+# IIS 웹 서비스의 스크립트 매핑 설정 확인
+Import-Module WebAdministration
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+# IIS에서 설정된 모든 사이트의 핸들러 매핑을 확인
+$siteNames = Get-ChildItem IIS:\Sites
+
+foreach ($site in $siteNames) {
+    $handlers = Get-WebConfiguration "/system.webServer/handlers" -PSPath IIS:\Sites\$($site.Name)
+    $unnecessaryHandlers = $handlers.Collection | Where-Object { $_.path -eq "*.php" -or $_.path -eq "*.cgi" } # 예시: .php와 .cgi 확장자 매핑 확인
+
+    if ($unnecessaryHandlers) {
+        foreach ($handler in $unnecessaryHandlers) {
+            "WARN: $($site.Name)에서 불필요한 스크립트 매핑이 발견됨: $($handler.path)" | Out-Host
+        }
+    } else {
+        "OK: $($site.Name)에서 불필요한 스크립트 매핑이 발견되지 않음" | Out-Host
+    }
+}
+
+Write-BAR

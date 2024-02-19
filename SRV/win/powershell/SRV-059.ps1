@@ -1,40 +1,37 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# function.sh와 동일한 PowerShell 함수 파일을 포함해야 함
+. .\function.ps1
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
-:gotAdmin
-chcp 949 >nul
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정 중---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+BAR
 
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path.txt
+$CODE = "[SRV-059] 웹 서비스 서버 명령 실행 기능 제한 설정 미흡"
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정 검토가 필요합니다 (상세 구현 필요)
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+$result = "결과 파일 경로 지정 필요"
+Add-Content -Path $result -Value "[양호]: 웹 서비스에서 서버 명령 실행 기능이 적절하게 제한된 경우"
+Add-Content -Path $result -Value "[취약]: 웹 서비스에서 서버 명령 실행 기능의 제한이 미흡한 경우"
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+BAR
+
+# Apache 또는 Nginx 웹 서비스의 서버 명령 실행 제한 설정 확인
+$APACHE_CONFIG_FILE = "/etc/apache2/apache2.conf"
+$NGINX_CONFIG_FILE = "/etc/nginx/nginx.conf"
+
+# Apache에서 서버 명령 실행 제한 확인
+If ((Select-String -Path $APACHE_CONFIG_FILE -Pattern "^\s*ScriptAlias" -Quiet)) {
+    WARN "Apache에서 서버 명령 실행이 허용될 수 있습니다: $APACHE_CONFIG_FILE"
+} Else {
+    OK "Apache에서 서버 명령 실행 기능이 적절하게 제한됩니다: $APACHE_CONFIG_FILE"
+}
+
+# Nginx에서 FastCGI 스크립트 실행 제한 확인
+If ((Select-String -Path $NGINX_CONFIG_FILE -Pattern "fastcgi_pass" -Quiet)) {
+    WARN "Nginx에서 FastCGI를 통한 서버 명령 실행이 허용될 수 있습니다: $NGINX_CONFIG_FILE"
+} Else {
+    OK "Nginx에서 FastCGI를 통한 서버 명령 실행 기능이 적절하게 제한됩니다: $NGINX_CONFIG_FILE"
+}
+
+Get-Content -Path $result
+
+Write-Host "`n"

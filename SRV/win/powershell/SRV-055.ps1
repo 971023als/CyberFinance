@@ -1,39 +1,51 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한이 필요합니다. 스크립트를 관리자 권한으로 다시 실행해 주세요.
-    goto UACPrompt
-) else ( goto gotAdmin )
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-055_log.txt"
+"" | Set-Content $TMP1
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %*", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-:gotAdmin
-chcp 949
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정 중---------------------------------------
-if exist C:\Window_%COMPUTERNAME%_raw rd /S /Q C:\Window_%COMPUTERNAME%_raw
-if exist C:\Window_%COMPUTERNAME%_result rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+Function Write-Result {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_paths.txt
+Write-BAR
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정 검토가 필요합니다 (이 부분은 실제 환경에 맞게 구성해야 합니다)
-:: SMTP 서비스 상태 확인
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+@"
+[양호]: 웹 서비스 설정 파일이 외부에서 접근 불가능한 경우
+[취약]: 웹 서비스 설정 파일이 외부에서 접근 가능한 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+Write-BAR
+
+# 웹 서비스 설정 파일의 예시 경로
+$APACHE_CONFIG = "C:\path\to\apache2\apache2.conf" # 예시 경로, 실제 경로로 변경 필요
+$NGINX_CONFIG = "C:\path\to\nginx\nginx.conf" # 예시 경로, 실제 경로로 변경 필요
+
+# Apache 설정 파일의 접근 권한 확인
+if (Test-Path $APACHE_CONFIG) {
+    $filePermission = (Get-Acl $APACHE_CONFIG).AccessToString
+    if ($filePermission -like "*-rw-------*") {
+        Write-Result "OK: Apache 설정 파일($APACHE_CONFIG)이 외부 접근으로부터 보호됩니다."
+    } else {
+        Write-Result "WARN: Apache 설정 파일($APACHE_CONFIG)의 접근 권한이 취약합니다."
+    }
+} else {
+    Write-Result "INFO: Apache 설정 파일($APACHE_CONFIG)이 존재하지 않습니다."
+}
+
+# Nginx 설정 파일의 접근 권한 확인
+if (Test-Path $NGINX_CONFIG) {
+    $filePermission = (Get-Acl $NGINX_CONFIG).AccessToString
+    if ($filePermission -like "*-rw-------*") {
+        Write-Result "OK: Nginx 설정 파일($NGINX_CONFIG)이 외부 접근으로부터 보호됩니다."
+    } else {
+        Write-Result "WARN: Nginx 설정 파일($NGINX_CONFIG)의 접근 권한이 취약합니다."
+    }
+} else {
+    Write-Result "INFO: Nginx 설정 파일($NGINX_CONFIG)이 존재하지 않습니다."
+}
+
+Get-Content $TMP1 | Write-Output

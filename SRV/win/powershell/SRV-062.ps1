@@ -1,43 +1,38 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 요청된 작업을 수행하기 위해 관리자 권한이 필요합니다.
-    goto UACPrompt
-) else ( goto gotAdmin )
+# PowerShell 함수 파일 포함 (예: function.ps1)
+. .\function.ps1
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+$TMP1 = "$(SCRIPTNAME).log"
+# TMP1 파일 초기화
+Clear-Content -Path $TMP1
 
-:gotAdmin
-chcp 949
-color 02
-setlocal enabledelayedexpansion
+BAR
 
-echo ------------------------------------------환경 설정 중---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
+$CODE = "[SRV-062] DNS 서비스 정보 노출"
 
-echo ------------------------------------------보안 정책 내보내기---------------------------------------
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
+$result = "결과 파일 경로를 지정해야 함"
+# 결과 파일에 내용 추가
+Add-Content -Path $result -Value "[양호]: DNS 서비스 정보가 안전하게 보호되고 있는 경우"
+Add-Content -Path $result -Value "[취약]: DNS 서비스 정보가 노출되고 있는 경우"
 
-echo ------------------------------------------시스템 정보 수집 중---------------------------------------
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+BAR
 
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_paths.txt
+# DNS 설정 파일 경로
+$DNS_CONFIG_FILE = "/etc/bind/named.conf" # BIND 사용 예시, 실제 환경에 따라 달라질 수 있음
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정에 대한 추가 구현 필요
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+# 버전 정보 숨김 옵션 확인
+If (Select-String -Path $DNS_CONFIG_FILE -Pattern "version `"none`"" -Quiet) {
+    OK "DNS 서비스에서 버전 정보가 숨겨져 있습니다."
+} Else {
+    WARN "DNS 서비스에서 버전 정보가 노출될 수 있습니다."
+}
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+# 불필요한 전송 허용 확인
+If (Select-String -Path $DNS_CONFIG_FILE -Pattern "allow-transfer" -Quiet) {
+    WARN "DNS 서비스에서 불필요한 Zone Transfer가 허용될 수 있습니다."
+} Else {
+    OK "DNS 서비스에서 불필요한 Zone Transfer가 제한됩니다."
+}
+
+Get-Content -Path $result
+
+Write-Host "`n"

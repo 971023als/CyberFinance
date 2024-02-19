@@ -1,40 +1,38 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-057_log.txt"
+"" | Set-Content $TMP1
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~f0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-:gotAdmin
-chcp 949
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-echo Current directory path: > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+Function Write-Result {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------IIS 설정 정보 수집-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path.txt
+Write-BAR
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토--------------------------------
-:: SNMP 설정 검토 필요 (이 부분은 상황에 맞게 조정하세요)
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+@"
+[양호]: 웹 서비스 경로 내 파일의 접근 권한이 적절하게 설정된 경우
+[취약]: 웹 서비스 경로 내 파일의 접근 권한이 적절하게 설정되지 않은 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+Write-BAR
+
+# 웹 서비스 경로 설정
+$WEB_SERVICE_PATH = "C:\path\to\web\service" # 실제 경로에 맞게 조정하세요.
+
+# 웹 서비스 경로 내 파일 접근 권한 확인
+$incorrectPermissions = Get-ChildItem -Path $WEB_SERVICE_PATH -Recurse -File | Where-Object {
+    ($_.Mode -notmatch "d-----") -and ($_.Mode -notmatch "-----") # PowerShell에서는 파일 권한을 직접적으로 숫자로 표현하지 않으므로, Mode 속성을 검사합니다.
+}
+
+if ($incorrectPermissions) {
+    Write-Result "WARN: 웹 서비스 경로 내에 부적절한 파일 권한이 있습니다."
+    $incorrectPermissions | ForEach-Object { Write-Result $_.FullName }
+} else {
+    Write-Result "OK: 웹 서비스 경로 내의 모든 파일의 권한이 적절하게 설정되어 있습니다."
+}
+
+Get-Content $TMP1 | Write-Output
