@@ -1,66 +1,53 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 > nul
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-044_log.txt"
+"" | Set-Content $TMP1
 
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-:gotAdmin
-chcp 949 > nul
-color 02
-setlocal enabledelayedexpansion
+Function Write-WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
+Function Write-OK {
+    Param ([string]$message)
+    "$message" | Out-File -FilePath $TMP1 -Append
+}
 
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+Write-BAR
 
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
+@"
+[양호]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 적절하게 제한된 경우
+[취약]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 제한되지 않은 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-    set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
+Write-BAR
 
-for /F "tokens=1-5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-    echo %%b >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-    echo %%c >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-    echo %%d >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-    echo %%e >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
+$webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf", "userdir.conf")
+$fileExistsCount = 0
 
-echo ------------------------------------------end-------------------------------------------
+foreach ($webConfFile in $webConfFiles) {
+    $findWebConfFiles = Get-ChildItem -Recurse -Path / -Filter $webConfFile -ErrorAction SilentlyContinue
+    if ($findWebConfFiles) {
+        $fileExistsCount++
+        foreach ($file in $findWebConfFiles) {
+            $content = Get-Content -Path $file.FullName
+            $limitRequestBodyLines = $content | Where-Object { $_ -match 'LimitRequestBody' }
+            if (-not $limitRequestBodyLines) {
+                Write-WARN "Apache 설정 파일에 파일 업로드 및 다운로드를 제한하도록 설정하지 않았습니다."
+                return
+            }
+        }
+    }
+}
 
-echo ------------------------------------------SRV-001------------------------------------------
-echo SRV-001 (Windows) SNMP Community 설정 검증 및 보안 강화
-:: SNMP community string 검증 및 필요한 보안 조치 실행
+if ($fileExistsCount -eq 0) {
+    Write-WARN "Apache 설정 파일이 발견되지 않았습니다."
+} else {
+    Write-OK "※ 양호(Good)"
+}
 
-echo ------------------------------------------SRV-004------------------------------------------
-echo SRV-004 (Windows) SMTP 서비스 구성 및 보안 점검
-:: SMTP 서비스 상태 및 구성 검토, 보안 개선 조치 적용
-
->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt echo SMTP 서비스 점검 결과
->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt sc query smtp
-echo ------------------------------------------------------------------------------------------ >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+# 최종 결과를 출력합니다.
+Get-Content $TMP1 | Write-Output
