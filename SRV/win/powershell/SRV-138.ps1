@@ -1,39 +1,24 @@
-#!/bin/bash
+# 결과 파일 정의
+$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_BackupAndRecoveryPermissions.log"
 
-. function.sh
+# 백업 디렉토리 경로 설정
+$backupDirs = @("C:\path\to\backup\dir1", "C:\path\to\backup\dir2")
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+foreach ($dir in $backupDirs) {
+    if (Test-Path $dir) {
+        $acl = Get-Acl $dir
+        $owner = $acl.Owner
+        $permissions = $acl.Access | Where-Object { $_.FileSystemRights -eq "FullControl" -and $_.IdentityReference -eq "DOMAIN\backup_user" }
 
-BAR
+        if ($null -ne $permissions) {
+            "OK: $dir 은 적절한 권한 및 소유자($owner)를 가집니다." | Out-File -FilePath $TMP1 -Append
+        } else {
+            "WARN: $dir 은 부적절한 권한 또는 소유자($owner)를 가집니다." | Out-File -FilePath $TMP1 -Append
+        }
+    } else {
+        "INFO: $dir 디렉토리가 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
+    }
+}
 
-CODE [SRV-138] 백업 및 복구 권한 설정 미흡
-
-cat << EOF >> $result
-[양호]: 백업 및 복구 권한이 적절히 설정된 경우
-[취약]: 백업 및 복구 권한이 적절히 설정되지 않은 경우
-EOF
-
-BAR
-
-# 백업 관련 디렉토리 및 파일 권한 확인
-backup_dirs=("/path/to/backup/dir1" "/path/to/backup/dir2") # 백업 디렉토리 예시
-
-for dir in "${backup_dirs[@]}"; do
-  if [ -d "$dir" ]; then
-    permissions=$(stat -c %a "$dir")
-    owner=$(stat -c %U "$dir")
-    # 백업 디렉토리 소유자 및 권한 확인
-    if [[ "$owner" == "backup_user" && "$permissions" -le 700 ]]; then
-      OK "$dir 은 적절한 권한($permissions) 및 소유자($owner)를 가집니다."
-    else
-      WARN "$dir 은 부적절한 권한($permissions) 또는 소유자($owner)를 가집니다."
-    fi
-  else
-    INFO "$dir 디렉토리가 존재하지 않습니다."
-  fi
-done
-
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+Get-Content -Path $TMP1

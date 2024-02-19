@@ -1,38 +1,17 @@
-#!/bin/bash
+# 결과 파일 정의
+$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_SystemShutdownPermissions.log"
 
-. function.sh
+# 시스템 종료 권한 확인 (Local Security Policy)
+$seShutdownPrivilege = secpol.exe /export /cfg secpol.cfg 2>$null
+$shutdownPrivilege = Get-Content -Path .\secpol.cfg | Select-String "SeShutdownPrivilege"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+if ($shutdownPrivilege -match "SeShutdownPrivilege") {
+    "OK: 시스템 종료 권한이 적절히 제한되어 있습니다." | Out-File -FilePath $TMP1
+} else {
+    "WARN: 시스템 종료 권한이 제한되지 않은 것으로 보입니다." | Out-File -FilePath $TMP1
+}
 
-BAR
+Remove-Item -Path .\secpol.cfg -Force
 
-CODE [SRV-136] 시스템 종료 권한 설정 미흡
-
-cat << EOF >> $result
-[양호]: 시스템 종료 권한이 적절히 제한된 경우
-[취약]: 시스템 종료 권한이 제한되지 않은 경우
-EOF
-
-BAR
-
-# 시스템 종료 권한 관련 설정 확인
-shutdown_command="/sbin/shutdown"
-
-if [ ! -x "$shutdown_command" ]; then
-  WARN "shutdown 명령이 실행 가능하지 않습니다."
-else
-  OK "shutdown 명령이 실행 가능합니다."
-fi
-
-# shutdown 명령에 대한 권한 확인
-permissions=$(stat -c %A "$shutdown_command")
-if [[ "$permissions" != *x* ]]; then
-  WARN "shutdown 명령에 실행 권한이 없습니다."
-else
-  OK "shutdown 명령에 실행 권한이 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+Get-Content -Path $TMP1

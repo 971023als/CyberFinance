@@ -1,28 +1,17 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-134] 스택 영역 실행 방지 미설정
-
-cat << EOF >> $result
-[양호]: 스택 영역 실행 방지가 활성화된 경우
-[취약]: 스택 영역 실행 방지가 비활성화된 경우
-EOF
-
-BAR
+# 결과 파일 정의
+$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_DEPStatus.log"
 
 # 스택 영역 실행 방지 설정 확인
-if grep -q "kernel.randomize_va_space=2" /etc/sysctl.conf; then
-  OK "스택 영역 실행 방지가 활성화되어 있습니다."
-else
-  WARN "스택 영역 실행 방지가 비활성화되어 있습니다."
-fi
+$depStatus = Get-WmiObject -Class Win32_OperatingSystem | Select-Object -ExpandProperty DataExecutionPrevention_SupportPolicy
 
-cat $result
+# DEP 상태에 따른 결과 출력
+switch ($depStatus) {
+    0 {"WARN: DEP가 모든 프로세스에 대해 비활성화되어 있습니다." | Out-File -FilePath $TMP1}
+    1 {"OK: DEP가 필수 Windows 프로그램과 서비스에 대해서만 활성화되어 있습니다." | Out-File -FilePath $TMP1}
+    2 {"WARN: DEP가 모든 프로세스에 대해 활성화되어 있지만, 사용자에 의해 예외가 설정될 수 있습니다." | Out-File -FilePath $TMP1}
+    3 {"OK: DEP가 모든 프로세스에 대해 활성화되어 있습니다." | Out-File -FilePath $TMP1}
+    default {"INFO: DEP 상태를 확인할 수 없습니다." | Out-File -FilePath $TMP1}
+}
 
-echo ; echo
+# 결과 파일 출력
+Get-Content -Path $TMP1

@@ -1,30 +1,26 @@
-#!/bin/bash
+# 결과 파일 정의
+$TMP1 = "SCRIPTNAME.log"
+Remove-Item -Path $TMP1 -ErrorAction Ignore
+New-Item -Path $TMP1 -ItemType File
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
+# 시작 정보 출력
+@"
 CODE [SRV-128] NTFS 파일 시스템 미사용
 
-cat << EOF >> $result
 [양호]: NTFS 파일 시스템이 사용되지 않는 경우
 [취약]: NTFS 파일 시스템이 사용되는 경우
-EOF
-
-BAR
+"@ | Out-File -FilePath $TMP1
 
 # NTFS 파일 시스템 사용 여부 확인
-ntfs_check=$(mount | grep 'type ntfs')
+$ntfsDrives = Get-Volume | Where-Object { $_.FileSystem -eq "NTFS" }
 
-if [ -z "$ntfs_check" ]; then
-  OK "NTFS 파일 시스템이 사용되지 않습니다."
-else
-  WARN "NTFS 파일 시스템이 사용되고 있습니다: $ntfs_check"
-fi
+if ($ntfsDrives) {
+    foreach ($drive in $ntfsDrives) {
+        "WARN: NTFS 파일 시스템이 사용되고 있습니다: Drive $($drive.DriveLetter)" | Out-File -FilePath $TMP1 -Append
+    }
+} else {
+    "OK: NTFS 파일 시스템이 사용되지 않습니다." | Out-File -FilePath $TMP1 -Append
+}
 
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+Get-Content -Path $TMP1
