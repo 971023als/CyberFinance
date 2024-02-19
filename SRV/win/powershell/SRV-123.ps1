@@ -1,36 +1,29 @@
-#!/bin/bash
+# 결과 파일 정의
+$TMP1 = "$(SCRIPTNAME).log"
+Remove-Item -Path $TMP1 -ErrorAction Ignore
+New-Item -Path $TMP1 -ItemType File
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
+# 시작 정보 출력
+@"
 CODE [SRV-123] 최종 로그인 사용자 계정 노출
 
-cat << EOF >> $result
 [양호]: 최종 로그인 사용자 정보가 노출되지 않는 경우
 [취약]: 최종 로그인 사용자 정보가 노출되는 경우
-EOF
+"@ | Out-File -FilePath $TMP1
 
-BAR
+# Windows에서는 로그온 메시지를 그룹 정책을 통해 설정합니다.
+# 이 스크립트는 로그온 메시지 설정을 검사합니다.
+try {
+    $logonMessage = Get-GPOReport -All -ReportType Xml | Select-String -Pattern "InteractiveLogon_MessageTitleForUsersAttemptingToLogOn"
 
-# 로그인 메시지 파일 확인
-files=("/etc/motd" "/etc/issue" "/etc/issue.net")
+    if ($logonMessage -ne $null) {
+        "OK: 로그온 메시지가 설정되어 있습니다." | Out-File -FilePath $TMP1 -Append
+    } else {
+        "WARN: 로그온 메시지가 설정되지 않았습니다." | Out-File -FilePath $TMP1 -Append
+    }
+} catch {
+    "INFO: 그룹 정책 설정을 검사하는 동안 오류가 발생했습니다." | Out-File -FilePath $TMP1 -Append
+}
 
-for file in "${files[@]}"; do
-  if [ -f "$file" ]; then
-    if grep -q 'Last login' "$file"; then
-      WARN "파일 $file 에 최종 로그인 사용자 정보가 포함되어 있습니다."
-    else
-      OK "파일 $file 에 최종 로그인 사용자 정보가 포함되지 않았습니다."
-    fi
-  else
-    INFO "파일 $file 이(가) 존재하지 않습니다."
-  fi
-done
-
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+Get-Content -Path $TMP1

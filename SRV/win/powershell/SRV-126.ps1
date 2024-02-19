@@ -1,43 +1,25 @@
-#!/bin/bash
+# 결과 파일 정의
+$TMP1 = "$(SCRIPTNAME).log"
+Remove-Item -Path $TMP1 -ErrorAction Ignore
+New-Item -Path $TMP1 -ItemType File
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
+# 시작 정보 출력
+@"
 CODE [SRV-126] 자동 로그온 방지 설정 미흡
 
-cat << EOF >> $result
 [양호]: 자동 로그온이 비활성화된 경우
 [취약]: 자동 로그온이 활성화된 경우
-EOF
+"@ | Out-File -FilePath $TMP1
 
-BAR
+# 자동 로그온 설정 확인
+$autoLogonKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+$autoLogonStatus = Get-ItemProperty -Path $autoLogonKey -Name AutoAdminLogon
 
-# GDM (GNOME Display Manager) 설정 확인
-if [ -f /etc/gdm3/custom.conf ]; then
-    if grep -q "AutomaticLoginEnable=false" /etc/gdm3/custom.conf; then
-        OK "GDM에서 자동 로그온이 비활성화되어 있습니다."
-    else
-        WARN "GDM에서 자동 로그온이 활성화되어 있습니다."
-    fi
-else
-    INFO "GDM 설정 파일이 존재하지 않습니다."
-fi
+if ($autoLogonStatus.AutoAdminLogon -eq "1") {
+    "WARN: 자동 로그온이 활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    "OK: 자동 로그온이 비활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+}
 
-# LightDM 설정 확인
-if [ -f /etc/lightdm/lightdm.conf ]; then
-    if grep -q "autologin-user=" /etc/lightdm/lightdm.conf; then
-        WARN "LightDM에서 자동 로그온이 설정되어 있습니다."
-    else
-        OK "LightDM에서 자동 로그온이 비활성화되어 있습니다."
-    fi
-else
-    INFO "LightDM 설정 파일이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+# 결과 파일 출력
+Get-Content -Path $TMP1
