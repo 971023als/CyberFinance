@@ -1,62 +1,61 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo Requesting administrative privileges...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-035_log.txt"
+"" | Set-Content $TMP1
 
-:gotAdmin
-chcp 65001
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a"
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------end-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
-echo SRV-001 (Windows) SNMP Community String Security Configuration:
-echo It's important to ensure SNMP community strings are secure. Replace default strings with secure ones.
-echo -------------------------------------------end------------------------------------------
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-echo --------------------------------------SRV-004 SMTP Service Status Check-------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo ------------------------------------------------------------------------------>> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+Function Write-OK {
+    Param ([string]$message)
+    "$message" | Out-File -FilePath $TMP1 -Append
+}
+
+Function Write-WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
+
+Write-BAR
+
+@"
+[양호]: 취약한 서비스가 비활성화된 경우
+[취약]: 취약한 서비스가 활성화된 경우
+"@ | Out-File -FilePath $TMP1 -Append
+
+Write-BAR
+
+# 취약한 서비스 목록
+$services = @("echo", "discard", "daytime", "chargen")
+
+# /etc/xinetd.d 폴더 내의 서비스 파일들을 확인합니다.
+if (Test-Path -Path "/etc/xinetd.d") {
+    foreach ($service in $services) {
+        $filePath = "/etc/xinetd.d/$service"
+        if (Test-Path -Path $filePath) {
+            $content = Get-Content -Path $filePath
+            $disabled = $content | Where-Object { $_ -match "disable\s*=\s*yes" }
+            if (-not $disabled) {
+                Write-WARN "$service 서비스가 /etc/xinetd.d 디렉터리 내 서비스 파일에서 실행 중입니다."
+                exit
+            }
+        }
+    }
+}
+
+# /etc/inetd.conf 파일에서 서비스들을 확인합니다.
+if (Test-Path -Path "/etc/inetd.conf") {
+    $inetdConfContent = Get-Content -Path "/etc/inetd.conf"
+    foreach ($service in $services) {
+        $enabled = $inetdConfContent | Where-Object { $_ -match $service -and -not $_.StartsWith('#') }
+        if ($enabled) {
+            Write-WARN "$service 서비스가 /etc/inetd.conf 파일에서 실행 중입니다."
+            exit
+        }
+    }
+}
+
+Write-OK "※ U-23 결과 : 양호(Good)"
+
+# 최종 결과를 출력합니다.
+Get-Content $TMP1 | Write-Output
