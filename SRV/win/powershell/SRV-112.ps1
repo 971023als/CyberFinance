@@ -1,41 +1,25 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
 BAR
 
-CODE [SRV-112] Cron 서비스 로깅 미설정
+$CODE = "[SRV-112] Cron 서비스 로깅 미설정"
 
-cat << EOF >> $result
-[양호]: Cron 서비스 로깅이 적절하게 설정되어 있는 경우
-[취약]: Cron 서비스 로깅이 적절하게 설정되어 있지 않은 경우
-EOF
+Add-Content -Path $TMP1 -Value "[양호]: Cron 서비스 로깅이 적절하게 설정되어 있는 경우"
+Add-Content -Path $TMP1 -Value "[취약]: Cron 서비스 로깅이 적절하게 설정되어 있지 않은 경우"
 
 BAR
 
-# rsyslog.conf 파일에서 Cron 로깅 설정 확인
-rsyslog_conf="/etc/rsyslog.conf"
-if [ ! -f "$rsyslog_conf" ]; then
-  WARN "rsyslog.conf 파일이 존재하지 않습니다."
-else
-  if grep -q "cron.*" "$rsyslog_conf"; then
-    OK "Cron 로깅이 rsyslog.conf에서 설정되었습니다."
-  else
-    WARN "Cron 로깅이 rsyslog.conf에서 설정되지 않았습니다."
-  fi
-fi
+# 작업 스케줄러 로그 존재 여부 확인
+$eventLog = Get-WinEvent -LogName "Microsoft-Windows-TaskScheduler/Operational" -ErrorAction SilentlyContinue | Select-Object -First 1
 
-# Cron 로그 파일 존재 여부 확인
-cron_log="/var/log/cron"
-if [ ! -f "$cron_log" ]; then
-  WARN "Cron 로그 파일이 존재하지 않습니다."
-else
-  OK "Cron 로그 파일이 존재합니다."
-fi
+if ($null -eq $eventLog) {
+    Add-Content -Path $TMP1 -Value "WARN: 작업 스케줄러의 작업 실행 로그가 존재하지 않습니다."
+} else {
+    Add-Content -Path $TMP1 -Value "OK: 작업 스케줄러의 작업 실행 로그가 적절하게 기록되고 있습니다."
+}
 
-cat $result
+# 결과 파일 출력
+Get-Content -Path $TMP1
 
-echo ; echo
+Write-Host "`n"
