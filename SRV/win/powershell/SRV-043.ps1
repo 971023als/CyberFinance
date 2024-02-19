@@ -1,66 +1,62 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949
-    echo Requesting administrative privileges...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-043_log.txt"
+"" | Set-Content $TMP1
 
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-:gotAdmin
-chcp 949
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------end-------------------------------------------
+Function Write-WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------SRV-001------------------------------------------
-echo SRV-001 (Windows) SNMP Community Setting Security Check
-echo This section is for checking and securing SNMP community strings.
-echo It includes verifying current configurations, recommending security enhancements, and applying necessary changes.
+Function Write-OK {
+    Param ([string]$message)
+    "$message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------SRV-004------------------------------------------
-echo Checking for SMTP Service Configuration and Security
->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt sc query smtp
-echo ------------------------------------------------------------------------------------------>> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+Write-BAR
+
+@"
+[양호]: 웹 서비스 경로에 불필요한 파일이 존재하지 않는 경우
+[취약]: 웹 서비스 경로에 불필요한 파일이 존재하는 경우
+"@ | Out-File -FilePath $TMP1 -Append
+
+Write-BAR
+
+$webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf")
+$fileExistsCount = 0
+
+foreach ($webConfFile in $webConfFiles) {
+    $findWebConfFiles = Get-ChildItem -Recurse -Path / -Filter $webConfFile -ErrorAction SilentlyContinue
+    if ($findWebConfFiles) {
+        $fileExistsCount++
+        foreach ($file in $findWebConfFiles) {
+            $content = Get-Content -Path $file.FullName
+            $documentRootLines = $content | Where-Object { $_ -match 'DocumentRoot' -and $_ -match '/' }
+            if ($documentRootLines) {
+                foreach ($line in $documentRootLines) {
+                    $documentRoot = $line -replace '.*DocumentRoot\s+"?(.*?)"?\s*$', '$1'
+                    if ($documentRoot -match '/usr/local/apache/htdocs|/usr/local/apache2/htdocs|/var/www/html') {
+                        Write-WARN "Apache DocumentRoot를 기본 디렉터리로 설정했습니다."
+                        return
+                    }
+                }
+            } else {
+                Write-WARN "Apache DocumentRoot를 설정하지 않았습니다."
+                return
+            }
+        }
+    }
+}
+
+$psApacheCount = (Get-Process -Name 'httpd', 'apache2' -ErrorAction SilentlyContinue).Count
+if ($psApacheCount -gt 0 -and $fileExistsCount -eq 0) {
+    Write-WARN "Apache 서비스를 사용하고, DocumentRoot를 설정하는 파일이 없습니다."
+} else {
+    Write-OK "양호(Good)"
+}
+
+# 최종 결과를 출력합니다.
+Get-Content $TMP1 | Write-Output
