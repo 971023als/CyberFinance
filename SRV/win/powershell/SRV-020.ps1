@@ -1,52 +1,71 @@
-﻿# 관리자 권한 요청
-If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
-{
-    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
+﻿# 결과 파일 초기화
+$TMP1 = "$(Split-Path -Leaf $MyInvocation.MyCommand.Definition).log"
+"" | Set-Content $TMP1
+
+Function BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-# 환경 설정
-$computerName = $env:COMPUTERNAME
-$rawFolder = "C:\Window_${computerName}_raw"
-$resultFolder = "C:\Window_${computerName}_result"
+Function CODE {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
 
-Remove-Item -Path $rawFolder -Recurse -ErrorAction SilentlyContinue
-Remove-Item -Path $resultFolder -Recurse -ErrorAction SilentlyContinue
-New-Item -Path $rawFolder -ItemType Directory
-New-Item -Path $resultFolder -ItemType Directory
-Remove-Item -Path "$resultFolder\W-Window-*.txt" -ErrorAction SilentlyContinue
+Function WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-# 보안 정책 내보내기
-secedit /EXPORT /CFG "$rawFolder\Local_Security_Policy.txt"
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-# 비교 파일 생성
-New-Item -Path "$rawFolder\compare.txt" -ItemType File
+Function INFO {
+    Param ([string]$message)
+    "INFO: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-# 설치 경로 저장
-$installPath = (Get-Location).Path
-$installPath | Out-File "$rawFolder\install_path.txt"
+BAR
 
-# 시스템 정보 조회
-systeminfo | Out-File "$rawFolder\systeminfo.txt"
+CODE "[SRV-020] 공유에 대한 접근 통제 미비"
 
-# IIS 설정 검토
-$applicationHostConfig = Get-Content -Path $env:WinDir\System32\Inetsrv\Config\applicationHost.Config
-$applicationHostConfig | Out-File "$rawFolder\iis_setting.txt"
+@"
+[양호]: NFS 또는 SMB/CIFS 공유에 대한 접근 통제가 적절하게 설정된 경우
+[취약]: NFS 또는 SMB/CIFS 공유에 대한 접근 통제가 미비한 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-# 공유폴더 및 권한 확인
-$shares = net share | Out-File "$env:TEMP\shares.txt"
-$shareCheck = Get-Content -Path "$env:TEMP\shares.txt" | Where-Object {$_ -notmatch "C\$|IPC\$|ADMIN\$"} | ForEach-Object {
-    $shareName, $sharePath = $_ -split '\s+', 2
-    $acl = icacls $sharePath
-    if ($acl -match "Everyone") {
-        Write-Output "취약한 공유폴더 발견: $shareName - Everyone 권한이 감지되었습니다."
-    } else {
-        Write-Output "$shareName - Everyone 권한이 없습니다. 양호합니다."
+BAR
+
+# PowerShell에서는 NFS 및 SMB 공유 접근 통제 검사 방법이 다릅니다.
+# NFS 공유 목록을 확인합니다 (Windows에서 NFS 서버 구성 확인이 필요한 경우).
+# SMB/CIFS 공유 목록을 PowerShell을 사용하여 확인합니다.
+
+Function Check-AccessControl {
+    Param (
+        [string]$serviceName,
+        [string]$shareType
+    )
+
+    If ($shareType -eq "SMB") {
+        $shares = Get-SmbShare
+        $looseShares = $shares | Where-Object { $_.Name -like "*everyone*" -or $_.Name -like "*public*" }
+
+        If ($looseShares) {
+            $looseShares | ForEach-Object {
+                WARN "$serviceName 서비스에서 느슨한 공유 접근 통제가 발견됨: $($_.Name)"
+            }
+        } Else {
+            OK "$serviceName 서비스에서 공유 접근 통제가 적절함"
+        }
+    } ElseIf ($shareType -eq "NFS") {
+        # Windows에서 NFS 공유 검사는 다른 접근 방법이 필요할 수 있습니다.
+        INFO "Windows에서 NFS 공유 접근 통제 검사는 지원되지 않을 수 있습니다."
     }
 }
 
-# SMTP 서비스 실행 여부 확인
-"불필요한 SMTP 서비스 실행 여부를 확인합니다..." | Out-File "$resultFolder\W-Window-$computerName-rawdata.txt"
-Get-Service smtp | Out-File "$resultFolder\W-Window-$computerName-rawdata.txt" -Append
+Check-AccessControl -serviceName "NFS" -shareType "NFS"
+Check-AccessControl -serviceName "SMB/CIFS" -shareType "SMB"
 
-Write-Host "스크립트 실행이 완료되었습니다."
+Get-Content $TMP1 | Write-Output
+Write-Host

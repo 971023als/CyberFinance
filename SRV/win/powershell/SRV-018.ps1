@@ -1,60 +1,66 @@
-﻿# 관리자 권한으로 스크립트 실행 요청
-If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
-{
-    Start-Process powershell.exe "-File",($MyInvocation.MyCommand.Definition) -Verb RunAs
-    exit
+﻿# 결과 파일 초기화
+$TMP1 = "$(Split-Path -Leaf $MyInvocation.MyCommand.Definition).log"
+"" | Set-Content $TMP1
+
+Function BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-# 환경 설정
-$computerName = $env:COMPUTERNAME
-$rawDir = "C:\Window_${computerName}_raw"
-$resultDir = "C:\Window_${computerName}_result"
-
-# 기존 디렉터리 삭제 및 새 디렉터리 생성
-Remove-Item -Path $rawDir, $resultDir -Force -Recurse -ErrorAction SilentlyContinue
-New-Item -Path $rawDir, $resultDir -ItemType Directory -Force
-
-# 로컬 보안 정책 및 시스템 정보 수집
-secedit /export /cfg "$rawDir\Local_Security_Policy.txt"
-Get-SystemInfo | Out-File "$rawDir\systeminfo.txt"
-
-# IIS 설정 수집
-if (Test-Path $env:windir\System32\Inetsrv\Config\applicationHost.Config) {
-    Get-Content $env:windir\System32\Inetsrv\Config\applicationHost.Config | Out-File "$rawDir\iis_setting.txt"
-    Get-Content "$rawDir\iis_setting.txt" | Select-String "physicalPath|bindingInformation" | Out-File "$rawDir\iis_path1.txt"
+Function CODE {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
 }
 
-# 하드디스크 기본 공유 진단
-Write-Host "Checking for unnecessary hard disk shares..."
-$shares = Get-WmiObject -Class Win32_Share -Filter "Name='C$' OR Name='D$'"
-if ($shares) {
-    Write-Host "Default shares found. Consider removing them if not needed."
-} else {
-    Write-Host "No default shares found. This is good for security."
+Function WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-# AutoShareServer 및 AutoShareWks 레지스트리 값 확인
-Write-Host "Checking AutoShareServer and AutoShareWks registry values..."
-$autoShareWks = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name AutoShareWks -ErrorAction SilentlyContinue
-$autoShareServer = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name AutoShareServer -ErrorAction SilentlyContinue
-
-if ($autoShareWks -and $autoShareWks.AutoShareWks -ne 0) {
-    Write-Host "AutoShareWks is set. Consider setting it to 0 if not needed."
-} else {
-    Write-Host "AutoShareWks is not set. This is good for security on workstations."
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-if ($autoShareServer -and $autoShareServer.AutoShareServer -ne 0) {
-    Write-Host "AutoShareServer is set. Consider setting it to 0 if not needed."
-} else {
-    Write-Host "AutoShareServer is not set. This is good for security on servers."
+Function INFO {
+    Param ([string]$message)
+    "INFO: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-# SMTP 서비스 실행 여부 확인
-Write-Host "Checking for unnecessary SMTP service execution..."
-$smtpService = Get-Service -Name SMTP -ErrorAction SilentlyContinue
-if ($smtpService -and $smtpService.Status -eq 'Running') {
-    "$smtpService.DisplayName is running." | Out-File "$resultDir\W-Window-${computerName}-rawdata.txt" -Append
-} else {
-    "SMTP Service is not running or not installed." | Out-File "$resultDir\W-Window-${computerName}-rawdata.txt" -Append
+BAR
+
+CODE "[SRV-018] 불필요한 하드디스크 기본 공유 활성화"
+
+@"
+[양호]: NFS 또는 SMB/CIFS의 불필요한 하드디스크 공유가 비활성화된 경우
+[취약]: NFS 또는 SMB/CIFS에서 불필요한 하드디스크 기본 공유가 활성화된 경우
+"@ | Out-File -FilePath $TMP1 -Append
+
+BAR
+
+# NFS와 SMB/CIFS 설정 파일을 확인합니다.
+$NFS_EXPORTS_FILE = "/etc/exports"
+$SMB_CONF_FILE = "/etc/samba/smb.conf"
+
+Function Check-ShareActivation {
+    Param (
+        [string]$file,
+        [string]$serviceName
+    )
+
+    If (Test-Path $file) {
+        $content = Get-Content $file
+        If ($content -match "^\s*/") {
+            WARN "$serviceName 서비스에서 불필요한 공유가 활성화되어 있습니다: $file"
+        } Else {
+            OK "$serviceName 서비스에서 불필요한 공유가 비활성화되어 있습니다: $file"
+        }
+    } Else {
+        INFO "$serviceName 서비스 설정 파일($file)을 찾을 수 없습니다."
+    }
 }
+
+Check-ShareActivation -file $NFS_EXPORTS_FILE -serviceName "NFS"
+Check-ShareActivation -file $SMB_CONF_FILE -serviceName "SMB/CIFS"
+
+Get-Content $TMP1 | Write-Output
+Write-Host

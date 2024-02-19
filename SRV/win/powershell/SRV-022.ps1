@@ -1,42 +1,67 @@
-﻿# 관리자 권한으로 스크립트 실행 요청
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
+﻿# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
+"" | Set-Content $TMP1
+
+Function BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-# 코드 페이지 변경 및 초기 설정
-[Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(437)
-Write-Host "------------------------------------------설정---------------------------------------" -ForegroundColor Green
+Function CODE {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
 
-Remove-Item -Path "C:\Window_$env:COMPUTERNAME_raw" -Recurse -ErrorAction SilentlyContinue
-Remove-Item -Path "C:\Window_$env:COMPUTERNAME_result" -Recurse -ErrorAction SilentlyContinue
-New-Item -Path "C:\Window_$env:COMPUTERNAME_raw" -ItemType Directory
-New-Item -Path "C:\Window_$env:COMPUTERNAME_result" -ItemType Directory
+Function WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-# 로컬 보안 정책 내보내기
-secedit /EXPORT /CFG "C:\Window_$env:COMPUTERNAME_raw\Local_Security_Policy.txt" 2>$null
-New-Item -Path "C:\Window_$env:COMPUTERNAME_raw\compare.txt" -ItemType File
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-# 시스템 정보 추출
-systeminfo | Out-File -FilePath "C:\Window_$env:COMPUTERNAME_raw\systeminfo.txt"
+BAR
 
-# IIS 설정 추출
-Write-Host "------------------------------------------IIS 설정-----------------------------------" -ForegroundColor Green
-$applicationHostConfig = Get-Content "$env:WinDir\System32\Inetsrv\Config\applicationHost.Config"
-$applicationHostConfig | Out-File -FilePath "C:\Window_$env:COMPUTERNAME_raw\iis_setting.txt"
+CODE "[SRV-022] 계정의 비밀번호 미설정, 빈 암호 사용 관리 미흡"
 
-# SRV-022 정책 검사
-Write-Host "------------------------------------------SRV-022 정책 검사------------------------------------------" -ForegroundColor Green
-$regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
-$limitBlankPasswordUse = Get-ItemProperty -Path $regPath -Name "LimitBlankPasswordUse"
+@"
+[양호]: 모든 계정에 비밀번호가 설정되어 있고 빈 비밀번호를 사용하는 계정이 없는 경우
+[취약]: 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 있는 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-Write-Host "SRV-022 (Windows) 계정의 비밀번호 미설정, 빈 암호 사용 관리 미흡"
+BAR
 
-# "콘솔 로그온 시 로컬 계정에서 빈 암호 사용 제한" 정책을 확인합니다.
-Write-Host "`"콘솔 로그온 시 로컬 계정에서 빈 암호 사용 제한`" 정책을 확인합니다..."
-Write-Host "LimitBlankPasswordUse: $($limitBlankPasswordUse.LimitBlankPasswordUse)"
+# Windows 시스템에서 사용자 계정 정보를 가져와 비밀번호 정책을 확인합니다.
+$emptyPasswords = 0
+$accounts = Get-WmiObject -Class Win32_UserAccount -Filter "LocalAccount=True"
 
-# 필요한 경우 정책을 강제로 설정하여 1로 설정 (선택 사항)
-# Set-ItemProperty -Path $regPath -Name "LimitBlankPasswordUse" -Value 1
+foreach ($account in $accounts) {
+    $username = $account.Name
+    $disabled = $account.Disabled
+    $status = $account.Status
+    $lockout = $account.Lockout
+    $passwordRequired = $account.PasswordRequired
 
-Write-Host "-------------------------------------------검사 완료------------------------------------------" -ForegroundColor Green
+    if ($passwordRequired -eq $false) {
+        WARN "비밀번호가 설정되지 않은 계정: $username" 
+        $emptyPasswords++
+    } elseif ($lockout -eq $true) {
+        OK "비밀번호가 잠긴 계정: $username"
+    } else {
+        OK "비밀번호가 설정된 계정: $username"
+    }
+}
+
+# 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 있는지 확인합니다.
+if ($emptyPasswords -gt 0) {
+    "[결과] 취약: 비밀번호가 설정되지 않거나 빈 비밀번호를 사용하는 계정이 존재합니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    "[결과] 양호: 모든 계정에 비밀번호가 설정되어 있고 빈 비밀번호를 사용하는 계정이 없습니다." | Out-File -FilePath $TMP1 -Append
+}
+
+BAR
+
+# 최종 결과를 출력합니다.
+Get-Content $TMP1 | Write-Output
+Write-Host
