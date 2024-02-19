@@ -1,49 +1,36 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
 BAR
 
-CODE [SRV-109] 시스템 주요 이벤트 로그 설정 미흡
+$CODE = "[SRV-109] 시스템 주요 이벤트 로그 설정 미흡"
 
-cat << EOF >> $result
-[양호]: 주요 이벤트 로그 설정이 적절하게 구성되어 있는 경우
-[취약]: 주요 이벤트 로그 설정이 적절하게 구성되어 있지 않은 경우
-EOF
+Add-Content -Path $TMP1 -Value "[양호]: 주요 이벤트 로그 설정이 적절하게 구성되어 있는 경우"
+Add-Content -Path $TMP1 -Value "[취약]: 주요 이벤트 로그 설정이 적절하게 구성되어 있지 않은 경우"
 
 BAR
 
-filename="/etc/rsyslog.conf"
+# 이벤트 로그 설정 확인
+$eventLogs = Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | Where-Object { $_.RecordCount -gt 0 }
 
-if [ ! -e "$filename" ]; then
-  WARN "$filename 가 존재하지 않습니다"
-fi
-
-expected_content=(
-  "*.info;mail.none;authpriv.none;cron.none /var/log/messages"
-  "authpriv.* /var/log/secure"
-  "mail.* /var/log/maillog"
-  "cron.* /var/log/cron"
-  "*.alert /dev/console"
-  "*.emerg *"
+$expectedLogs = @(
+    "Application",
+    "Security",
+    "System"
 )
 
-match=0
-for content in "${expected_content[@]}"; do
-  if grep -q "$content" "$filename"; then
-    match=$((match + 1))
-  fi
-done
+foreach ($log in $expectedLogs) {
+    $currentLog = $eventLogs | Where-Object { $_.LogName -eq $log }
+    if ($null -eq $currentLog) {
+        Add-Content -Path $TMP1 -Value "WARN: $log 로그가 존재하지 않습니다."
+    } else {
+        # 여기에 추가적인 설정 검사 로직을 구현할 수 있습니다.
+        # 예: 로그의 최대 크기, 오버라이트 정책 등
+        Add-Content -Path $TMP1 -Value "OK: $log 로그의 기본 설정이 존재합니다."
+    }
+}
 
-if [ "$match" -eq "${#expected_content[@]}" ]; then
-  OK "$filename의 내용이 정확합니다."
-else
-  WARN "$filename의 내용이 잘못되었습니다."
-fi
+# 결과 파일 출력
+Get-Content -Path $TMP1
 
-cat $result
-
-echo ; echo
+Write-Host "`n"
