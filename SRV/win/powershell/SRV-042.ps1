@@ -1,59 +1,66 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-042_log.txt"
+"" | Set-Content $TMP1
 
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-:gotAdmin
-chcp 949
-color 02
-setlocal enabledelayedexpansion
+Function Write-OK {
+    Param ([string]$message)
+    "$message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+Function Write-WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-    set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1-5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-    echo %%b >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-    echo %%c >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-    echo %%d >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-    echo %%e >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
+Write-BAR
 
-echo ------------------------------------------end-------------------------------------------
+@"
+[양호]: DocumentRoot가 별도의 보안 디렉터리로 지정된 경우
+[취약]: DocumentRoot가 기본 디렉터리 또는 민감한 디렉터리로 지정된 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-echo ------------------------------------------SRV-001 (SNMP Community String Security Check)------------------------------------------
-:: Insert SNMP security check commands and explanations here
+Write-BAR
 
-echo ------------------------------------------SRV-004 (SMTP Service Check)------------------------------------------
-:: SMTP service status check
->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt sc query smtp
+$webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf", "userdir.conf")
+$fileExistsCount = 0
 
-echo ------------------------------------------------------------------------------------------
+foreach ($webConfFile in $webConfFiles) {
+    $findWebConfFiles = Get-ChildItem -Recurse -Path / -Filter $webConfFile -ErrorAction SilentlyContinue
+    if ($findWebConfFiles) {
+        $fileExistsCount++
+        foreach ($file in $findWebConfFiles) {
+            if ($file.Name -eq "userdir.conf") {
+                $userDirConfContent = Get-Content $file.FullName
+                $userDirConfDisabledCount = ($userDirConfContent | Where-Object {$_ -match 'userdir' -and $_ -match 'disabled'}).Count
+                $userDirConfAllowOverrideCount = ($userDirConfContent | Where-Object {$_ -match 'AllowOverride'}).Count
+                $userDirConfAllowOverrideNoneCount = ($userDirConfContent | Where-Object {$_ -match 'AllowOverride' -and $_ -match 'None'}).Count
+                if ($userDirConfAllowOverrideCount -gt 0 -and $userDirConfAllowOverrideNoneCount -eq 0) {
+                    Write-WARN "웹 서비스 상위 디렉터리에 이동 제한을 설정하지 않았습니다."
+                    return
+                }
+            } else {
+                $webConfContent = Get-Content $file.FullName
+                $webConfAllowOverrideCount = ($webConfContent | Where-Object {$_ -match 'AllowOverride'}).Count
+                $webConfAllowOverrideNoneCount = ($webConfContent | Where-Object {$_ -match 'AllowOverride' -and $_ -match 'None'}).Count
+                if ($webConfAllowOverrideCount -gt 0 -and $webConfAllowOverrideNoneCount -eq 0) {
+                    Write-WARN "웹 서비스 상위 디렉터리에 이동 제한을 설정하지 않았습니다."
+                    return
+                }
+            }
+        }
+    }
+}
+
+$psApacheCount = (Get-Process -Name 'httpd', 'apache2' -ErrorAction SilentlyContinue).Count
+if ($psApacheCount -gt 0 -and $fileExistsCount -eq 0) {
+    Write-WARN "Apache 서비스를 사용하고, 웹 서비스 상위 디렉터리에 이동 제한을 설정하는 파일이 없습니다."
+} else {
+    Write-OK "※ U-37 결과: 양호(Good)"
+}
+
+# 최종 결과를 출력합니다.
+Get-Content $TMP1 | Write-Output
