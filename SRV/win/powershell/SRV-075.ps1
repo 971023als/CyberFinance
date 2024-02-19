@@ -1,100 +1,34 @@
-rem windows server script edit 2020
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo °ü¸®ÀÚ ±ÇÇÑÀ» ¿äÃ»ÇÕ´Ï´Ù...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-	del "getadmin.vbs"
-    exit /B
+# function.ps1 ë‚´ìš© í¬í•¨ (ì ì ˆí•œ ê²½ë¡œ ì§€ì • í•„ìš”)
+. .\function.ps1
 
-:gotAdmin
-chcp 437
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------end-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
-SRV-001 (Windows) SNMP Community ½ºÆ®¸µ ¼³Á¤ ¹ÌÈí
+$TMP1 = "$(SCRIPTNAME).log"
+# TMP1 íŒŒì¼ ì´ˆê¸°í™”
+Clear-Content -Path $TMP1
 
-¡¼ »ó¼¼¼³¸í ¡½
-SNMP ¼­ºñ½º´Â ³×Æ®¿öÅ© °ü¸® ¹× ³×Æ®¿öÅ© ÀåÄ¡ÀÇ µ¿ÀÛÀ» °¨½Ã/ÅëÇÒÇÏ´Â SNMP ÇÁ·ÎÅäÄÝÀ» ±â¹ÝÀ¸·Î ÇÏ´Â ¼­ºñ½º·Î, SNMP Åë½Å ½Ã Á¢±Ù Çã¿ë ¿©ºÎ¸¦ °áÁ¤ÇÏ±â À§ÇÑ SNMP community stringÀÇ º¹Àâµµ°¡ ³·°Ô ¼³Á¤µÇ¾ú´ÂÁö Á¡°Ë
+BAR
 
-¡¼ ÆÇ´Ü±âÁØ ¡½
-- ¾çÈ£ : SNMP Community String ÃÊ±â °ª(Public, Private)ÀÌ ¾Æ´Ï°í, ¾Æ·¡ÀÇ º¹Àâµµ¸¦ ¸¸Á· ÇÒ °æ¿ì
-- Ãë¾à : SNMP Community String ÃÊ±â °ª(Public, Private)ÀÌ°Å³ª, º¹Àâµµ¸¦ ¸¸Á·ÇÏÁö ¾ÊÀ» °æ¿ì
+$CODE = "[SRV-075] ìœ ì¶” ê°€ëŠ¥í•œ ê³„ì • ë¹„ë°€ë²ˆí˜¸ ì¡´ìž¬"
 
-¡Ø (º¹Àâµµ) ±âº»°ª(public, private) ¹Ì»ç¿ë, ¿µ¹®ÀÚ, ¼ýÀÚ°¡ Æ÷ÇÔ 10ÀÚ¸® ÀÌ»ó ¶Ç´Â ¿µ¹®ÀÚ, ¼ýÀÚ, Æ¯¼ö¹®ÀÚ Æ÷ÇÔ 8ÀÚ¸® ÀÌ»ó
-¡Ø SNMP v3ÀÇ °æ¿ì º°µµ ÀÎÁõ ±â´ÉÀ» »ç¿ëÇÏ°í, ÇØ´ç ºñ¹Ð¹øÈ£°¡ º¹Àâµµ¸¦ ¸¸Á·ÇÒ °æ¿ì "¾çÈ£"·Î ÆÇ´Ü
+$result = "ê²°ê³¼ íŒŒì¼ ê²½ë¡œë¥¼ ì§€ì •í•´ì•¼ í•¨"
+Add-Content -Path $result -Value "[ì–‘í˜¸]: ì•”í˜¸ ì •ì±…ì´ ê°•ë ¥í•˜ê²Œ ì„¤ì •ë˜ì–´ ìžˆëŠ” ê²½ìš°"
+Add-Content -Path $result -Value "[ì·¨ì•½]: ì•”í˜¸ ì •ì±…ì´ ì•½í•˜ê²Œ ì„¤ì •ë˜ì–´ ìžˆëŠ” ê²½ìš°"
 
-¡¼ ÆÇ´Ü¹æ¹ý ¡½
-  1. SNMP ¼­ºñ½º ÀÇ SNMP Community String ÀÌ º¹Àâµµ¸¦ ¸¸Á·ÇÏ´ÂÁö È®ÀÎ
-      ¡Ø <registry_path> : HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities
-      ¡Ø ·¹Áö½ºÆ®¸® °ªÀÌ Á¸ÀçÇÏÁö ¾ÊÀ¸¸é SNMP ¼­ºñ½º°¡ ½ÇÇà ÁßÀÌ¾îµµ ¼­ºñ½º¸¦ »ç¿ëÇÒ ¼ö ¾øÀ¸¹Ç·Î "¾çÈ£" ·Î ÆÇ´Ü
+BAR
 
-  ¡á Windows 2008, 2008 R2, 2012, 2012 R2, 2016, 2019, 2022
-      ¨ç ½ÃÀÛ > ½ÇÇà > services.msc > ¼­ºñ½º > SNMP Service ¼Ó¼º > "º¸¾È" ÅÇ >
-      ¨è "¹Þ¾ÆµéÀÎ Ä¿¹Â´ÏÆ¼ ÀÌ¸§"  "> SNMP community string" Ç×¸ñ
-  ¶Ç´Â
-      cmd > reg query <registry_path>
-          <SNMP_community_string>     REG_DWORD    0x4
-  ¶Ç´Â
-      cmd > reg query <registry_path>
-          ERROR: The system was unable to find the specified registry key or value.
+# ë¹„ë°€ë²ˆí˜¸ ì •ì±… ê²€ì‚¬ (ì˜ˆì‹œ)
+# ì‹¤ì œ ë¹„ë°€ë²ˆí˜¸ ì •ì±… ê²€ì‚¬ëŠ” ì‹œìŠ¤í…œ ì„¤ì •ì— ë”°ë¼ ë‹¬ë¼ì§ˆ ìˆ˜ ìžˆìœ¼ë©°, ì„¸ë¶€ êµ¬í˜„ì´ í•„ìš”í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.
+# Windows í™˜ê²½ì—ì„œ ë¹„ë°€ë²ˆí˜¸ ì •ì±…ì„ ì§ì ‘ í™•ì¸í•˜ëŠ” ë°©ë²•ì€ ì œí•œì ì¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤.
 
-  ¡Ø "ValidCommunities" Key ÀÇ Value °ª
-      - ÀÌ¸§ : 
-      - Á¾·ù : REG_DWORD
-      - µ¥ÀÌÅÍ : 1(¾øÀ½), 2(¾Ë¸²), 4(ÀÐ±â Àü¿ë) 8(ÀÐ±â, ¾²±â), 16(ÀÐ±â, ¸¸µé±â)
+# ë¹„ë°€ë²ˆí˜¸ ìµœì†Œ ê¸¸ì´ ê²€ì‚¬
+$minLength = (secedit /export /cfg "$env:TEMP\secpol.cfg" | Out-Null; (Get-Content "$env:TEMP\secpol.cfg" | Select-String "MinimumPasswordLength" -SimpleMatch).ToString().Split('=')[1].Trim(); Remove-Item "$env:TEMP\secpol.cfg")
+if ($minLength -lt 8) {
+    Add-Content -Path $TMP1 -Value "WARN: íŒ¨ìŠ¤ì›Œë“œ ìµœì†Œ ê¸¸ì´ê°€ 8 ë¯¸ë§Œìœ¼ë¡œ ì„¤ì •ë˜ì–´ ìžˆìŠµë‹ˆë‹¤."
+} else {
+    Add-Content -Path $TMP1 -Value "â€» U-47 ê²°ê³¼ : ì–‘í˜¸(Good)"
+}
 
-¡¼ Á¶Ä¡¹æ¹ý ¡½
-  1. SNMP Community String À» º¹Àâµµ¸¦ ¸¸Á·ÇÏ´Â °ªÀ¸·Î ¼³Á¤
-      ¡Ø À¯ÃßÇÏ±â ½¬¿î ¹®ÀÚ¿­(±â°ü¸í, ±â±â¸í µî) »ç¿ë ÀÚÁ¦ ¡æ ÀÏºÎ ±â°ü¿¡¼­ ¼öÁ¤ ±Ç°íÇÏ´Â ±âÁØ
-      ¡Ø "¾²±â" ±ÇÇÑÀÌ ÇÊ¿äÇÑ °æ¿ì°¡ ¾Æ´Ï¸é "ÀÐ±â Àü¿ë" ±ÇÇÑ ºÎ¿©
-      ¡Ø NMS, ¸ð´ÏÅÍ¸µ µî ¸ñÀûÀ¸·Î SNMP ¼­ºñ½º¸¦ »ç¿ëÇÏ´Â °æ¿ì SNMP Manager ¿Í Agent ¿¡ °°Àº Community String ÀÌ ¼³Á¤µÇ¾î ÀÖ¾î¾ß ÀÎÁõ °¡´É
-  2. SNMP ¼­ºñ½º Àç½ÃÀÛ
-echo -------------------------------------------end------------------------------------------
+# ì¶”ê°€ì ì¸ ë¹„ë°€ë²ˆí˜¸ ì •ì±… ê²€ì‚¬ê°€ í•„ìš”í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤. ì˜ˆë¥¼ ë“¤ì–´, ë³µìž¡ì„± ìš”êµ¬ ì‚¬í•­, ìµœëŒ€/ìµœì†Œ ì‚¬ìš© ê¸°ê°„ ë“±
 
-echo --------------------------------------SRV-004 ºÒÇÊ¿äÇÑ SMTP ¼­ºñ½º ½ÇÇà ¿©ºÎ------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-s
+Get-Content -Path $result
+
+Write-Host "`n"
