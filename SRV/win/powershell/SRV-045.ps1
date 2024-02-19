@@ -1,64 +1,50 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+# 결과 파일 초기화
+$TMP1 = "$(Get-Location)\SRV-045_log.txt"
+"" | Set-Content $TMP1
 
-:gotAdmin
-chcp 437
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------Setting---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS Setting-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------end-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
-echo SRV-001 (Windows) SNMP Community 설정 관련 안내
+Function Write-BAR {
+    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-echo 이 부분은 SNMP 설정 관련 안내입니다. SNMP 서비스의 보안을 강화하기 위한 권장 사항을 제공합니다.
+Function Write-WARN {
+    Param ([string]$message)
+    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo -------------------------------------------end------------------------------------------
+Function Write-OK {
+    Param ([string]$message)
+    "$message" | Out-File -FilePath $TMP1 -Append
+}
 
-echo --------------------------------------SRV-004 필수적인 SMTP 서비스 상태 확인 ------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+Write-BAR
+
+@"
+[양호]: 웹 서비스 프로세스가 root 권한으로 실행되지 않는 경우
+[취약]: 웹 서비스 프로세스가 root 권한으로 실행되는 경우
+"@ | Out-File -FilePath $TMP1 -Append
+
+Write-BAR
+
+$webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf")
+$found = $false
+
+foreach ($webConfFile in $webConfFiles) {
+    $findWebConfFiles = Get-ChildItem -Recurse -Path / -Filter $webConfFile -ErrorAction SilentlyContinue
+    foreach ($file in $findWebConfFiles) {
+        $content = Get-Content -Path $file.FullName
+        $groupRootCounts = ($content | Where-Object { $_ -match '^\s*Group.*root' }).Count
+        if ($groupRootCounts -gt 0) {
+            Write-WARN "Apache 데몬이 root 권한으로 구동되도록 설정되어 있습니다."
+            $found = $true
+            break
+        }
+    }
+    if ($found) { break }
+}
+
+if (-not $found) {
+    Write-OK "※ 양호(Good)"
+}
+
+# 최종 결과를 출력합니다.
+Get-Content $TMP1 | Write-Output
