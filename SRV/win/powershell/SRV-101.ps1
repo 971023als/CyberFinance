@@ -1,32 +1,28 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
 BAR
 
-CODE [SRV-101] 불필요한 예약된 작업 존재
+$CODE = "[SRV-101] 불필요한 예약된 작업 존재"
 
-cat << EOF >> $result
-[양호]: 불필요한 cron 작업이 존재하지 않는 경우
-[취약]: 불필요한 cron 작업이 존재하는 경우
-EOF
+Add-Content -Path $TMP1 -Value "[양호]: 불필요한 cron 작업이 존재하지 않는 경우"
+Add-Content -Path $TMP1 -Value "[취약]: 불필요한 cron 작업이 존재하는 경우"
 
 BAR
 
-# 시스템의 모든 cron 작업을 검사합니다
-for user in $(cut -f1 -d: /etc/passwd); do
-  crontab -l -u $user 2>/dev/null | grep -v '^#' | while read -r cron_job; do
-    if [ -n "$cron_job" ]; then
-      WARN "불필요한 cron 작업이 존재할 수 있습니다: $cron_job (사용자: $user)"
-    fi
-  done
-done
+# 예약된 작업 검사
+$scheduledTasks = Get-ScheduledTask | Where-Object { $_.State -eq 'Ready' }
 
-OK "불필요한 cron 작업이 존재하지 않습니다."
+if ($scheduledTasks) {
+    foreach ($task in $scheduledTasks) {
+        # 여기서는 모든 예약된 작업을 나열합니다.
+        # 특정 조건을 기반으로 불필요한 작업을 필터링하기 위한 로직을 추가할 수 있습니다.
+        Add-Content -Path $TMP1 -Value "불필요한 예약된 작업이 존재할 수 있습니다: $($task.TaskName) (경로: $($task.TaskPath))"
+    }
+} else {
+    Add-Content -Path $TMP1 -Value "불필요한 예약된 작업이 존재하지 않습니다."
+}
 
-cat $result
+Get-Content -Path $TMP1
 
-echo ; echo
+Write-Host "`n"

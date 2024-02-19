@@ -1,28 +1,31 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
 BAR
 
-CODE [SRV-103] LAN Manager 인증 수준 미흡
+$CODE = "[SRV-103] LAN Manager 인증 수준 미흡"
 
-cat << EOF >> $result
-[양호]: LAN Manager 인증 수준이 적절하게 설정되어 있는 경우
-[취약]: LAN Manager 인증 수준이 미흡하게 설정되어 있는 경우
-EOF
+Add-Content -Path $TMP1 -Value "[양호]: LAN Manager 인증 수준이 적절하게 설정되어 있는 경우"
+Add-Content -Path $TMP1 -Value "[취약]: LAN Manager 인증 수준이 미흡하게 설정되어 있는 경우"
 
 BAR
 
-# LAN Manager 인증 수준을 확인하는 코드
-# 예시: registry 값을 체크하거나, 관련 설정 파일을 검사
-# 이 부분은 시스템의 구체적인 설정 방법에 따라 달라질 수 있음
+# LAN Manager 인증 수준 확인
+$path = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
+$name = "LmCompatibilityLevel"
+$lmCompLevel = Get-ItemProperty -Path $path -Name $name -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $name
 
-# 예시 결과 출력
-OK "LAN Manager 인증 수준이 적절하게 설정되어 있습니다."
+# LAN Manager 인증 수준 평가
+switch ($lmCompLevel) {
+    0 { Add-Content -Path $TMP1 -Value "WARN: LAN Manager 인증 수준이 'LM 및 NTLM 응답 보내기(보안성이 낮음)'로 설정되어 있습니다." }
+    1 { Add-Content -Path $TMP1 -Value "WARN: LAN Manager 인증 수준이 'LM 응답 보내기'로 설정되어 있습니다." }
+    2 { Add-Content -Path $TMP1 -Value "OK: LAN Manager 인증 수준이 'NTLM 응답만 보내기'로 설정되어 있습니다." }
+    3 { Add-Content -Path $TMP1 -Value "OK: LAN Manager 인증 수준이 'NTLMv2 응답만 보내기\refuse LM'로 설정되어 있습니다." }
+    4 { Add-Content -Path $TMP1 -Value "OK: LAN Manager 인증 수준이 'NTLMv2 응답만 보내기\refuse LM 및 NTLM'로 설정되어 있습니다." }
+    5 { Add-Content -Path $TMP1 -Value "OK: LAN Manager 인증 수준이 'LM 및 NTLM 응답 거부(NTLMv2 세션 보안만 사용)'로 설정되어 있습니다." }
+    Default { Add-Content -Path $TMP1 -Value "INFO: LAN Manager 인증 수준이 설정되지 않았거나 알 수 없는 값입니다." }
+}
 
-cat $result
+Get-Content -Path $TMP1
 
-echo ; echo
+Write-Host "`n"
