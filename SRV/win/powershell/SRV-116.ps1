@@ -1,36 +1,28 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
 BAR
 
-CODE [SRV-116] “보안 감사를 수행할 수 없는 경우, 즉시 시스템 종료” 기능 설정 미흡
+$CODE = "[SRV-116] “보안 감사를 수행할 수 없는 경우, 즉시 시스템 종료” 기능 설정 미흡"
 
-cat << EOF >> $result
-[양호]: 보안 감사 실패 시 시스템이 즉시 종료되도록 설정된 경우
-[취약]: 보안 감사 실패 시 시스템이 즉시 종료되지 않도록 설정된 경우
-EOF
+Add-Content -Path $TMP1 -Value "[양호]: 보안 감사 실패 시 시스템이 즉시 종료되도록 설정된 경우"
+Add-Content -Path $TMP1 -Value "[취약]: 보안 감사 실패 시 시스템이 즉시 종료되지 않도록 설정된 경우"
 
 BAR
 
-# 보안 감사 실패 시 시스템 종료 기능 설정 확인
-audit_setting=$(grep -i "space_left_action" /etc/audit/auditd.conf)
-action_setting=$(grep -i "action_mail_acct" /etc/audit/auditd.conf)
-admin_mail=$(grep -i "admin_space_left_action" /etc/audit/auditd.conf)
+# 보안 감사 정책 설정 확인
+try {
+    $auditPolicy = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "CrashOnAuditFail"
+    if ($auditPolicy.CrashOnAuditFail -eq 2) {
+        Add-Content -Path $TMP1 -Value "OK: 보안 감사 실패 시 시스템이 즉시 종료되도록 설정됨"
+    } else {
+        Add-Content -Path $TMP1 -Value "WARN: 보안 감사 실패 시 시스템이 즉시 종료되지 않도록 설정됨"
+    }
+} catch {
+    Add-Content -Path $TMP1 -Value "WARN: 보안 감사 정책 설정을 검사하는데 실패함"
+}
 
-if [[ "$audit_setting" == *"email"* ]]; then
-  if [[ "$action_setting" == *"root"* ]] && [[ "$admin_mail" == *"halt"* ]]; then
-    OK "보안 감사 실패 시 시스템이 즉시 종료되도록 설정됨"
-  else
-    WARN "보안 감사 실패 시 시스템이 즉시 종료되지 않도록 설정됨"
-  fi
-else
-  WARN "보안 감사 실패 시 이메일 알림이 설정되지 않음"
-fi
+# 결과 파일 출력
+Get-Content -Path $TMP1
 
-cat $result
-
-echo ; echo
+Write-Host "`n"

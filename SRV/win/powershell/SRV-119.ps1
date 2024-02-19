@@ -1,31 +1,30 @@
-#!/bin/bash
-
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+$TMP1 = "$(SCRIPTNAME).log"
+Clear-Content -Path $TMP1
 
 BAR
 
-CODE [SRV-119] 백신 프로그램 업데이트 미흡
+$CODE = "[SRV-119] 백신 프로그램 업데이트 미흡"
 
-cat << EOF >> $result
-[양호]: 백신 프로그램이 최신 버전으로 업데이트 되어 있는 경우
-[취약]: 백신 프로그램이 최신 버전으로 업데이트 되어 있지 않은 경우
-EOF
+Add-Content -Path $TMP1 -Value "[양호]: 백신 프로그램이 최신 버전으로 업데이트 되어 있는 경우"
+Add-Content -Path $TMP1 -Value "[취약]: 백신 프로그램이 최신 버전으로 업데이트 되어 있지 않은 경우"
 
 BAR
 
-# 백신 프로그램의 업데이트 상태를 확인합니다 (예시: ClamAV)
-clamav_version=$(clamscan --version)
-latest_clamav_version=$(curl -s https://www.clamav.net/downloads | grep -oP 'ClamAV \K[0-9.]+')
+# Windows Defender의 업데이트 상태 확인
+try {
+    $defenderStatus = Get-MpComputerStatus
+    $antivirusSignatureAge = $defenderStatus.AntivirusSignatureAge
 
-if [ "$clamav_version" == "$latest_clamav_version" ]; then
-  OK "ClamAV가 최신 버전입니다: $clamav_version"
-else
-  WARN "ClamAV가 최신 버전이 아닙니다. 현재 버전: $clamav_version, 최신 버전: $latest_clamav_version"
-fi
+    if ($antivirusSignatureAge -le 1) {
+        Add-Content -Path $TMP1 -Value "OK: Windows Defender의 바이러스 정의가 최신 상태입니다. (업데이트된 지 $antivirusSignatureAge 일)"
+    } else {
+        Add-Content -Path $TMP1 -Value "WARN: Windows Defender의 바이러스 정의가 최신 상태가 아닙니다. (업데이트된 지 $antivirusSignatureAge 일)"
+    }
+} catch {
+    Add-Content -Path $TMP1 -Value "WARN: Windows Defender의 업데이트 상태를 확인하는 데 실패했습니다."
+}
 
-cat $result
+# 결과 파일 출력
+Get-Content -Path $TMP1
 
-echo ; echo
+Write-Host "`n"
