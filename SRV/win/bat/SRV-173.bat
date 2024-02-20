@@ -1,36 +1,29 @@
-#!/bin/bash
+@echo off
+SetLocal EnableDelayedExpansion
 
-. function.sh
+set "SCRIPTNAME=%~n0"
+set "TMP1=%SCRIPTNAME%.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+:: 로그 파일 초기화
+type NUL > "%TMP1%"
 
-BAR
+echo BAR >> "%TMP1%"
+echo CODE [SRV-173] DNS 서비스의 취약한 동적 업데이트 설정 >> "%TMP1%"
+echo [양호]: DNS 동적 업데이트가 안전하게 구성된 경우 >> "%TMP1%"
+echo [취약]: DNS 동적 업데이트가 취약하게 구성된 경우 >> "%TMP1%"
+echo BAR >> "%TMP1%"
 
-CODE [SRV-173] DNS 서비스의 취약한 동적 업데이트 설정
+:: DNS 설정 확인 (PowerShell을 사용)
+PowerShell -Command "& {
+    $dnsZones = Get-DnsServerZone;
+    $vulnerableZones = $dnsZones | Where-Object { $_.IsDsIntegrated -eq $false -and $_.DynamicUpdate -ne 'None' };
+    if ($vulnerableZones) {
+        'WARN DNS 동적 업데이트 설정이 취약합니다: ' + $vulnerableZones.ZoneName
+    } else {
+        'OK DNS 동적 업데이트가 안전하게 구성되어 있습니다.'
+    }
+}" >> "%TMP1%"
 
-cat << EOF >> $result
-[양호]: DNS 동적 업데이트가 안전하게 구성된 경우
-[취약]: DNS 동적 업데이트가 취약하게 구성된 경우
-EOF
+type "%TMP1%"
 
-BAR
-
-# DNS 설정 파일 경로
-dns_config="/etc/bind/named.conf"
-
-# 동적 업데이트 설정 확인
-if [ -f "$dns_config" ]; then
-    dynamic_updates=$(grep "allow-update" "$dns_config")
-    if [ -z "$dynamic_updates" ]; then
-        OK "DNS 동적 업데이트가 안전하게 구성되어 있습니다."
-    else
-        WARN "DNS 동적 업데이트 설정이 취약합니다: $dynamic_updates"
-    fi
-else
-    INFO "DNS 설정 파일이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+EndLocal
