@@ -1,36 +1,32 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+> %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-123] 최종 로그인 사용자 계정 노출 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 최종 로그인 사용자 정보가 노출되지 않는 경우 >> %TMP1%
+echo [취약]: 최종 로그인 사용자 정보가 노출되는 경우 >> %TMP1%
 
-CODE [SRV-123] 최종 로그인 사용자 계정 노출
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 최종 로그인 사용자 정보가 노출되지 않는 경우
-[취약]: 최종 로그인 사용자 정보가 노출되는 경우
-EOF
+:: PowerShell을 사용하여 최종 로그인한 사용자 정보 조회
+powershell -Command "& {
+    $lastLogonEvent = Get-EventLog -LogName Security -InstanceId 4624 -Newest 1
+    if ($lastLogonEvent) {
+        $message = '최종 로그인 사용자 정보: ' + $lastLogonEvent.ReplacementStrings[5]
+        echo $message >> '%TMP1%'
+    } else {
+        echo '최종 로그인 사용자 정보를 조회할 수 없습니다.' >> '%TMP1%'
+    }
+}" >> %TMP1%
 
-BAR
+type %TMP1%
 
-# 로그인 메시지 파일 확인
-files=("/etc/motd" "/etc/issue" "/etc/issue.net")
+echo.
+echo.
 
-for file in "${files[@]}"; do
-  if [ -f "$file" ]; then
-    if grep -q 'Last login' "$file"; then
-      WARN "파일 $file 에 최종 로그인 사용자 정보가 포함되어 있습니다."
-    else
-      OK "파일 $file 에 최종 로그인 사용자 정보가 포함되지 않았습니다."
-    fi
-  else
-    INFO "파일 $file 이(가) 존재하지 않습니다."
-  fi
-done
-
-cat $result
-
-echo ; echo
+endlocal
