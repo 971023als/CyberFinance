@@ -1,22 +1,21 @@
-#!/bin/bash
+# 로컬 관리자 그룹 멤버 확인
+$adminGroupMembers = Get-LocalGroupMember -Group "Administrators"
 
-. function.sh
+# 결과 파일 경로 설정
+$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_LocalLogonPolicyCheck.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# 결과 파일에 헤더 추가
+"로컬 로그온 허용 정책 확인" | Out-File -FilePath $TMP1
+"====================================" | Out-File -FilePath $TMP1 -Append
 
-BAR
+# 관리자 그룹 멤버 출력
+"로컬 'Administrators' 그룹 멤버:" | Out-File -FilePath $TMP1 -Append
+$adminGroupMembers | ForEach-Object {
+    $_.Name | Out-File -FilePath $TMP1 -Append
+}
 
-CODE [SRV-150] 로컬 로그온 허용
+# 결과 파일 내용 출력
+Get-Content -Path $TMP1 | Write-Output
 
-cat << EOF >> $result
-[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우
-[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우
-EOF
-
-BAR
-
-
-cat $result
-
-echo ; echo
+# 추가 안내 메시지
+"`n추가 확인이 필요한 경우, secpol.msc 또는 그룹 정책 편집기(GPEDIT.MSC)를 통해 '로컬 정책 > 보안 옵션'에서 로컬 로그온 관련 정책을 확인하세요." | Out-File -FilePath $TMP1 -Append
