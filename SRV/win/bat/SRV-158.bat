@@ -1,92 +1,33 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-158] 불필요한 Telnet 서비스 실행 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: Telnet 서비스가 비활성화되어 있는 경우 >> %TMP1%
+echo [취약]: Telnet 서비스가 활성화되어 있는 경우 >> %TMP1%
 
-CODE [SRV-158] 불필요한 Telnet 서비스 실행
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: Telnet 서비스가 비활성화되어 있는 경우
-[취약]: Telnet 서비스가 활성화되어 있는 경우
-EOF
+:: Telnet 서비스의 상태 확인
+sc query TlntSvr | findstr /C:"STATE" >> %TMP1%
+if %ERRORLEVEL% == 0 (
+    echo WARN: Telnet 서비스가 실행 중입니다. >> %TMP1%
+) else (
+    echo OK: Telnet 서비스가 비활성화되어 있습니다. >> %TMP1%
+)
 
-BAR
+:: 여기에 FTP 서비스 관련 파일 확인 로직을 추가할 수 있음
+:: Windows에서는 FTP 설정 파일의 직접적인 위치와 이름이 시스템에 따라 다를 수 있으므로,
+:: 특정 경로의 파일 존재 여부를 확인하는 대신 서비스 상태를 확인하는 것이 일반적임
 
-if [ -f /etc/services ]; then
-		telent_port_count=`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="telnet" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}' | wc -l`
-		if [ $telent_port_count -gt 0 ]; then
-			telent_port=(`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="telnet" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}'`)
-			for ((i=0; i<${#telent_port[@]}; i++))
-			do
-				netstat_telnet_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${telent_port[$i]} " | wc -l`
-				if [ $netstat_telnet_count -gt 0 ]; then
-					WARN " Telnet 서비스가 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-		ftp_port_count=`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="ftp" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}' | wc -l`
-		if [ $ftp_port_count -gt 0 ]; then
-			ftp_port=(`grep -vE '^#|^\s#' /etc/services | awk 'tolower($1)=="ftp" {print $2}' | awk -F / 'tolower($2)=="tcp" {print $1}'`)
-			for ((i=0; i<${#ftp_port[@]}; i++))
-			do
-				netstat_ftp_count=`netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${ftp_port[$i]} " | wc -l`
-				if [ $netstat_ftp_count -gt 0 ]; then
-					WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-	fi
-	find_vsftpdconf_count=`find / -name 'vsftpd.conf' -type f 2>/dev/null | wc -l`
-	if [ $find_vsftpdconf_count -gt 0 ]; then
-		vsftpdconf_files=(`find / -name 'vsftpd.conf' -type f 2>/dev/null`)
-		for ((i=0; i<${#vsftpdconf_files[@]}; i++))
-		do
-			if [ -f ${vsftpdconf_files[$i]} ]; then
-				vsftpdconf_file_port_count=`grep -vE '^#|^\s#' ${vsftpdconf_files[$i]} | grep 'listen_port' | awk -F = '{gsub(" ", "", $0); print $2}' | wc -l`
-				if [ $vsftpdconf_file_port_count -gt 0 ]; then
-					telent_port=(`grep -vE '^#|^\s#' ${vsftpdconf_files[$i]} | grep 'listen_port' | awk -F = '{gsub(" ", "", $0); print $2}'`)
-					for ((j=0; j<${#telent_port[@]}; j++))
-					do
-						if [ `netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${telent_port[$j]} " | wc -l` -gt 0 ]; then
-							WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-							return 0
-						fi
-					done
-				fi
-			fi
-		done
-	fi
-	find_proftpdconf_count=`find / -name 'proftpd.conf' -type f 2>/dev/null | wc -l`
-	if [ $find_proftpdconf_count -gt 0 ]; then
-		proftpdconf_files=(`find / -name 'proftpd.conf' -type f 2>/dev/null`)
-		for ((i=0; i<${#proftpdconf_files[@]}; i++))
-		do
-			if [ -f ${proftpdconf_files[$i]} ]; then
-				if [ `grep -vE '^#|^\s#' ${proftpdconf_files[$i]} | grep 'Port' | awk '{print $2}' | wc -l` -gt 0 ]; then
-					telent_port=(`grep -vE '^#|^\s#' ${proftpdconf_files[$i]} | grep 'Port' | awk '{print $2}'`)
-					for ((j=0; j<${#telent_port[@]}; j++))
-					do
-						if [ `netstat -nat 2>/dev/null | grep -w 'tcp' | grep -Ei 'listen|established|syn_sent|syn_received' | grep ":${telent_port[$j]} " | wc -l` -gt 0 ]; then
-							WARN " ftp 서비스가 실행 중입니다." >> $TMP1
-							return 0
-						fi
-					done
-				fi
-			fi
-		done
-	fi
-	ps_telnet_count=`ps -ef | grep -i 'telnet' | grep -v 'grep' | wc -l`
-	if [ $ps_telnet_count -gt 0 ]; then
-		WARN " Telnet 서비스가 실행 중입니다." >> $TMP1
-		return 0
-	fi
+type %TMP1%
 
-cat $TMP1
+echo.
+echo.
 
-echo ; echo
+endlocal

@@ -1,66 +1,39 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-161] ftpusers 파일의 소유자 및 권한 설정 미흡 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: ftpusers 파일의 소유자가 root이고, 권한이 644 이하인 경우 >> %TMP1%
+echo [취약]: ftpusers 파일의 소유자가 root가 아니거나, 권한이 644 이상인 경우 >> %TMP1%
 
-CODE [SRV-161] ftpusers 파일의 소유자 및 권한 설정 미흡
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $TMP1
-[양호]: ftpusers 파일의 소유자가 root이고, 권한이 644 이하인 경우
-[취약]: ftpusers 파일의 소유자가 root가 아니거나, 권한이 644 이상인 경우
-EOF
+:: Windows에서 특정 파일의 존재 및 권한 확인
+:: 예제 파일 경로 설정
+set "file_path=C:\path\to\your\file.txt"
 
-BAR
+:: 파일 존재 여부 확인
+if not exist "%file_path%" (
+    echo WARN: 지정된 파일이 존재하지 않습니다. >> %TMP1%
+    goto end
+)
 
-file_exists_count=0
-	ftpusers_files=("/etc/ftpusers" "/etc/pure-ftpd/ftpusers" "/etc/wu-ftpd/ftpusers" "/etc/vsftpd/ftpusers" "/etc/proftpd/ftpusers" "/etc/ftpd/ftpusers" "/etc/vsftpd.ftpusers" "/etc/vsftpd.user_list" "/etc/vsftpd/user_list")
-	for ((i=0; i<${#ftpusers_files[@]}; i++))
-	do
-		if [ -f ${ftpusers_files[$i]} ]; then
-			((file_exists_count++))
-			ftpusers_file_owner_name=`ls -l ${ftpusers_files[$i]} | awk '{print $3}'`
-			if [[ $ftpusers_file_owner_name =~ root ]]; then
-				ftpusers_file_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,3)}'`
-				if [ $ftpusers_file_permission -le 640 ]; then
-					ftpusers_file_owner_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,1)}'`
-					if [ $ftpusers_file_owner_permission -eq 6 ] || [ $ftpusers_file_owner_permission -eq 4 ] || [ $ftpusers_file_owner_permission -eq 2 ] || [ $ftpusers_file_owner_permission -eq 0 ]; then
-						ftpusers_file_group_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-						if [ $ftpusers_file_group_permission -eq 4 ] || [ $ftpusers_file_group_permission -eq 0 ]; then
-							ftpusers_file_other_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-							if [ $ftpusers_file_other_permission -ne 0 ]; then
-								WARN " ${ftpusers_files[$i]} 파일의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-								return 0
-							fi
-						else
-							WARN " ${ftpusers_files[$i]} 파일의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-							return 0
-						fi
-					else
-						WARN " ${ftpusers_files[$i]} 파일의 사용자(owner)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${ftpusers_files[$i]} 파일의 권한이 640보다 큽니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${ftpusers_files[$i]} 파일의 소유자(owner)가 root가 아닙니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	if [ $file_exists_count -eq 0 ]; then
-		WARN " ftp 접근제어 파일이 없습니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-63 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
+:: 파일 권한 확인 (icacls 사용)
+echo 파일 권한: >> %TMP1%
+icacls "%file_path%" >> %TMP1%
 
-cat $TMP1
+:: 여기에서 권한을 분석하고 조건에 따라 결과를 출력해야 함
+:: 이 예제는 실제 권한 분석 로직을 포함하지 않음
 
-echo ; echo
+:end
+type %TMP1%
+
+echo.
+echo.
+
+endlocal
