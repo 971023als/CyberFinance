@@ -1,30 +1,26 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "SCRIPTNAME=%~n0"
+set "TMP1=%SCRIPTNAME%.log"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+:: 로그 파일 초기화
+type NUL > "%TMP1%"
 
-BAR
+echo BAR >> "%TMP1%"
+echo CODE [SRV-174] 불필요한 DNS 서비스 실행 >> "%TMP1%"
+echo [양호]: DNS 서비스가 비활성화되어 있는 경우 >> "%TMP1%"
+echo [취약]: DNS 서비스가 활성화되어 있는 경우 >> "%TMP1%"
+echo BAR >> "%TMP1%"
 
-CODE [SRV-174] 불필요한 DNS 서비스 실행
+:: DNS 서비스 상태 확인 (여기서는 "Dnscache" 서비스를 예로 들었습니다. 실제 서비스 이름에 맞게 조정해야 합니다.)
+sc query "Dnscache" | find "RUNNING"
+if %ERRORLEVEL% == 0 (
+    echo WARN "DNS 서비스(Dnscache)가 활성화되어 있습니다." >> "%TMP1%"
+) else (
+    echo OK "DNS 서비스(Dnscache)가 비활성화되어 있습니다." >> "%TMP1%"
+)
 
-cat << EOF >> $result
-[양호]: DNS 서비스가 비활성화되어 있는 경우
-[취약]: DNS 서비스가 활성화되어 있는 경우
-EOF
+type "%TMP1%"
 
-BAR
-
-# DNS 서비스 상태 확인 (named 서비스 예시)
-dns_service_status=$(systemctl is-active named)
-
-if [ "$dns_service_status" == "active" ]; then
-    WARN "DNS 서비스(named)가 활성화되어 있습니다."
-else
-    OK "DNS 서비스(named)가 비활성화되어 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+endlocal
