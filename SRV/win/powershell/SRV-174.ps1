@@ -1,30 +1,16 @@
-#!/bin/bash
+# DNS 서비스의 실행 상태를 확인합니다.
+# 이 스크립트는 Windows 환경에서 DNS 서버 역할이 설치되어 있는지 확인합니다.
 
-. function.sh
+# DNS 서버 서비스의 상태를 가져옵니다.
+$dnsServiceStatus = Get-Service -Name 'DNS' -ErrorAction SilentlyContinue
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-174] 불필요한 DNS 서비스 실행
-
-cat << EOF >> $result
-[양호]: DNS 서비스가 비활성화되어 있는 경우
-[취약]: DNS 서비스가 활성화되어 있는 경우
-EOF
-
-BAR
-
-# DNS 서비스 상태 확인 (named 서비스 예시)
-dns_service_status=$(systemctl is-active named)
-
-if [ "$dns_service_status" == "active" ]; then
-    WARN "DNS 서비스(named)가 활성화되어 있습니다."
-else
-    OK "DNS 서비스(named)가 비활성화되어 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+if ($null -ne $dnsServiceStatus) {
+    # DNS 서비스의 상태를 확인합니다.
+    if ($dnsServiceStatus.Status -eq 'Running') {
+        Write-Host "DNS 서비스가 활성화되어 있습니다. - 취약"
+    } else {
+        Write-Host "DNS 서비스가 비활성화되어 있습니다. - 양호"
+    }
+} else {
+    Write-Host "DNS 서비스가 이 시스템에 설치되어 있지 않습니다. - 정보"
+}
