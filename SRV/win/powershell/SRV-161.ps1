@@ -1,66 +1,30 @@
-#!/bin/bash
+# FTP 관련 설정 파일의 경로를 배열로 정의
+$ftpUsersFiles = @(
+    "C:\Path\To\ftpusers",
+    "C:\Other\Path\To\ftpusers" # Windows 환경에 맞는 실제 경로로 변경
+)
 
-. function.sh
+# 파일 존재 여부 및 권한 확인
+foreach ($file in $ftpUsersFiles) {
+    if (Test-Path $file) {
+        $fileInfo = Get-Item $file
+        $acl = Get-Acl $file
+        $owner = $acl.Owner
+        $permissions = $acl.Access | Where-Object { $_.FileSystemRights -match "FullControl|Modify|Write" }
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+        if ($owner -eq "BUILTIN\Administrators" -or $owner -eq "NT AUTHORITY\SYSTEM") {
+            if ($permissions.Count -eq 0) {
+                Write-Host "파일 $file 의 소유자가 시스템 또는 관리자이고, 쓰기 권한이 제한되어 있습니다. - 양호"
+            } else {
+                Write-Host "파일 $file 의 쓰기 권한이 부적절하게 설정되어 있습니다. - 취약"
+            }
+        } else {
+            Write-Host "파일 $file 의 소유자가 시스템 또는 관리자가 아닙니다. - 취약"
+        }
+    } else {
+        Write-Host "파일 $file 은 존재하지 않습니다."
+    }
+}
 
-BAR
-
-CODE [SRV-161] ftpusers 파일의 소유자 및 권한 설정 미흡
-
-cat << EOF >> $TMP1
-[양호]: ftpusers 파일의 소유자가 root이고, 권한이 644 이하인 경우
-[취약]: ftpusers 파일의 소유자가 root가 아니거나, 권한이 644 이상인 경우
-EOF
-
-BAR
-
-file_exists_count=0
-	ftpusers_files=("/etc/ftpusers" "/etc/pure-ftpd/ftpusers" "/etc/wu-ftpd/ftpusers" "/etc/vsftpd/ftpusers" "/etc/proftpd/ftpusers" "/etc/ftpd/ftpusers" "/etc/vsftpd.ftpusers" "/etc/vsftpd.user_list" "/etc/vsftpd/user_list")
-	for ((i=0; i<${#ftpusers_files[@]}; i++))
-	do
-		if [ -f ${ftpusers_files[$i]} ]; then
-			((file_exists_count++))
-			ftpusers_file_owner_name=`ls -l ${ftpusers_files[$i]} | awk '{print $3}'`
-			if [[ $ftpusers_file_owner_name =~ root ]]; then
-				ftpusers_file_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,3)}'`
-				if [ $ftpusers_file_permission -le 640 ]; then
-					ftpusers_file_owner_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,1)}'`
-					if [ $ftpusers_file_owner_permission -eq 6 ] || [ $ftpusers_file_owner_permission -eq 4 ] || [ $ftpusers_file_owner_permission -eq 2 ] || [ $ftpusers_file_owner_permission -eq 0 ]; then
-						ftpusers_file_group_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-						if [ $ftpusers_file_group_permission -eq 4 ] || [ $ftpusers_file_group_permission -eq 0 ]; then
-							ftpusers_file_other_permission=`stat ${ftpusers_files[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-							if [ $ftpusers_file_other_permission -ne 0 ]; then
-								WARN " ${ftpusers_files[$i]} 파일의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-								return 0
-							fi
-						else
-							WARN " ${ftpusers_files[$i]} 파일의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-							return 0
-						fi
-					else
-						WARN " ${ftpusers_files[$i]} 파일의 사용자(owner)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${ftpusers_files[$i]} 파일의 권한이 640보다 큽니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${ftpusers_files[$i]} 파일의 소유자(owner)가 root가 아닙니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	if [ $file_exists_count -eq 0 ]; then
-		WARN " ftp 접근제어 파일이 없습니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-63 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-cat $TMP1
-
-echo ; echo
+# 주의: Windows 환경에서 FTP 서비스 구성은 서비스 제공자(IIS, FileZilla Server 등)에 따라 다르며, 
+# ftpusers와 같은 특정 파일 대신 서비스 구성 콘솔이나 관리 도구를 통해 접근 제어를 설정할 수 있습니다.
