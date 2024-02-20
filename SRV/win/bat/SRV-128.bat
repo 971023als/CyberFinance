@@ -1,30 +1,35 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-128] NTFS 파일 시스템 미사용 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: NTFS 파일 시스템이 사용되지 않는 경우 >> %TMP1%
+echo [취약]: NTFS 파일 시스템이 사용되는 경우 >> %TMP1%
 
-CODE [SRV-128] NTFS 파일 시스템 미사용
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: NTFS 파일 시스템이 사용되지 않는 경우
-[취약]: NTFS 파일 시스템이 사용되는 경우
-EOF
+:: PowerShell을 사용하여 모든 드라이브의 파일 시스템 유형 확인
+powershell -Command "& {
+    $drives = Get-Volume | Where-Object { $_.FileSystem -eq 'NTFS' }
+    if ($drives) {
+        foreach ($drive in $drives) {
+            $driveLetter = $drive.DriveLetter
+            $fileSystem = $drive.FileSystem
+            echo 'WARN: 드라이브 ' + $driveLetter + ': ' + $fileSystem + ' 파일 시스템이 사용되고 있습니다.' >> '%TMP1%'
+        }
+    } else {
+        echo 'OK: NTFS 파일 시스템이 사용되지 않습니다.' >> '%TMP1%'
+    }
+}" >> %TMP1%
 
-BAR
+type %TMP1%
 
-# NTFS 파일 시스템 사용 여부 확인
-ntfs_check=$(mount | grep 'type ntfs')
+echo.
+echo.
 
-if [ -z "$ntfs_check" ]; then
-  OK "NTFS 파일 시스템이 사용되지 않습니다."
-else
-  WARN "NTFS 파일 시스템이 사용되고 있습니다: $ntfs_check"
-fi
-
-cat $result
-
-echo ; echo
+endlocal

@@ -1,29 +1,29 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-147] 불필요한 SNMP 서비스 실행 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: SNMP 서비스가 비활성화되어 있는 경우 >> %TMP1%
+echo [취약]: SNMP 서비스가 활성화되어 있는 경우 >> %TMP1%
 
-CODE [SRV-147] 불필요한 SNMP 서비스 실행
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $TMP1
-[양호]: SNMP 서비스가 비활성화되어 있는 경우
-[취약]: SNMP 서비스가 활성화되어 있는 경우
-EOF
+:: SNMP 서비스 상태 확인
+sc query SNMP | find "RUNNING" >nul
+if %ERRORLEVEL% == 0 (
+    echo WARN: SNMP 서비스를 사용하고 있습니다. >> %TMP1%
+) else (
+    echo OK: SNMP 서비스가 비활성화되어 있습니다. >> %TMP1%
+)
 
-BAR
+type %TMP1%
 
-if [ `ps -ef | grep -i 'snmp' | grep -v 'grep' | wc -l` -gt 0 ]; then
-	WARN " SNMP 서비스를 사용하고 있습니다." >> $TMP1
-	return 0
-else
-	OK "※ U-66 결과 : 양호(Good)" >> $TMP1
-	return 0
-fi
+echo.
+echo.
 
-cat $TMP1
-
-echo ; echo
+endlocal

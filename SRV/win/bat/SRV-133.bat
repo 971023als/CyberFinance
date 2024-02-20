@@ -1,97 +1,32 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-133] Cron 서비스 사용 계정 제한 미비 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: Cron 서비스 사용이 특정 계정으로 제한되어 있는 경우 >> %TMP1%
+echo [취약]: Cron 서비스 사용이 제한되지 않은 경우 >> %TMP1%
 
-CODE [SRV-133] Cron 서비스 사용 계정 제한 미비
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: Cron 서비스 사용이 특정 계정으로 제한되어 있는 경우
-[취약]: Cron 서비스 사용이 제한되지 않은 경우
-EOF
+:: PowerShell을 사용하여 작업 스케줄러의 작업과 실행 계정 확인
+powershell -Command "& {
+    $scheduledTasks = Get-ScheduledTask | Where-Object { $_.State -eq 'Ready' }
+    foreach ($task in $scheduledTasks) {
+        $taskName = $task.TaskName
+        $taskPath = $task.TaskPath
+        $principal = $task.Principal.UserId
+        echo ""$taskPath$taskName 실행 계정: $principal"" >> '%TMP1%'
+    }
+}" >> %TMP1%
 
-BAR
+type %TMP1%
 
-crontab_path=("/usr/bin/crontab" "/usr/sbin/crontab" "/bin/crontab")
-	if [ `which crontab 2>/dev/null | wc -l` -gt 0 ]; then
-		crontab_path[${#crontab_path[@]}]=`which crontab 2>/dev/null`
-	fi
-	for ((i=0; i<${#crontab_path[@]}; i++))
-	do
-		if [ -f ${crontab_path[$i]} ]; then
-			crontab_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,2)}'` # group, owner 권한만 추출함
-			if [ $crontab_permission -le 50 ]; then
-				crontab_group_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-				if [ $crontab_group_permission -eq 5 ] || [ $crontab_group_permission -eq 4 ] || [ $crontab_group_permission -eq 1 ] || [ $crontab_group_permission -eq 0 ]; then
-					crontab_other_permission=`stat ${crontab_path[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-					if [ $crontab_other_permission -ne 0 ]; then
-						WARN " ${crontab_path[$i]} 명령어의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${crontab_path[$i]} 명령어의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${crontab_path[$i]} 명령어의 권한이 750보다 큽니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	cron_directory=("/etc/cron.hourly" "/etc/cron.daily" "/etc/cron.weekly" "/etc/cron.monthly" "/var/spool/cron" "/var/spool/cron/crontabs")
-	cron_file=("/etc/crontab" "/etc/cron.allow" "/etc/cron.deny")
-	for ((i=0; i<${#cron_directory[@]}; i++))
-	do
-		cron_file_count=`find ${cron_directory[$i]} -type f 2>/dev/null | wc -l`
-		if [ $cron_file_count -gt 0 ]; then
-			cron_file2=(`find ${cron_directory[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#cron_file2[@]}; j++))
-			do
-				cron_file[${#cron_file[@]}]=${cron_file2[$j]}
-			done
-		fi
-	done
-	for ((i=0; i<${#cron_file[@]}; i++))
-	do
-		if [ -f ${cron_file[$i]} ]; then
-			cron_file_owner_name=`ls -l ${cron_file[$i]} | awk '{print $3}'`
-			if [[ $cron_file_owner_name =~ root ]]; then
-				cron_file_permission=`stat ${cron_file[$i]}| grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,3)}'`
-				if [ $cron_file_permission -le 640 ]; then
-					cron_file_owner_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,3,1)}'`
-					if [ $cron_file_owner_permission -eq 6 ] || [ $cron_file_owner_permission -eq 4 ] || [ $cron_file_owner_permission -eq 2 ] || [ $cron_file_owner_permission -eq 0 ]; then
-						cron_file_group_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,4,1)}'`
-						if [ $cron_file_group_permission -eq 4 ] || [ $cron_file_group_permission -eq 0 ]; then
-							cron_file_other_permission=`stat ${cron_file[$i]} | grep -i 'Uid' | awk '{print $2}' | awk -F / '{print substr($1,5,1)}'`
-							if [ $cron_file_other_permission -ne 0 ]; then
-								WARN " ${cron_file[$i]} 파일의 다른 사용자(other)에 대한 권한이 취약합니다." >> $TMP1
-								return 0
-							fi
-						else
-							WARN " ${cron_file[$i]} 파일의 그룹 사용자(group)에 대한 권한이 취약합니다." >> $TMP1
-							return 0
-						fi
-					else
-						WARN " ${cron_file[$i]} 파일의 사용자(owner)에 대한 권한이 취약합니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " ${cron_file[$i]} 파일의 권한이 640보다 큽니다." >> $TMP1
-					return 0
-				fi
-			else
-				WARN " ${cron_file[$i]} 파일의 소유자(owner)가 root가 아닙니다." >> $TMP1
-				return 0
-			fi
-		fi
-	done
-	OK "※ U-22 결과 : 양호(Good)" >> $TMP1
-	return 0
+echo.
+echo.
 
-cat $result
-
-echo ; echo
+endlocal

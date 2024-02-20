@@ -1,29 +1,33 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-144] 불필요한 파일 존재 여부 확인 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 지정된 경로에 불필요한 파일이 존재하지 않는 경우 >> %TMP1%
+echo [취약]: 지정된 경로에 불필요한 파일이 존재하는 경우 >> %TMP1%
 
-CODE [SRV-144] /dev 경로에 불필요한 파일 존재
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $TMP1
-[양호]: /dev 경로에 불필요한 파일이 존재하지 않는 경우
-[취약]: /dev 경로에 불필요한 파일이 존재하는 경우
-EOF
+:: 파일 수 확인 (예: C:\Windows\Temp 내의 파일)
+set "targetDir=C:\Windows\Temp"
+set /a fileCount=0
 
-BAR
+for /f %%a in ('dir /a-d /b "%targetDir%" 2^>nul ^| find /c /v ""') do set /a fileCount=%%a
 
-if [ `find /dev -type f 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-16 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
+if %fileCount% gtr 0 (
+    echo WARN: %targetDir% 디렉터리에 %fileCount%개의 불필요한 파일이 존재합니다. >> %TMP1%
+) else (
+    echo OK: %targetDir% 디렉터리에 불필요한 파일이 존재하지 않습니다. >> %TMP1%
+)
 
-cat $TMP1
+type %TMP1%
 
-echo ; echo
+echo.
+echo.
+
+endlocal

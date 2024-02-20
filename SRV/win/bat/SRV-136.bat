@@ -1,38 +1,24 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-136] 시스템 종료 권한 설정 미흡 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 시스템 종료 권한이 적절히 제한된 경우 >> %TMP1%
+echo [취약]: 시스템 종료 권한이 제한되지 않은 경우 >> %TMP1%
 
-CODE [SRV-136] 시스템 종료 권한 설정 미흡
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 시스템 종료 권한이 적절히 제한된 경우
-[취약]: 시스템 종료 권한이 제한되지 않은 경우
-EOF
+:: PowerShell을 사용하여 시스템 종료 권한 정책 검사
+powershell -Command "& { $policy = Get-LocalSecurityPolicy -Policy 'Shut down the system'; if ($policy -ne 'Administrators') { echo 'WARN: 시스템 종료 권한이 적절히 제한되지 않았습니다.' >> '%TMP1%' } else { echo 'OK: 시스템 종료 권한이 적절히 제한되었습니다.' >> '%TMP1%' } }"
 
-BAR
+type %TMP1%
 
-# 시스템 종료 권한 관련 설정 확인
-shutdown_command="/sbin/shutdown"
+echo.
+echo.
 
-if [ ! -x "$shutdown_command" ]; then
-  WARN "shutdown 명령이 실행 가능하지 않습니다."
-else
-  OK "shutdown 명령이 실행 가능합니다."
-fi
-
-# shutdown 명령에 대한 권한 확인
-permissions=$(stat -c %A "$shutdown_command")
-if [[ "$permissions" != *x* ]]; then
-  WARN "shutdown 명령에 실행 권한이 없습니다."
-else
-  OK "shutdown 명령에 실행 권한이 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+endlocal

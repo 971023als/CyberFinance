@@ -1,33 +1,40 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-151] 익명 SID/이름 변환 허용 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 익명 SID/이름 변환을 허용하지 않는 경우 >> %TMP1%
+echo [취약]: 익명 SID/이름 변환을 허용하는 경우 >> %TMP1%
 
-CODE [SRV-151] 익명 SID/이름 변환 허용
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 익명 SID/이름 변환을 허용하지 않는 경우
-[취약]: 익명 SID/이름 변환을 허용하는 경우
-EOF
+:: 보안 정책 내보내기
+secedit /export /cfg secpol.cfg
 
-BAR
+:: 익명 SID/이름 변환 정책 확인
+findstr "SeDenyNetworkLogonRight" secpol.cfg > nul
+if %ERRORLEVEL% == 0 (
+    findstr /C:"S-1-1-0" secpol.cfg > nul
+    if %ERRORLEVEL% == 0 (
+        echo OK: 익명 SID/이름 변환을 허용하지 않습니다. >> %TMP1%
+    ) else (
+        echo WARN: 익명 SID/이름 변환을 허용합니다. >> %TMP1%
+    )
+) else (
+    echo WARN: 보안 정책 파일에서 관련 설정을 찾을 수 없습니다. >> %TMP1%
+)
 
-# 익명 SID/이름 변환 정책 확인
-if secpol.exe /export /cfg secpol.cfg; then
-    if grep -q "SeDenyNetworkLogonRight = *S-1-1-0" secpol.cfg; then
-        OK "익명 SID/이름 변환을 허용하지 않습니다."
-    else
-        WARN "익명 SID/이름 변환을 허용합니다."
-    fi
-    rm secpol.cfg
-else
-    WARN "보안 정책 파일을 추출할 수 없습니다."
-fi
+:: 임시 파일 정리
+del secpol.cfg
 
-cat $result
+type %TMP1%
 
-echo ; echo
+echo.
+echo.
+
+endlocal

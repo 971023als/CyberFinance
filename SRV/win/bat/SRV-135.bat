@@ -1,38 +1,38 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-135] TCP 보안 설정 미비 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 필수 TCP 보안 설정이 적절히 구성된 경우 >> %TMP1%
+echo [취약]: 필수 TCP 보안 설정이 구성되지 않은 경우 >> %TMP1%
 
-CODE [SRV-135] TCP 보안 설정 미비
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 필수 TCP 보안 설정이 적절히 구성된 경우
-[취약]: 필수 TCP 보안 설정이 구성되지 않은 경우
-EOF
+:: PowerShell을 사용하여 TCP 관련 레지스트리 설정 확인
+powershell -Command "& { 
+    $paths = @(
+        'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\TcpWindowSize',
+        'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Tcp1323Opts',
+        'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\SynAttackProtect'
+    )
+    foreach ($path in $paths) {
+        if (Test-Path $path) {
+            $value = Get-ItemProperty -Path $path
+            echo 'OK: ' + $path + ' 설정이 존재합니다: ' + $value
+        } else {
+            echo 'WARN: ' + $path + ' 설정이 없습니다.'
+        }
+    }
+}" >> %TMP1%
 
-BAR
+type %TMP1%
 
-# TCP 보안 관련 설정 확인
-tcp_settings=(
-  "net.ipv4.tcp_syncookies"
-  "net.ipv4.tcp_max_syn_backlog"
-  "net.ipv4.tcp_synack_retries"
-  "net.ipv4.tcp_syn_retries"
-)
+echo.
+echo.
 
-for setting in "${tcp_settings[@]}"; do
-  value=$(sysctl $setting)
-  if [ -z "$value" ]; then
-    WARN "$setting 설정이 없습니다."
-  else
-    OK "$setting 설정이 존재합니다: $value"
-  fi
-done
-
-cat $result
-
-echo ; echo
+endlocal

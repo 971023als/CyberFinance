@@ -1,30 +1,24 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-142] 중복 사용자 이름이 부여된 계정 존재 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 중복 사용자 이름이 부여된 계정이 존재하지 않는 경우 >> %TMP1%
+echo [취약]: 중복 사용자 이름이 부여된 계정이 존재하는 경우 >> %TMP1%
 
-CODE [SRV-142] 중복 UID가 부여된 계정 존재
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $TMP1
-[양호]: 중복 UID가 부여된 계정이 존재하지 않는 경우
-[취약]: 중복 UID가 부여된 계정이 존재하는 경우
-EOF
+:: PowerShell을 사용하여 중복 사용자 이름 확인
+powershell -Command "& { $users = Get-WmiObject -Class Win32_UserAccount; $duplicates = $users | Group-Object -Property Name | Where-Object { $_.Count -gt 1 }; if ($duplicates) { 'WARN: 중복 사용자 이름이 존재합니다.' } else { 'OK: 중복 사용자 이름이 부여된 계정이 존재하지 않습니다.' } }" >> %TMP1%
 
-BAR
+type %TMP1%
 
-if [ -f /etc/passwd ]; then
-		if [ `awk -F : '{print $3}' /etc/passwd | sort | uniq -d | wc -l` -gt 0 ]; then
-			WARN " 동일한 UID로 설정된 사용자 계정이 존재합니다." >> $TMP1
-			return 0
-		fi
-	fi
-	OK "※ U-52 결과 : 양호(Good)" >> $TMP1
-	return 0
+echo.
+echo.
 
-cat $TMP1
-
-echo ; echo
+endlocal

@@ -1,65 +1,31 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+> %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-125] 화면보호기 미설정 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 화면보호기가 설정되어 있는 경우 >> %TMP1%
+echo [취약]: 화면보호기가 설정되어 있지 않은 경우 >> %TMP1%
 
-CODE [SRV-125] 화면보호기 미설정
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 화면보호기가 설정되어 있는 경우
-[취약]: 화면보호기가 설정되어 있지 않은 경우
-EOF
+:: PowerShell을 사용하여 화면보호기 설정 확인
+powershell -Command "& {
+    $screenSaverActive = Get-ItemProperty 'HKCU:\Control Panel\Desktop\' -Name ScreenSaveActive
+    if ($screenSaverActive.ScreenSaveActive -eq '1') {
+        echo 'OK: 화면보호기가 설정되어 있습니다.' >> '%TMP1%'
+    } else {
+        echo 'WARN: 화면보호기가 설정되어 있지 않습니다.' >> '%TMP1%'
+    }
+}" >> %TMP1%
 
-BAR
+type %TMP1%
 
-# GNOME 데스크톱 환경
-if command -v gsettings > /dev/null; then
-  if gsettings get org.gnome.desktop.screensaver lock-enabled | grep -q 'true'; then
-    OK "GNOME에서 화면보호기가 설정되어 있습니다."
-  else
-    WARN "GNOME에서 화면보호기가 설정되어 있지 않습니다."
-  fi
-else
-  INFO "GNOME 화면보호기 도구가 설치되어 있지 않습니다."
-fi
+echo.
+echo.
 
-# KDE Plasma
-if command -v qdbus > /dev/null; then
-  if qdbus org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.GetActive; then
-    OK "KDE에서 화면보호기가 설정되어 있습니다."
-  else
-    WARN "KDE에서 화면보호기가 설정되어 있지 않습니다."
-  fi
-else
-  INFO "KDE 화면보호기 도구가 설치되어 있지 않습니다."
-fi
-
-# Xfce
-if command -v xfconf-query > /dev/null; then
-  if xfconf-query -c xfce4-screensaver -p /saver/enabled; then
-    OK "Xfce에서 화면보호기가 설정되어 있습니다."
-  else
-    WARN "Xfce에서 화면보호기가 설정되어 있지 않습니다."
-  fi
-else
-  INFO "Xfce 화면보호기 도구가 설치되어 있지 않습니다."
-fi
-
-# Cinnamon
-if command -v gsettings > /dev/null; then
-  if gsettings get org.cinnamon.desktop.screensaver lock-enabled | grep -q 'true'; then
-    OK "Cinnamon에서 화면보호기가 설정되어 있습니다."
-  else
-    WARN "Cinnamon에서 화면보호기가 설정되어 있지 않습니다."
-  fi
-else
-  INFO "Cinnamon 화면보호기 도구가 설치되어 있지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+endlocal

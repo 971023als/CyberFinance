@@ -1,39 +1,35 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-129] 백신 프로그램 미설치 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 백신 프로그램이 설치되어 있는 경우 >> %TMP1%
+echo [취약]: 백신 프로그램이 설치되어 있지 않은 경우 >> %TMP1%
 
-CODE [SRV-129] 백신 프로그램 미설치
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 백신 프로그램이 설치되어 있는 경우
-[취약]: 백신 프로그램이 설치되어 있지 않은 경우
-EOF
+:: PowerShell을 사용하여 설치된 백신 프로그램 상태 확인
+powershell -Command "& {
+    $antivirusStatus = Get-CimInstance -Namespace 'root\SecurityCenter2' -ClassName 'AntivirusProduct'
+    if ($antivirusStatus) {
+        foreach ($product in $antivirusStatus) {
+            $productName = $product.displayName
+            $productStatus = '상태: ' + $product.productState
+            echo 'OK: 설치된 백신 프로그램 - ' + $productName + ' ' + $productStatus >> '%TMP1%'
+        }
+    } else {
+        echo 'WARN: 설치된 백신 프로그램이 없습니다.' >> '%TMP1%'
+    }
+}" >> %TMP1%
 
-BAR
+type %TMP1%
 
-# 일반적으로 사용되는 백신 프로그램의 설치 여부를 확인합니다
-antivirus_programs=("clamav" "avast" "avg" "avira" "eset")
+echo.
+echo.
 
-installed_antivirus=()
-
-for antivirus in "${antivirus_programs[@]}"; do
-  if command -v $antivirus &> /dev/null; then
-    installed_antivirus+=("$antivirus")
-  fi
-done
-
-# 설치된 백신 프로그램이 있는지 확인합니다
-if [ ${#installed_antivirus[@]} -eq 0 ]; then
-  WARN "설치된 백신 프로그램이 없습니다."
-else
-  OK "설치된 백신 프로그램: ${installed_antivirus[*]}"
-fi
-
-cat $result
-
-echo ; echo
+endlocal

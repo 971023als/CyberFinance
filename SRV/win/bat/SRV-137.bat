@@ -1,46 +1,27 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-137] 네트워크 서비스의 접근 제한 설정 미흡 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
 
-BAR
+echo [양호]: 네트워크 서비스의 접근 제한이 적절히 설정된 경우 >> %TMP1%
+echo [취약]: 네트워크 서비스의 접근 제한이 설정되지 않은 경우 >> %TMP1%
 
-CODE [SRV-137] 네트워크 서비스의 접근 제한 설정 미흡
+echo ---------------------------------------- >> %TMP1%
 
-cat << EOF >> $result
-[양호]: 네트워크 서비스의 접근 제한이 적절히 설정된 경우
-[취약]: 네트워크 서비스의 접근 제한이 설정되지 않은 경우
-EOF
+:: PowerShell을 사용하여 Windows 방화벽 규칙 검사
+powershell -Command "& { Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' -and $_.Action -eq 'Allow' } | Format-Table Name, Action, Direction, Enabled -AutoSize }" >> %TMP1%
 
-BAR
+:: 추가적인 분석 및 판단 로직 필요
+echo 추가적인 분석 및 판단 로직이 필요합니다. 결과는 %TMP1% 파일을 참조하세요. >> %TMP1%
 
-if [ -f /etc/hosts.deny ]; then
-		etc_hostsdeny_allall_count=`grep -vE '^#|^\s#' /etc/hosts.deny | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
-		if [ $etc_hostsdeny_allall_count -gt 0 ]; then
-			if [ -f /etc/hosts.allow ]; then
-				etc_hostsallow_allall_count=`grep -vE '^#|^\s#' /etc/hosts.allow | awk '{gsub(" ", "", $0); print}' | grep -i 'all:all' | wc -l`
-				if [ $etc_hostsallow_allall_count -gt 0 ]; then
-					WARN " /etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다." >> $TMP1
-					return 0
-				else
-					OK "※ U-18 결과 : 양호(Good)" >> $TMP1
-					return 0
-				fi
-			else
-				OK "※ U-18 결과 : 양호(Good)" >> $TMP1
-				return 0
-			fi
-		else
-			WARN " /etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다." >> $TMP1
-			return 0
-		fi
-	else
-		WARN " /etc/hosts.deny 파일이 없습니다." >> $TMP1
-		return 0
-	fi
+type %TMP1%
 
-cat $result
+echo.
+echo.
 
-echo ; echo
+endlocal
