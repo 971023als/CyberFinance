@@ -1,46 +1,13 @@
-#!/bin/bash
+# IIS SMTP 서비스 실행 상태 확인
+$smtpService = Get-Service -Name 'SMTPSVC' -ErrorAction SilentlyContinue
 
-. function.sh
-
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-170] SMTP 서비스 정보 노출
-
-cat << EOF >> $result
-[양호]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우
-[취약]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되는 경우
-EOF
-
-BAR
-
-# SMTP 서버 설정 확인 (예: Postfix, Sendmail 등)
-# Postfix 예시
-postfix_config="/etc/postfix/main.cf"
-if [ -f "$postfix_config" ]; then
-    if grep -q '^smtpd_banner = $myhostname' "$postfix_config"; then
-        OK "Postfix에서 버전 정보 노출이 제한됩니다."
-    else
-        WARN "Postfix에서 버전 정보가 노출됩니다."
-    fi
-else
-    INFO "Postfix 서버 설정 파일이 존재하지 않습니다."
-fi
-
-# Sendmail 예시
-sendmail_config="/etc/mail/sendmail.cf"
-if [ -f "$sendmail_config" ]; then
-    if grep -q 'O SmtpGreetingMessage=$j' "$sendmail_config"; then
-        OK "Sendmail에서 버전 정보 노출이 제한됩니다."
-    else
-        WARN "Sendmail에서 버전 정보가 노출됩니다."
-    fi
-else
-    INFO "Sendmail 서버 설정 파일이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+if ($null -ne $smtpService) {
+    if ($smtpService.Status -eq 'Running') {
+        Write-Host "SMTP 서비스가 실행 중입니다."
+        # SMTP 서비스 구성 파일이나 IIS 관리 콘솔을 통해 추가적인 설정 점검 필요
+    } else {
+        Write-Host "SMTP 서비스가 설치되어 있으나 실행 중이지 않습니다."
+    }
+} else {
+    Write-Host "SMTP 서비스가 설치되어 있지 않습니다."
+}

@@ -1,46 +1,17 @@
-#!/bin/bash
+Import-Module WebAdministration
 
-. function.sh
+# IIS의 FTP 사이트 목록을 가져옵니다.
+$ftpSites = Get-ChildItem IIS:\Sites | Where-Object { $_.bindings.Protocol -eq "ftp" }
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [SRV-171] FTP 서비스 정보 노출
-
-cat << EOF >> $result
-[양호]: FTP 서버에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우
-[취약]: FTP 서버에서 버전 정보 및 기타 세부 정보가 노출되는 경우
-EOF
-
-BAR
-
-# FTP 서버 설정 확인 (예: vsftpd, proftpd 등)
-# vsftpd 예시
-vsftpd_config="/etc/vsftpd.conf"
-if [ -f "$vsftpd_config" ]; then
-    if grep -q 'ftpd_banner=' "$vsftpd_config"; then
-        OK "vsftpd에서 버전 정보 노출이 제한됩니다."
-    else
-        WARN "vsftpd에서 버전 정보가 노출됩니다."
-    fi
-else
-    INFO "vsftpd 설정 파일이 존재하지 않습니다."
-fi
-
-# ProFTPD 예시
-proftpd_config="/etc/proftpd/proftpd.conf"
-if [ -f "$proftpd_config" ]; then
-    if grep -q 'ServerIdent on "FTP Server ready."' "$proftpd_config"; then
-        OK "ProFTPD에서 버전 정보 노출이 제한됩니다."
-    else
-        WARN "ProFTPD에서 버전 정보가 노출됩니다."
-    fi
-else
-    INFO "ProFTPD 설정 파일이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+if ($ftpSites -ne $null -and $ftpSites.Count -gt 0) {
+    Write-Host "IIS에 구성된 FTP 사이트 목록:"
+    foreach ($site in $ftpSites) {
+        Write-Host "사이트 이름: $($site.name)"
+        Write-Host "사이트 ID: $($site.id)"
+        Write-Host "바인딩: $($site.bindings.Collection)"
+        Write-Host "상태: $($site.state)"
+        Write-Host "-------------------------"
+    }
+} else {
+    Write-Host "IIS에 구성된 FTP 사이트가 없습니다."
+}
