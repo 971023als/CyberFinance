@@ -1,31 +1,63 @@
-#!/bin/bash
+@echo off
+call function.bat
 
-. function.sh
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+call :BAR
 
-BAR
+echo CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
 
-CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
+(
+echo [양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
+echo [취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
+) >> %result%
 
-cat << EOF >> $result
-[양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
-[취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
-EOF
+call :BAR
 
-BAR
+:: 시스템에서 숨김 파일 및 디렉터리 검색
+setlocal EnableDelayedExpansion
+set hidden_files=
+set hidden_dirs=
 
-# 시스템에서 숨김 파일 및 디렉터리 검색
-hidden_files=$(find / -name ".*" -type f)
-hidden_dirs=$(find / -name ".*" -type d)
+for /r %%i in (.*.*) do (
+    if exist %%i (
+        if "%%~ai"=="H" (
+            set hidden_files=!hidden_files! %%i
+        )
+    )
+)
 
-if [ -z "$hidden_files" ] && [ -z "$hidden_dirs" ]; then
-    OK "불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다."
-else
-    WARN "다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: $hidden_files $hidden_dirs"
-fi
+for /d /r %%i in (.*.) do (
+    if exist %%i (
+        if "%%~ai"=="H" (
+            set hidden_dirs=!hidden_dirs! %%i
+        )
+    )
+)
 
-cat $result
+if "%hidden_files%"=="" if "%hidden_dirs%"=="" (
+    call :OK "불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다."
+) else (
+    call :WARN "다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: %hidden_files% %hidden_dirs%"
+)
 
-echo ; echo
+type %result%
+
+echo.
+echo.
+
+goto :eof
+
+:BAR
+echo ----------------------------------------
+goto :eof
+
+:OK
+echo %~1
+goto :eof
+
+:WARN
+echo %~1
+goto :eof
+
