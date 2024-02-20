@@ -1,36 +1,25 @@
-#!/bin/bash
+# DNS 서버의 동적 업데이트 설정을 확인합니다.
+# 이 예제는 Windows 환경에서 실행되어야 하며, DNS 서버 역할이 설치되어 있어야 합니다.
 
-. function.sh
+# 설치된 모든 DNS 영역을 가져옵니다.
+$dnsZones = Get-DnsServerZone
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+foreach ($zone in $dnsZones) {
+    # 동적 업데이트 설정을 확인합니다.
+    $dynamicUpdate = $zone.DynamicUpdate
 
-BAR
-
-CODE [SRV-173] DNS 서비스의 취약한 동적 업데이트 설정
-
-cat << EOF >> $result
-[양호]: DNS 동적 업데이트가 안전하게 구성된 경우
-[취약]: DNS 동적 업데이트가 취약하게 구성된 경우
-EOF
-
-BAR
-
-# DNS 설정 파일 경로
-dns_config="/etc/bind/named.conf"
-
-# 동적 업데이트 설정 확인
-if [ -f "$dns_config" ]; then
-    dynamic_updates=$(grep "allow-update" "$dns_config")
-    if [ -z "$dynamic_updates" ]; then
-        OK "DNS 동적 업데이트가 안전하게 구성되어 있습니다."
-    else
-        WARN "DNS 동적 업데이트 설정이 취약합니다: $dynamic_updates"
-    fi
-else
-    INFO "DNS 설정 파일이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+    switch ($dynamicUpdate) {
+        "None" {
+            Write-Host "영역 $($zone.ZoneName)은 동적 업데이트가 비활성화되어 있습니다. - 양호"
+        }
+        "NonsecureAndSecure" {
+            Write-Host "영역 $($zone.ZoneName)은 모든 동적 업데이트를 허용합니다. - 취약"
+        }
+        "Secure" {
+            Write-Host "영역 $($zone.ZoneName)은 보안 동적 업데이트만 허용합니다. - 양호"
+        }
+        default {
+            Write-Host "영역 $($zone.ZoneName)의 동적 업데이트 설정을 확인할 수 없습니다."
+        }
+    }
+}
