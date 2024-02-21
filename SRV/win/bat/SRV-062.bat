@@ -4,12 +4,12 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-062] DNS Service Information Exposure >> "%TMP1%"
-echo [Good]: DNS service information is securely protected >> "%TMP1%"
-echo [Vulnerable]: DNS service information is being exposed >> "%TMP1%"
+echo 코드 [SRV-062] DNS 서비스 정보 노출 >> "%TMP1%"
+echo [양호]: DNS 서비스 정보가 안전하게 보호됨 >> "%TMP1%"
+echo [취약]: DNS 서비스 정보가 노출됨 >> "%TMP1%"
 
-:: Check for DNS version hiding and unnecessary zone transfers using PowerShell
-echo Checking DNS service configuration for information exposure and zone transfer settings: >> "%TMP1%"
+:: DNS 버전 숨김 및 불필요한 존 전송 사용 여부를 PowerShell을 사용하여 확인
+echo DNS 서비스 구성에서 정보 노출 및 존 전송 설정을 확인 중입니다: >> "%TMP1%"
 powershell -Command "& {
     $dnsServers = Get-DnsServer
     foreach ($server in $dnsServers) {
@@ -17,23 +17,23 @@ powershell -Command "& {
         $hideVersion = Get-DnsServerSetting -ComputerName $server.Name | Select-Object -ExpandProperty DisableVersionQuery
 
         if ($hideVersion -eq $true) {
-            Write-Output 'DNS version information is hidden.'
+            Write-Output 'DNS 버전 정보가 숨겨져 있습니다.'
         } else {
-            Write-Output 'DNS version information might be exposed.'
+            Write-Output 'DNS 버전 정보가 노출될 수 있습니다.'
         }
 
         foreach ($transfer in $zoneTransfers) {
             if ($transfer.AllowZoneTransfer -eq 'None') {
-                Write-Output 'Unnecessary Zone Transfers are restricted.'
+                Write-Output '불필요한 존 전송이 제한됩니다.'
             } else {
-                Write-Output 'Unnecessary Zone Transfers might be allowed.'
+                Write-Output '불필요한 존 전송이 허용될 수 있습니다.'
             }
         }
     }
 }" >> "%TMP1%"
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
