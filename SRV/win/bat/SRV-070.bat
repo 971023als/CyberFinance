@@ -4,20 +4,20 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-070] Inadequate Password Management Policy Settings >> "%TMP1%"
-echo [Good]: The server's password management policy is appropriately set >> "%TMP1%"
-echo [Vulnerable]: The server's password management policy is inadequately set >> "%TMP1%"
+echo 코드 [SRV-070] 비밀번호 관리 정책 설정 미흡 >> "%TMP1%"
+echo [양호]: 서버의 비밀번호 관리 정책이 적절하게 설정됨 >> "%TMP1%"
+echo [취약]: 서버의 비밀번호 관리 정책이 불충분하게 설정됨 >> "%TMP1%"
 
-:: Check local password policies
-echo Checking local password policies: >> "%TMP1%"
+:: 로컬 비밀번호 정책 확인
+echo 로컬 비밀번호 정책 확인 중: >> "%TMP1%"
 net accounts >> "%TMP1%"
 
-:: Note for more complex policy checks
-echo For more detailed password policy checks or modifications, consider using the Local Security Policy MMC snap-in (secpol.msc) or Group Policy Management Console (gpmc.msc) in domain environments. >> "%TMP1%"
-echo Additionally, PowerShell scripts can provide detailed analysis and management capabilities for password policies. >> "%TMP1%"
+:: 보다 복잡한 정책 검사에 대한 주의사항
+echo 보다 상세한 비밀번호 정책 검사나 수정을 위해서는 로컬 보안 정책 MMC 스냅인(secpol.msc) 또는 도메인 환경에서 그룹 정책 관리 콘솔(gpmc.msc) 사용을 고려하세요. >> "%TMP1%"
+echo 추가적으로, PowerShell 스크립트는 비밀번호 정책의 상세 분석 및 관리 기능을 제공할 수 있습니다. >> "%TMP1%"
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
