@@ -4,32 +4,32 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-058] Unnecessary Script Mapping in Web Service >> "%TMP1%"
-echo [Good]: No unnecessary script mappings exist in the web service >> "%TMP1%"
-echo [Vulnerable]: Unnecessary script mappings exist in the web service >> "%TMP1%"
+echo 코드 [SRV-058] 웹 서비스의 불필요한 스크립트 매핑 >> "%TMP1%"
+echo [양호]: 웹 서비스에 불필요한 스크립트 매핑이 존재하지 않음 >> "%TMP1%"
+echo [취약]: 웹 서비스에 불필요한 스크립트 매핑이 존재함 >> "%TMP1%"
 
-:: Set the path to Apache and Nginx configuration files on Windows
+:: Windows에서 Apache와 Nginx 설정 파일 경로 설정
 set "APACHE_CONFIG_FILE=C:\path\to\apache\conf\httpd.conf"
 set "NGINX_CONFIG_FILE=C:\path\to\nginx\conf\nginx.conf"
 
-:: Check for script mappings in Apache
+:: Apache에서 스크립트 매핑 확인
 findstr /R "AddHandler AddType" "%APACHE_CONFIG_FILE%" >nul
 if not errorlevel 1 (
-    echo WARN: Unnecessary script mappings found in Apache: %APACHE_CONFIG_FILE% >> "%TMP1%"
+    echo 경고: Apache에서 불필요한 스크립트 매핑이 발견됨: %APACHE_CONFIG_FILE% >> "%TMP1%"
 ) else (
-    echo OK: No unnecessary script mappings found in Apache: %APACHE_CONFIG_FILE% >> "%TMP1%"
+    echo OK: Apache에서 불필요한 스크립트 매핑이 발견되지 않음: %APACHE_CONFIG_FILE% >> "%TMP1%"
 )
 
-:: Check for script mappings in Nginx
+:: Nginx에서 스크립트 매핑 확인
 findstr /R "location ~ \.php$" "%NGINX_CONFIG_FILE%" >nul
 if not errorlevel 1 (
-    echo WARN: Unnecessary PHP script mappings found in Nginx: %NGINX_CONFIG_FILE% >> "%TMP1%"
+    echo 경고: Nginx에서 불필요한 PHP 스크립트 매핑이 발견됨: %NGINX_CONFIG_FILE% >> "%TMP1%"
 ) else (
-    echo OK: No unnecessary PHP script mappings found in Nginx: %NGINX_CONFIG_FILE% >> "%TMP1%"
+    echo OK: Nginx에서 불필요한 PHP 스크립트 매핑이 발견되지 않음: %NGINX_CONFIG_FILE% >> "%TMP1%"
 )
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
