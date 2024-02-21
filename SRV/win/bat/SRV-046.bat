@@ -4,40 +4,40 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-046] Inadequate Web Service Path Configuration >> "%TMP1%"
-echo [Good]: The web service's path configuration is securely configured >> "%TMP1%"
-echo [Vulnerable]: The web service's path configuration is insecurely configured >> "%TMP1%"
+echo 코드 [SRV-046] 웹 서비스 경로 설정 미흡 >> "%TMP1%"
+echo [양호]: 웹 서비스의 경로 설정이 안전하게 구성됨 >> "%TMP1%"
+echo [취약]: 웹 서비스의 경로 설정이 안전하지 않게 구성됨 >> "%TMP1%"
 
-:: Set paths to Apache and Nginx configuration files on Windows
+:: Windows에서 Apache 및 Nginx 설정 파일 경로 설정
 set "APACHE_CONFIG_FILE=C:\Apache24\conf\apache2.conf"
 set "NGINX_CONFIG_FILE=C:\nginx\conf\nginx.conf"
 
-:: Check Apache configuration for secure path settings
+:: Apache 설정에서 안전한 경로 설정 확인
 if exist "%APACHE_CONFIG_FILE%" (
     findstr /R /C:"^ *<Directory" /C:"Options -Indexes" "%APACHE_CONFIG_FILE%" >nul
     if not errorlevel 1 (
-        echo OK: Apache configuration has secure path settings: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+        echo OK: Apache 설정에서 안전한 경로 설정이 확인됨: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
     ) else (
-        echo WARN: Apache configuration may have insecure path settings: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+        echo WARN: Apache 설정에서 안전하지 않은 경로 설정이 확인됨: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
     )
 ) else (
-    echo INFO: Apache configuration file does not exist: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+    echo INFO: Apache 설정 파일이 존재하지 않음: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
 )
 
-:: Check Nginx configuration for secure path settings
+:: Nginx 설정에서 안전한 경로 설정 확인
 if exist "%NGINX_CONFIG_FILE%" (
     findstr /R /C:"^ *location" "%NGINX_CONFIG_FILE%" >nul
     if not errorlevel 1 (
-        echo OK: Nginx configuration has secure path settings: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+        echo OK: Nginx 설정에서 안전한 경로 설정이 확인됨: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
     ) else (
-        echo WARN: Nginx configuration may have insecure path settings: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+        echo WARN: Nginx 설정에서 안전하지 않은 경로 설정이 확인됨: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
     )
 ) else (
-    echo INFO: Nginx configuration file does not exist: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+    echo INFO: Nginx 설정 파일이 존재하지 않음: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
 )
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
