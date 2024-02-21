@@ -1,65 +1,38 @@
 @echo off
-
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo Requesting administrative privileges...
-    goto UACPrompt
-) else ( goto gotAdmin )
-
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c ""%~s0"" %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
-
-:gotAdmin
-chcp 65001
-color 02
 setlocal enabledelayedexpansion
 
-echo ------------------------------------------Environment Setup---------------------------------------
-if exist C:\Window_%COMPUTERNAME%_raw rd /S /Q C:\Window_%COMPUTERNAME%_raw
-if exist C:\Window_%COMPUTERNAME%_result rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
+set "TMP1=%SCRIPTNAME%.log"
+type nul > !TMP1!
 
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-023] 원격 터미널 서비스의 암호화 수준 설정 미흡 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-echo ------------------------------------------IIS Configuration-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line! > C:\Window_%COMPUTERNAME%_raw\line.txt
-for /L %%i in (1,1,5) do (
-    for /F "tokens=%%i delims=*" %%a in (C:\Window_%COMPUTERNAME%_raw\line.txt) do (
-        echo %%a >> C:\Window_%COMPUTERNAME%_raw\path%%i.txt
-    )
-)
-type %WinDir%\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
+echo [양호]: SSH 서비스의 암호화 수준이 적절하게 설정된 경우 >> !TMP1!
+echo [취약]: SSH 서비스의 암호화 수준 설정이 미흡한 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-echo ------------------------------------------Terminal Services Encryption Level Check------------------------------------------
-echo Checking Terminal Services encryption level and client compatibility...
+:: SSH 암호화 관련 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    $SshConfigFile = 'C:\ProgramData\ssh\sshd_config';
+    $EncryptionSettings = @('KexAlgorithms', 'Ciphers', 'MACs');
+    $ConfigExists = Test-Path $SshConfigFile;
+    if (-not $ConfigExists) {
+        Add-Content !TMP1! 'WARN: SSH 구성 파일이 존재하지 않습니다.';
+        exit;
+    }
+    foreach ($setting in $EncryptionSettings) {
+        $ConfigContent = Get-Content $SshConfigFile;
+        $SettingConfigured = $ConfigContent | Where-Object { $_ -match """"^$setting"""" };
+        if ($SettingConfigured) {
+            Add-Content !TMP1! 'OK: ' + $SshConfigFile + ' 파일에서 ' + $setting + ' 설정이 적절하게 구성되어 있습니다.';
+        } else {
+            Add-Content !TMP1! 'WARN: ' + $SshConfigFile + ' 파일에서 ' + $setting + ' 설정이 미흡합니다.';
+        }
+    }
+}"
 
-:: Check the encryption level setting in the registry
-reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v MinEncryptionLevel
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-:: Optional: Command to update the encryption level if necessary
-:: reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v MinEncryptionLevel /t REG_DWORD /d desired_value /f
-
-echo -------------------------------------------Check Completed------------------------------------------
-
-echo --------------------------------------SRV-023 Terminal Services Encryption Level Check---------------------------------------
->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt echo Terminal Services Encryption Level Check...
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo -------------------------------------------------------------------------------- >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-
-echo Script execution completed.
-pause
+echo.
