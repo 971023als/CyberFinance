@@ -13,12 +13,16 @@ echo [취약]: SMTP 서비스의 로그 수준이 낮거나, 로그가 충분히
 echo ------------------------------------------------ >> !TMP1!
 
 :: SMTP 로그 설정 확인 (PowerShell 사용 예시)
-powershell -Command "& { # PowerShell 코드를 여기에 추가; 로그 수준 확인 등
-    $SMTPLogSetting = '여기에 SMTP 로그 설정 확인 코드 입력';
-    If ($SMTPLogSetting -eq '적절한 설정') {
+powershell -Command "& {
+    # SMTP 서비스 로그 설정을 확인하는 PowerShell 코드
+    # 예시로는 Get-TransportServer 또는 Get-SendConnector cmdlet 사용을 가정
+    # 실제 환경에 맞게 조정 필요
+    $logLevel = Get-TransportServer | Select-Object -ExpandProperty LogLevel;
+    
+    if ($logLevel -eq 'Medium' -or $logLevel -eq 'High') {
         Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 적절하게 설정됨.'
-    } Else {
-        Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 낮게 설정됨.'
+    } else {
+        Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 낮게 설정됨 또는 설정이 확인되지 않음.'
     }
 }"
 
