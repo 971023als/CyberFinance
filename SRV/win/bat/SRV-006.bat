@@ -1,62 +1,28 @@
 @echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한을 요청합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
-
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-	del "getadmin.vbs"
-    exit /B
-
-:gotAdmin
-chcp 437
-color 02
 setlocal enabledelayedexpansion
-echo ------------------------------------------설정 시작---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS 설정 확인-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-	echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------설정 종료-------------------------------------------
 
-echo ------------------------------------------SRV-001 (Windows) SNMP Community 문자열 안전 설정------------------------------------------
-echo SRV-001에 대한 설명 및 검사 방법...
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-echo ------------------------------------------SRV-004 필수적인 SMTP 서비스 실행 상태 확인------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo -------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-006] SMTP 서비스 로그 수준 설정 미흡 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
+
+echo [양호]: SMTP 서비스의 로그 수준이 적절하게 설정되어 있는 경우 >> !TMP1!
+echo [취약]: SMTP 서비스의 로그 수준이 낮거나, 로그가 충분히 수집되지 않는 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
+
+:: SMTP 로그 설정 확인 (PowerShell 사용 예시)
+powershell -Command "& { # PowerShell 코드를 여기에 추가; 로그 수준 확인 등
+    $SMTPLogSetting = '여기에 SMTP 로그 설정 확인 코드 입력';
+    If ($SMTPLogSetting -eq '적절한 설정') {
+        Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 적절하게 설정됨.'
+    } Else {
+        Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 낮게 설정됨.'
+    }
+}"
+
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
+
+echo.

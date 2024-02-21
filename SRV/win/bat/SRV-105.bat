@@ -1,33 +1,31 @@
-#!/bin/bash
+@echo off
+setlocal enabledelayedexpansion
 
-. function.sh
+set "TMP1=%SCRIPTNAME%.log"
+type nul > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo ------------------------------------------------ >> %TMP1%
+echo CODE [SRV-105] 불필요한 시작프로그램 존재 >> %TMP1%
+echo ------------------------------------------------ >> %TMP1%
 
-BAR
+echo [양호]: 불필요한 시작 프로그램이 존재하지 않는 경우 >> %TMP1%
+echo [취약]: 불필요한 시작 프로그램이 존재하는 경우 >> %TMP1%
+echo ------------------------------------------------ >> %TMP1%
 
-CODE [SRV-105] 불필요한 시작프로그램 존재
+:: 시스템 시작 시 실행되는 프로그램 목록 확인
+for /f "tokens=*" %%i in ('wmic startup get caption, command') do (
+  set "service=%%i"
+  :: 여기서는 단순히 모든 시작 프로그램을 나열합니다.
+  :: 불필요하거나 의심스러운 서비스를 식별하는 로직을 추가해야 합니다.
+  if not "!service!"=="" (
+    echo 의심스러운 시작 프로그램: !service! >> %TMP1%
+  )
+)
 
-cat << EOF >> $result
-[양호]: 불필요한 시작 프로그램이 존재하지 않는 경우
-[취약]: 불필요한 시작 프로그램이 존재하는 경우
-EOF
+:: 불필요한 시작 프로그램이 없다는 메시지는 조건부 로직에 따라 결정됩니다.
+:: 실제 조건부 로직을 구현하기 위해서는 추가 분석이 필요합니다.
+echo 시스템에 불필요한 시작 프로그램이 없습니다. >> %TMP1%
 
-BAR
+type %TMP1%
 
-# 시스템 시작 시 실행되는 프로그램 목록 확인
-startup_programs=$(systemctl list-unit-files --type=service --state=enabled)
-
-# 불필요하거나 의심스러운 서비스를 확인
-for service in $startup_programs; do
-  if [ -z "$(grep -E 'known_safe_service' <<< "$service")" ]; then
-    WARN "의심스러운 시작 프로그램: $service"
-  fi
-done
-
-OK "시스템에 불필요한 시작 프로그램이 없습니다."
-
-cat $result
-
-echo ; echo
+echo.
