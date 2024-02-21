@@ -1,54 +1,28 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-043] Unnecessary Files in Web Service Path >> "%TMP1%"
+echo [Good]: No unnecessary files exist within the web service path >> "%TMP1%"
+echo [Vulnerable]: Unnecessary files exist within the web service path >> "%TMP1%"
 
-BAR
+:: Set the default IIS web service path
+set "WEB_SERVICE_PATH=C:\inetpub\wwwroot"
 
-CODE [SRV-043] 웹 서비스 경로 내 불필요한 파일 존재
+:: List common unnecessary files within the web service path
+echo Checking for common unnecessary files within %WEB_SERVICE_PATH%: >> "%TMP1%"
+dir "%WEB_SERVICE_PATH%\*.bak" /s /b >> "%TMP1%"
+dir "%WEB_SERVICE_PATH%\*.tmp" /s /b >> "%TMP1%"
+dir "%WEB_SERVICE_PATH%\*test*" /s /b >> "%TMP1%"
+dir "%WEB_SERVICE_PATH%\*example*" /s /b >> "%TMP1%"
 
-cat << EOF >> $result
-[양호]: 웹 서비스 경로에 불필요한 파일이 존재하지 않는 경우
-[취약]: 웹 서비스 경로에 불필요한 파일이 존재하는 경우
-EOF
+:: Note: This script lists files based on common patterns. Please review them manually.
+echo Note: Please manually review the listed files to ensure they are necessary. >> "%TMP1%"
 
-BAR
+:: Display the results
+type "%TMP1%"
 
-webconf_files=(".htaccess" "httpd.conf" "apache2.conf")
-	file_exists_count=0
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			((file_exists_count++))
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				webconf_file_documentroot_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'DocumentRoot' | grep '/' | wc -l`
-				if [ $webconf_file_documentroot_count -gt 0 ]; then
-					webconf_file_documentroot_basic_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'DocumentRoot' | grep '/' | awk '{gsub(/"/, "", $0); print $2}' | grep -E '/usr/local/apache/htdocs|/usr/local/apache2/htdocs|/var/www/html' | wc -l`
-					if [ $webconf_file_documentroot_basic_count -gt 0 ]; then 
-						WARN " Apache DocumentRoot를 기본 디렉터리로 설정했습니다." >> $TMP1
-						return 0
-					fi
-				else
-					WARN " Apache DocumentRoot를 설정하지 않았습니다." >> $TMP1
-					return 0
-				fi
-			done
-		fi
-	done
-	ps_apache_count=`ps -ef | grep -iE 'httpd|apache2' | grep -v 'grep' | wc -l`
-	if [ $ps_apache_count -gt 0 ] && [ $file_exists_count -eq 0 ]; then
-		WARN " Apache 서비스를 사용하고, DocumentRoot를 설정하는 파일이 없습니다." >> $TMP1
-		return 0
-	else
-		OK "양호(Good)" >> $TMP1
-		return 0
-	fi
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.
