@@ -4,42 +4,42 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-082] System Major Directory Permission Settings >> "%TMP1%"
-echo [Good]: System major directories are set with appropriate permissions >> "%TMP1%"
-echo [Vulnerable]: System major directories are not set with appropriate permissions >> "%TMP1%"
+echo 코드 [SRV-082] 시스템 주요 디렉터리 권한 설정 >> "%TMP1%"
+echo [양호]: 시스템 주요 디렉터리가 적절한 권한으로 설정됨 >> "%TMP1%"
+echo [취약]: 시스템 주요 디렉터리가 적절한 권한으로 설정되지 않음 >> "%TMP1%"
 
-:: Check for insecure entries in the PATH environment variable
-echo Checking PATH for insecure entries >> "%TMP1%"
+:: PATH 환경 변수에서 안전하지 않은 항목 검사
+echo PATH에서 안전하지 않은 항목 검사 중 >> "%TMP1%"
 set "insecure=0"
 for %%A in (%PATH:;= %) do (
     if "%%A"=="." (
         set /a insecure+=1
-        echo WARNING: PATH contains "." which might be insecure >> "%TMP1%"
+        echo 경고: PATH에 "."가 포함되어 있어 안전하지 않을 수 있음 >> "%TMP1%"
     )
 )
 
 if %insecure% equ 0 (
-    echo OK: PATH does not contain any insecure entries >> "%TMP1%"
+    echo 양호: PATH에 안전하지 않은 항목이 포함되어 있지 않음 >> "%TMP1%"
 ) else (
-    echo WARN: PATH contains insecure entries >> "%TMP1%"
+    echo 주의: PATH에 안전하지 않은 항목이 포함되어 있음 >> "%TMP1%"
 )
 
-:: Placeholder for checking system startup scripts or directories
-:: Example: List files in Windows startup folder (Adjust path as necessary)
-echo Listing files in common startup locations: >> "%TMP1%"
+:: 시스템 시작 스크립트 또는 디렉터리 검사를 위한 자리표시자
+:: 예: Windows 시작 폴더의 파일 나열 (필요에 따라 경로 조정)
+echo 일반적인 시작 위치의 파일 나열 중: >> "%TMP1%"
 for %%D in ("%AppData%\Microsoft\Windows\Start Menu\Programs\Startup", "%ProgramData%\Microsoft\Windows\Start Menu\Programs\StartUp") do (
     if exist "%%~D" (
-        echo Files in %%~D: >> "%TMP1%"
+        echo %%~D 내의 파일: >> "%TMP1%"
         dir "%%~D" /b >> "%TMP1%"
     ) else (
-        echo INFO: %%~D does not exist >> "%TMP1%"
+        echo 정보: %%~D 존재하지 않음 >> "%TMP1%"
     )
 )
 
-:: Note: Actual permission checks would require more complex scripting or PowerShell
+:: 실제 권한 검사는 더 복잡한 스크립팅이나 PowerShell이 필요함
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
