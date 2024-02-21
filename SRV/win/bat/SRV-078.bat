@@ -4,18 +4,18 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-078] Unnecessary Guest Account Activation >> "%TMP1%"
-echo [Good]: The unnecessary Guest account is disabled >> "%TMP1%"
-echo [Vulnerable]: The unnecessary Guest account is enabled >> "%TMP1%"
+echo 코드 [SRV-078] 불필요한 게스트 계정 활성화 >> "%TMP1%"
+echo [양호]: 불필요한 게스트 계정이 비활성화됨 >> "%TMP1%"
+echo [취약]: 불필요한 게스트 계정이 활성화됨 >> "%TMP1%"
 
-:: Check the status of the Guest account
-net user Guest | findstr /C:"Account active" >> "%TMP1%"
+:: 게스트 계정의 상태 확인
+net user 게스트 | findstr /C:"계정 활성" >> "%TMP1%"
 
-:: Suggest manual checks for unnecessary accounts in the Administrators group
-echo To check for unnecessary accounts in the Administrators group, manually review the output of 'net localgroup Administrators' >> "%TMP1%"
+:: 관리자 그룹 내 불필요한 계정에 대한 수동 검사 제안
+echo 관리자 그룹 내 불필요한 계정을 확인하려면, 'net localgroup 관리자'의 출력을 수동으로 검토하세요 >> "%TMP1%"
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
