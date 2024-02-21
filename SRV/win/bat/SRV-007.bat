@@ -17,7 +17,9 @@ powershell -Command "& {
     # 예시: Exchange 서버 버전 확인
     $ExchangeVersion = Get-ExchangeServer | Select -ExpandProperty AdminDisplayVersion;
     If ($ExchangeVersion -ne $null) {
-        $SafeVersion = '여기에 안전한 버전 입력';
+        # 여기에 안전한 버전 정보 입력
+        $SafeVersion = 'Version 15.1 (Build 1713.5)'; # 예시 버전, 실제 환경에 맞게 수정 필요
+        
         If ($ExchangeVersion -ge $SafeVersion) {
             Add-Content !TMP1! 'Exchange 서버 버전이 안전합니다. 현재 버전: ' + $ExchangeVersion;
         } Else {
