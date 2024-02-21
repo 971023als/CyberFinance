@@ -1,40 +1,27 @@
 @echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 관리자 권한이 필요합니다. 스크립트를 관리자 권한으로 실행해 주세요.
-    goto UACPrompt
-) else ( goto gotAdmin )
-
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
-
-:gotAdmin
-chcp 949 >nul
-color 02
 setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정 중---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
 
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path.txt
+REM 설정 파일 경로 지정
+set "CONFIG_FILE=C:\path\to\web_service\config.ini"
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정에 대한 자세한 구현이 필요합니다.
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+REM 기본 계정 정보 확인
+set "DEFAULT_USER=admin"
+set "DEFAULT_PASS=password"
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+REM 파일 존재 여부 확인
+if not exist "%CONFIG_FILE%" (
+    echo 설정 파일이 존재하지 않습니다: %CONFIG_FILE%
+    goto end
+)
+
+REM 기본 계정(아이디 또는 비밀번호) 변경 여부 확인
+findstr /C:"username=%DEFAULT_USER%" /C:"password=%DEFAULT_PASS%" "%CONFIG_FILE%" >nul
+
+if errorlevel 1 (
+    echo OK: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되었습니다: %CONFIG_FILE%
+) else (
+    echo WARN: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않았습니다: %CONFIG_FILE%
+)
+
+:end
+endlocal

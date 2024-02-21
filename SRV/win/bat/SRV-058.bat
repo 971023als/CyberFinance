@@ -1,40 +1,23 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# PowerShell 스크립트 예시: IIS에서 불필요한 스크립트 매핑 확인
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+# IIS 웹 사이트의 이름 설정 (예: 'Default Web Site')
+$siteName = "Default Web Site"
 
-:gotAdmin
-chcp 949 >nul
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+# 스크립트 맵핑 확인
+Import-Module WebAdministration
+$scriptMaps = Get-WebHandler -PSPath "IIS:\Sites\$siteName"
 
-echo ------------------------------------------IIS 설정 정보 수집-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path.txt
+# 불필요한 스크립트 매핑 조건을 정의 (예: .php 확장자를 가진 스크립트)
+$unnecessaryScriptMappings = $scriptMaps | Where-Object { $_.Path -like "*.php" }
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토--------------------------------
-:: SNMP 설정 검토가 필요합니다 (실제 스크립트에서 구현 필요)
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+# 결과 출력
+if ($unnecessaryScriptMappings.Count -gt 0) {
+    Write-Host "WARN: IIS에서 불필요한 스크립트 매핑이 발견됨"
+    $unnecessaryScriptMappings | Format-Table -Property Path, ScriptProcessor
+} else {
+    Write-Host "OK: IIS에서 불필요한 스크립트 매핑이 발견되지 않음"
+}
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+# 실행 결과를 로그 파일에 저장합니다.
+$TMP1 = "SRV-058.log"
+"웹 서비스의 불필요한 스크립트 매핑 점검 완료" | Out-File -FilePath $TMP1

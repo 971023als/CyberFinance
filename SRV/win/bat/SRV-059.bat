@@ -1,40 +1,22 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+# PowerShell 스크립트 예시: IIS에서 서버 명령 실행 기능의 제한 설정 확인 및 조정
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+# IIS 웹 사이트의 이름 설정 (예: 'Default Web Site')
+$siteName = "Default Web Site"
 
-:gotAdmin
-chcp 949 >nul
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정 중---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+# CGI 및 FastCGI 설정 확인
+$CGISettings = Get-WebConfigurationProperty -pspath "IIS:\Sites\$siteName" -filter "system.webServer/handlers" -name "."
 
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_path.txt
+# 서버 명령 실행을 허용하는 CGI 또는 FastCGI 핸들러 검색
+$CGIScripts = $CGISettings.Collection | Where-Object { $_.scriptProcessor -like "*cgi.exe" -or $_.scriptProcessor -like "*fastcgi*" }
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정 검토가 필요합니다 (상세 구현 필요)
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+# 결과 출력
+if ($CGIScripts.Count -gt 0) {
+    Write-Host "WARN: IIS에서 서버 명령 실행이 허용될 수 있습니다."
+    $CGIScripts | Format-Table -Property path, scriptProcessor
+} else {
+    Write-Host "OK: IIS에서 서버 명령 실행 기능이 적절하게 제한됩니다."
+}
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+# 실행 결과를 로그 파일에 저장합니다.
+$TMP1 = "SRV-059.log"
+"웹 서비스에서 서버 명령 실행 기능 제한 설정 점검 완료" | Out-File -FilePath $TMP1

@@ -1,68 +1,27 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "getadmin.vbs"
-    "getadmin.vbs"
-    del "getadmin.vbs"
-    exit /B
+# PowerShell 스크립트 예시: 웹 서버 경로 내 심볼릭 링크 사용 제한 및 접근 권한 설정
 
-:gotAdmin
-chcp 437
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------설정 시작---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-del C:\Window_%COMPUTERNAME%_result\W-Window-*.txt
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt  0
-cd >> C:\Window_%COMPUTERNAME%_raw\install_path.txt
-for /f "tokens=2 delims=:" %%y in ('type C:\Window_%COMPUTERNAME%_raw\install_path.txt') do set install_path=c:%%y 
-systeminfo >> C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-echo ------------------------------------------IIS 설정-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-type C:\Window_%COMPUTERNAME%_raw\iis_setting.txt | findstr "physicalPath bindingInformation" >> C:\Window_%COMPUTERNAME%_raw\iis_path1.txt
-set "line="
-for /F "delims=" %%a in ('type C:\Window_%COMPUTERNAME%_raw\iis_path1.txt') do (
-set "line=!line!%%a" 
-)
-echo !line!>>C:\Window_%COMPUTERNAME%_raw\line.txt
-for /F "tokens=1 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path1.txt
-)
-for /F "tokens=2 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path2.txt
-)
-for /F "tokens=3 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path3.txt
-)
-for /F "tokens=4 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path4.txt
-)
-for /F "tokens=5 delims=*" %%a in ('type C:\Window_%COMPUTERNAME%_raw\line.txt') do (
-    echo %%a >> C:\Window_%COMPUTERNAME%_raw\path5.txt
-)
-type C:\WINDOWS\system32\inetsrv\MetaBase.xml >> C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-echo ------------------------------------------설정 완료-------------------------------------------
-echo ------------------------------------------SRV-001------------------------------------------
-echo SRV-001 (Windows) SNMP 커뮤니티 설정 검토 필요
+# 웹 서비스 경로 지정
+$webServicePath = "C:\inetpub\wwwroot"
 
-설명: SNMP 서비스는 네트워크 관리 및 모니터링을 위한 프로토콜입니다. 안전한 관리를 위해 기본 SNMP 커뮤니티 문자열(public, private)을 변경하는 것이 좋습니다.
+# 웹 서비스 경로 내 심볼릭 링크 찾기
+$symbolicLinks = Get-ChildItem -Path $webServicePath -Recurse | Where-Object { $_.Attributes -match 'ReparsePoint' }
 
-조치 방법:
-- SNMP 커뮤니티 문자열을 고유하고 복잡한 값으로 설정하세요.
-- 가능하다면 SNMPv3을 사용하여 보안을 강화하세요.
+# 심볼릭 링크가 존재하는 경우, 사용자에게 알림
+if ($symbolicLinks.Count -gt 0) {
+    Write-Output "웹 서비스 경로 내 다음 심볼릭 링크가 발견되었습니다:"
+    $symbolicLinks.FullName
+    # 추가 조치: 심볼릭 링크 삭제 또는 접근 권한 변경
+} else {
+    Write-Output "웹 서비스 경로 내 심볼릭 링크가 발견되지 않았습니다."
+}
 
-echo -------------------------------------------종료------------------------------------------
+# 특정 경로에 대한 접근 권한 설정 (예: Everyone 그룹의 읽기 권한 제거)
+$securityPath = "C:\inetpub\wwwroot\restricted"
+$acl = Get-Acl $securityPath
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule("Everyone", "Read", "Allow")
+$acl.RemoveAccessRule($rule)
+Set-Acl -Path $securityPath -AclObject $acl
 
-echo --------------------------------------SRV-004 필수적인 SMTP 서비스 상태 확인------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-sc query smtp >> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
-echo ------------------------------------------------------------------------------->> C:\Window_%COMPUTERNAME%_result\W-Window-%COMPUTERNAME%-rawdata.txt
+# 실행 결과를 로그 파일에 저장합니다.
+$TMP1 = "SRV-047.log"
+"웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하지 않는 경우" | Out-File -FilePath $TMP1 -Append

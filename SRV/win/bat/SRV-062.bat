@@ -1,43 +1,20 @@
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 요청된 작업을 수행하기 위해 관리자 권한이 필요합니다.
-    goto UACPrompt
-) else ( goto gotAdmin )
+# DNS 서버 버전 정보 숨김 설정 확인
+$dnsServers = Get-DnsServer
+foreach ($dnsServer in $dnsServers) {
+    $hideVersion = Get-DnsServerSetting -ComputerName $dnsServer.Name | Select-Object -ExpandProperty HideVersion
+    if ($hideVersion) {
+        Write-Host "OK: DNS 서비스에서 버전 정보가 숨겨져 있습니다. - 서버: $($dnsServer.Name)"
+    } else {
+        Write-Host "WARN: DNS 서비스에서 버전 정보가 노출될 수 있습니다. - 서버: $($dnsServer.Name)"
+    }
+}
 
-:UACPrompt
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
-
-:gotAdmin
-chcp 949
-color 02
-setlocal enabledelayedexpansion
-
-echo ------------------------------------------환경 설정 중---------------------------------------
-rd /S /Q C:\Window_%COMPUTERNAME%_raw
-rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-
-echo ------------------------------------------보안 정책 내보내기---------------------------------------
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-
-echo ------------------------------------------시스템 정보 수집 중---------------------------------------
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
-
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_paths.txt
-
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정에 대한 추가 구현 필요
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
-
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+# DNS 서버에서 불필요한 Zone Transfer 설정 확인
+$zoneTransfers = Get-DnsServerZoneTransferPolicy
+foreach ($zoneTransfer in $zoneTransfers) {
+    if ($zoneTransfer.AllowTransfer -ne "None") {
+        Write-Host "WARN: DNS 서비스에서 불필요한 Zone Transfer가 허용될 수 있습니다. - 정책: $($zoneTransfer.Name)"
+    } else {
+        Write-Host "OK: DNS 서비스에서 불필요한 Zone Transfer가 제한됩니다. - 정책: $($zoneTransfer.Name)"
+    }
+}
