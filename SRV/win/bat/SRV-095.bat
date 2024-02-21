@@ -1,32 +1,27 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set "TMP1=%SCRIPTNAME%.log"
-:: Clear the TMP1 file to start fresh
-echo. > %TMP1%
+:: 결과 파일 초기화
+set "TMP1=%~n0.log"
+echo. > "%TMP1%"
 
-:: Add header information to TMP1
-echo CODE [SRV-095] Files or directories with non-existent owner or group permissions exist>> %TMP1%
-echo [Good]: There are no files or directories with non-existent owner or group permissions>> %TMP1%
-echo [Vulnerable]: There are files or directories with non-existent owner or group permissions>> %TMP1%
+:: 파일에 헤더 정보 추가
+echo ------------------------------------------------ >> "%TMP1%"
+echo 코드 [SRV-095] 소유자 또는 그룹 권한이 없는 파일 또는 디렉터리가 존재함 >> "%TMP1%"
+echo ------------------------------------------------ >> "%TMP1%"
+echo [양호]: 소유자 또는 그룹 권한이 없는 파일 또는 디렉터리가 없음 >> "%TMP1%"
+echo [취약]: 소유자 또는 그룹 권한이 없는 파일 또는 디렉터리가 있음 >> "%TMP1%"
+echo ------------------------------------------------ >> "%TMP1%"
 
-:: Placeholder for the checks that would need to be adapted for Windows.
-:: For example, checking for unowned files is not straightforward in Windows as it is in Linux.
-:: Similarly, checks specific to Linux filesystems or user management need to be replaced with Windows equivalents or omitted.
+:: 소유자 또는 그룹 권한이 없는 파일 또는 디렉터리의 존재 여부를 확인합니다.
+:: Windows 환경에서는 'icacls' 명령어를 사용하여 파일 권한을 확인할 수 있습니다.
+:: 예시: icacls 명령어를 사용하여 파일 또는 디렉터리의 권한을 조회합니다.
+echo 예시: 'icacls' 명령어를 사용하여 파일 권한을 확인합니다. >> "%TMP1%"
+echo INFO: 실제 파일 권한 확인 로직을 구현해야 합니다. >> "%TMP1%"
 
-:: Instead of detailed Linux command examples, here's a simplified structure for conditional logic in batch file:
-:: Check for a condition (this is just a placeholder example)
-if exist "somefile.txt" (
-    echo OK "Specific check result: Good" >> %TMP1%
-) else (
-    echo WARN "Specific check result: Vulnerable" >> %TMP1%
-)
-
-:: Note: The original script's checks are highly Linux-specific and may not have direct equivalents in Windows.
-:: This batch file is a basic framework. You would need to identify the Windows equivalents of the checks you want to perform.
-
-:: Display the results
-type %TMP1%
+:: 결과 파일 표시
+type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
+endlocal

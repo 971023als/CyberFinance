@@ -1,33 +1,41 @@
 @echo off
 setlocal
 
-set TMP1=%SCRIPTNAME%.log
-type NUL > %TMP1%
+:: 결과 파일 정의 및 초기화
+set "TMP1=%SCRIPTNAME%.log"
+type NUL > "%TMP1%"
 
-echo ---------------------------------------- >> %TMP1%
-echo CODE [SRV-158] 불필요한 Telnet 서비스 실행 >> %TMP1%
-echo ---------------------------------------- >> %TMP1%
+:: 로그 파일에 헤더 정보 추가
+echo ---------------------------------------- >> "%TMP1%"
+echo CODE [SRV-158] 불필요한 Telnet 서비스 실행 >> "%TMP1%"
+echo ---------------------------------------- >> "%TMP1%"
 
-echo [양호]: Telnet 서비스가 비활성화되어 있는 경우 >> %TMP1%
-echo [취약]: Telnet 서비스가 활성화되어 있는 경우 >> %TMP1%
+:: Telnet 서비스 상태 평가
+echo [양호]: Telnet 서비스가 비활성화되어 있는 경우 >> "%TMP1%"
+echo [취약]: Telnet 서비스가 활성화되어 있는 경우 >> "%TMP1%"
+echo ---------------------------------------- >> "%TMP1%"
 
-echo ---------------------------------------- >> %TMP1%
-
-:: Telnet 서비스의 상태 확인
-sc query TlntSvr | findstr /C:"STATE" >> %TMP1%
+:: Telnet 서비스 상태 확인
+sc query TlntSvr | findstr /C:"STATE" >> "%TMP1%"
 if %ERRORLEVEL% == 0 (
-    echo WARN: Telnet 서비스가 실행 중입니다. >> %TMP1%
+    echo WARN: Telnet 서비스가 실행 중입니다. >> "%TMP1%"
 ) else (
-    echo OK: Telnet 서비스가 비활성화되어 있습니다. >> %TMP1%
+    echo OK: Telnet 서비스가 비활성화되어 있습니다. >> "%TMP1%"
 )
 
-:: 여기에 FTP 서비스 관련 파일 확인 로직을 추가할 수 있음
-:: Windows에서는 FTP 설정 파일의 직접적인 위치와 이름이 시스템에 따라 다를 수 있으므로,
-:: 특정 경로의 파일 존재 여부를 확인하는 대신 서비스 상태를 확인하는 것이 일반적임
+:: FTP 서비스 관련 파일 존재 여부 확인
+:: 여기에 적절한 경로와 파일 이름을 지정
+set "FTPConfigFile=C:\path\to\ftp\config\file.txt"
+if exist "%FTPConfigFile%" (
+    echo INFO: FTP 설정 파일이 존재합니다: %FTPConfigFile% >> "%TMP1%"
+) else (
+    echo INFO: FTP 설정 파일이 존재하지 않습니다: %FTPConfigFile% >> "%TMP1%"
+)
 
-type %TMP1%
+:: 결과 출력
+echo ---------------------------------------- >> "%TMP1%"
+type "%TMP1%"
 
 echo.
-echo.
-
+echo Script complete.
 endlocal

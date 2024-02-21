@@ -1,49 +1,52 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Define the result file
+:: 결과 파일 정의
 set "TMP1=%~n0.log"
-> %TMP1%
+> "%TMP1%"
 
-:: Add header information to TMP1
-echo CODE [SRV-094] Insufficient permissions settings for crontab reference file >> %TMP1%
-echo [Good]: The log recording policy is established according to the policy >> %TMP1%
-echo [Vulnerable]: The log recording policy is not established according to the policy >> %TMP1%
+:: 헤더 정보 추가
+echo ------------------------------------------------ >> "%TMP1%"
+echo 코드 [SRV-094] crontab 참조 파일의 권한 설정 미흡 >> "%TMP1%"
+echo ------------------------------------------------ >> "%TMP1%"
+echo [양호]: 정책에 따라 로그 기록 정책이 수립됨 >> "%TMP1%"
+echo [취약]: 정책에 따라 로그 기록 정책이 수립되지 않음 >> "%TMP1%"
+echo ------------------------------------------------ >> "%TMP1%"
 
-:: Placeholder for checking a Windows equivalent of /etc/rsyslog.conf
-:: This could be checking for a specific log configuration file or Task Scheduler task
+:: /etc/rsyslog.conf의 Windows 대응 검사를 위한 자리 표시자
+:: 특정 로그 구성 파일이나 작업 스케줄러 작업을 검사할 수 있음
 set "filename=C:\Path\To\Windows\Log\Configuration\File.txt"
 
-:: Check if the file exists
+:: 파일 존재 여부 확인
 if not exist "%filename%" (
-  echo WARN "%filename% does not exist." >> %TMP1%
+    echo 경고 "%filename%이(가) 존재하지 않습니다." >> "%TMP1%"
 ) else (
-  :: Define expected contents or checks as needed
-  :: This is a simplified example and might need to be adjusted for real checks
-  set "expected_content1=Expected content line 1"
-  set "expected_content2=Expected content line 2"
-  
-  :: Initialize match count
-  set /a match=0
-  
-  :: Check for each expected content line in the file
-  for %%i in ("!expected_content1!" "!expected_content2!") do (
-    findstr /c:%%~i "%filename%" >nul
-    if !errorlevel! equ 0 (
-      set /a match+=1
+    :: 필요한 내용이나 체크 정의
+    set "expected_content1=예상 내용 줄 1"
+    set "expected_content2=예상 내용 줄 2"
+    
+    :: 일치하는 수 초기화
+    set /a match=0
+    
+    :: 파일에서 각 예상 내용 줄 검사
+    for %%i in ("!expected_content1!" "!expected_content2!") do (
+        findstr /c:%%~i "%filename%" >nul
+        if !errorlevel! equ 0 (
+            set /a match+=1
+        )
     )
-  )
 
-  :: Check if all expected contents were matched
-  if !match! equ 2 (
-    echo OK "The contents of %filename% are correct." >> %TMP1%
-  ) else (
-    echo WARN "Some settings are missing from the contents of %filename%." >> %TMP1%
-  )
+    :: 모든 예상 내용이 일치했는지 확인
+    if !match! equ 2 (
+        echo OK "%filename%의 내용이 정확합니다." >> "%TMP1%"
+    ) else (
+        echo 경고 "%filename%의 내용 중 일부 설정이 누락되었습니다." >> "%TMP1%"
+    )
 )
 
-:: Display the results
-type %TMP1%
+:: 결과 표시
+type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
+endlocal

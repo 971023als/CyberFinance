@@ -1,33 +1,31 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: Load external functions (might need to adapt or replace this part)
+:: 외부 함수 로드 (적응 필요)
 call function.bat
 
-:: Define result file
-set TMP1=%SCRIPTNAME%.log
-:: Clear the file to start fresh
-echo. 2>%TMP1%
+:: 결과 파일 초기화
+set "TMP1=%~n0.log"
+echo. > "%TMP1%"
 
-:: Add header information to the file
-echo CODE [SRV-096] User environment file ownership or permission settings are insufficient >> %TMP1%
-echo [Good]: The owner of the user environment file is the user themselves, and permissions are appropriately set >> %TMP1%
-echo [Vulnerable]: The owner of the user environment file is not the user themselves, or permissions are inadequately set >> %TMP1%
+:: 파일에 헤더 정보 추가
+echo ---------------------------------------- >> "%TMP1%"
+echo 코드 [SRV-096] 사용자 환경 파일 소유자 또는 권한 설정이 미흡함 >> "%TMP1%"
+echo ---------------------------------------- >> "%TMP1%"
+echo [양호]: 사용자 환경 파일의 소유자가 사용자 자신이며, 권한이 적절하게 설정됨 >> "%TMP1%"
+echo [취약]: 사용자 환경 파일의 소유자가 사용자 자신이 아니거나, 권한이 불충분하게 설정됨 >> "%TMP1%"
+echo ---------------------------------------- >> "%TMP1%"
 
-:: Placeholder for user home directory and owner info extraction function
-:: Windows batch does not support arrays and complex parsing as easily as bash
-:: This will need significant adaptation or external tooling to replicate functionality
+:: 사용자 홈 디렉토리 및 소유자 정보 추출 (Windows에는 직접적인 대응이 없음)
+echo 사용자 환경 파일의 소유자 및 권한 설정을 확인하기 위한 자리 표시자입니다. >> "%TMP1%"
+echo Windows에서는 'icacls' 명령어를 사용하여 파일 권한을 확인할 수 있습니다. >> "%TMP1%"
 
-:: Placeholder for the logic to check start files and permissions
-:: Windows does not have a direct equivalent to 'ls -l' or 'stat' for detailed permission checks
-:: Use 'icacls' for permission viewing and modifying in Windows, but it's quite different from Linux
+:: PowerShell 또는 'icacls' 명령어를 사용한 예시 (실제 실행 코드가 필요함)
+echo 예시: PowerShell 또는 'icacls'를 사용하여 권한 확인 로직을 구현해야 합니다. >> "%TMP1%"
 
-:: Placeholder for service file checks
-:: Checking service files and permissions will require different commands, possibly using PowerShell or external tools
+:: 결과 파일 표시
+type "%TMP1%"
 
-:: Final step to display the result file
-type %TMP1%
-
-:: End of script
 echo.
-echo Script complete.
+echo 스크립트 완료.
+endlocal
