@@ -4,18 +4,18 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-080] Restriction of Printer Driver Installation by Standard Users >> "%TMP1%"
-echo [Good]: Installation of printer drivers is restricted for standard users >> "%TMP1%"
-echo [Vulnerable]: There are no restrictions for standard users on installing printer drivers >> "%TMP1%"
+echo 코드 [SRV-080] 일반 사용자의 프린터 드라이버 설치 제한 >> "%TMP1%"
+echo [양호]: 일반 사용자가 프린터 드라이버를 설치하는 것이 제한됩니다 >> "%TMP1%"
+echo [취약]: 일반 사용자가 프린터 드라이버를 설치하는데 제한이 없습니다 >> "%TMP1%"
 
-:: Note to the administrator for manual checks
-echo For domain-joined machines, check Group Policy settings related to printer installation restrictions. >> "%TMP1%"
-echo Specifically, review the policies under "Computer Configuration\Administrative Templates\Printers". >> "%TMP1%"
-echo For standalone machines, printer installation restrictions can be configured via the Local Group Policy Editor (gpedit.msc). >> "%TMP1%"
-echo Additionally, check "User Configuration\Administrative Templates\Control Panel\Printers" for user-specific policies. >> "%TMP1%"
+:: 관리자를 위한 수동 검사 안내
+echo 도메인에 가입된 컴퓨터의 경우, 프린터 설치 제한과 관련된 그룹 정책 설정을 확인하세요. >> "%TMP1%"
+echo 구체적으로 "컴퓨터 구성\관리 템플릿\프린터" 아래의 정책을 검토하세요. >> "%TMP1%"
+echo 독립 실행형 컴퓨터의 경우, 프린터 설치 제한은 로컬 그룹 정책 편집기(gpedit.msc)를 통해 구성할 수 있습니다. >> "%TMP1%"
+echo 또한, "사용자 구성\관리 템플릿\제어판\프린터"에 대한 사용자별 정책을 확인하세요. >> "%TMP1%"
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
