@@ -4,23 +4,23 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-079] Inappropriate Permissions Applied to Anonymous Users >> "%TMP1%"
-echo [Good]: Inappropriate permissions have not been applied to anonymous users >> "%TMP1%"
-echo [Vulnerable]: Inappropriate permissions have been applied to anonymous users >> "%TMP1%"
+echo 코드 [SRV-079] 익명 사용자에게 부적절한 권한 적용 >> "%TMP1%"
+echo [양호]: 익명 사용자에게 부적절한 권한이 적용되지 않음 >> "%TMP1%"
+echo [취약]: 익명 사용자에게 부적절한 권한이 적용됨 >> "%TMP1%"
 
-:: Placeholder for demonstrating how to check permissions - actual checks should be done with PowerShell
-echo This script demonstrates how to identify files or folders with potentially permissive ACLs for the "Everyone" group. >> "%TMP1%"
-echo For accurate permission checks, consider using PowerShell scripts that can analyze ACLs in detail. >> "%TMP1%"
+:: 권한 확인을 위한 자리 표시자 - 실제 확인은 PowerShell로 수행해야 함
+echo 이 스크립트는 "모두" 그룹에 대해 잠재적으로 허용적인 ACL을 식별하는 방법을 보여줍니다. >> "%TMP1%"
+echo 정확한 권한 확인을 위해서는 ACL을 상세히 분석할 수 있는 PowerShell 스크립트 사용을 고려하세요. >> "%TMP1%"
 
-:: Example of listing permissions for a specific directory (adjust the path as necessary)
-echo Listing permissions for the directory C:\ExamplePath: >> "%TMP1%"
+:: 특정 디렉터리의 권한 나열 예제 (경로는 필요에 따라 조정하세요)
+echo 디렉터리 C:\ExamplePath의 권한을 나열합니다: >> "%TMP1%"
 icacls "C:\ExamplePath" >> "%TMP1%"
 
-:: Note: This does not directly check for "world writable" permissions as in the original script.
-:: It lists the ACLs, which can then be manually reviewed for permissiveness.
+:: 이것은 원본 스크립트에서처럼 "세계 쓰기 가능" 권한을 직접 확인하지 않습니다.
+:: ACL을 나열한 다음, 허용적인지 수동으로 검토할 수 있습니다.
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
