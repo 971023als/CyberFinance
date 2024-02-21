@@ -4,19 +4,19 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-073] Presence of Unnecessary Users in the Administrators Group >> "%TMP1%"
-echo [Good]: There are no unnecessary users in the Administrators group >> "%TMP1%"
-echo [Vulnerable]: There are unnecessary users in the Administrators group >> "%TMP1%"
+echo 코드 [SRV-073] 관리자 그룹 내 불필요한 사용자 존재 >> "%TMP1%"
+echo [양호]: 관리자 그룹에 불필요한 사용자가 없음 >> "%TMP1%"
+echo [취약]: 관리자 그룹에 불필요한 사용자가 존재함 >> "%TMP1%"
 
-:: List members of the Administrators group
-echo Listing members of the Administrators group: >> "%TMP1%"
-net localgroup Administrators >> "%TMP1%"
+:: 관리자 그룹의 멤버 나열
+echo 관리자 그룹의 멤버를 나열합니다: >> "%TMP1%"
+net localgroup 관리자 >> "%TMP1%"
 
-:: Note for manual review
-echo Please manually review the listed members for any that are unnecessary or should not be part of the Administrators group. >> "%TMP1%"
+:: 수동 검토에 대한 주의사항
+echo 관리자 그룹의 멤버 중 불필요하거나 속하지 않아야 할 사용자가 있는지 수동으로 검토해주세요. >> "%TMP1%"
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
