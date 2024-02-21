@@ -1,21 +1,51 @@
-@echo off
-setlocal
+#!/bin/bash
 
-set "TMP1=%~n0.log"
-> "%TMP1%" echo 결과 로그 파일
+. function.sh
 
-:: IIS에서 파일 업로드 크기 제한 설정 (기본값: 30000000 바이트, 약 28.6MB)
-set "UploadLimitSize=30000000"
+TMP1=$(SCRIPTNAME).log
+> $TMP1
 
-echo IIS에서 파일 업로드 크기를 제한 설정 중... >> "%TMP1%"
+BAR
 
-:: PowerShell을 사용하여 IIS의 requestLimits 설정 변경
-powershell -Command "& {
-    Import-Module WebAdministration;
-    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter 'system.webServer/security/requestFiltering/requestLimits' -name 'maxAllowedContentLength' -value %UploadLimitSize%;
-}"
+CODE [SRV-044] 웹 서비스 파일 업로드 및 다운로드 용량 제한 미설정
 
-echo 설정 완료: 파일 업로드 크기가 %UploadLimitSize% 바이트로 제한됩니다. >> "%TMP1%"
-type "%TMP1%"
+cat << EOF >> $TMP1
+[양호]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 적절하게 제한된 경우
+[취약]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 제한되지 않은 경우
+EOF
 
-echo.
+BAR
+
+webconf_files=(".htaccess" "httpd.conf" "apache2.conf" "userdir.conf")
+	for ((i=0; i<${#webconf_files[@]}; i++))
+	do
+		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
+		if [ $find_webconf_file_count -gt 0 ]; then
+			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
+			for ((j=0; j<${#find_webconf_files[@]}; j++))
+			do
+				if [[ ${find_webconf_files[$j]} =~ userdir.conf ]]; then
+					userdirconf_disabled_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'userdir' | grep -i 'disabled' | wc -l`
+					if [ $userdirconf_disabled_count -eq 0 ]; then
+						userdirconf_limitrequestbody_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'LimitRequestBody' | wc -l`
+						if [ $userdirconf_limitrequestbody_count -eq 0 ]; then
+							WARN " Apache 설정 파일에 파일 업로드 및 다운로드를 제한하도록 설정하지 않았습니다." >> $TMP1
+							return 0
+						fi
+					fi
+				else
+					webconf_limitrequestbody_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'LimitRequestBody' | wc -l`
+					if [ $webconf_limitrequestbody_count -eq 0 ]; then
+						WARN " Apache 설정 파일에 파일 업로드 및 다운로드를 제한하도록 설정하지 않았습니다." >> $TMP1
+						return 0
+					fi
+				fi
+			done
+		fi
+	done
+	OK "※ 양호(Good)" >> $TMP1
+	return 0
+
+cat $TMP1
+
+echo ; echo
