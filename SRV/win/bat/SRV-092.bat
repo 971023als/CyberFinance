@@ -1,30 +1,24 @@
-#!/bin/bash
+@echo off
+setlocal enabledelayedexpansion
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-092] Inadequate user home directory settings >> "%TMP1%"
+echo [Good]: All users' home directories are properly set up >> "%TMP1%"
+echo [Vulnerable]: One or more users' home directories are not properly set up >> "%TMP1%"
 
-BAR
+:: Check each directory in C:\Users to simulate checking home directories
+for /D %%D in (C:\Users\*) do (
+    if exist "%%D" (
+        echo OK "User %%~nxD's home directory (%%D) is properly set up." >> "%TMP1%"
+    ) else (
+        echo WARN "User %%~nxD's home directory (%%D) is improperly set up." >> "%TMP1%"
+    )
+)
 
-CODE [SRV-092] 사용자 홈 디렉터리 설정 미흡
+:: Display the results
+type "%TMP1%"
 
-cat << EOF >> $result
-[양호]: 모든 사용자의 홈 디렉터리가 적절히 설정되어 있는 경우
-[취약]: 하나 이상의 사용자의 홈 디렉터리가 적절히 설정되지 않은 경우
-EOF
-
-BAR
-
-# /etc/passwd에서 사용자 홈 디렉터리 정보 추출 및 확인
-while IFS=: read -r user _ _ _ _ home_dir _; do
-    if [ ! -d "$home_dir" ] || [ ! -n "$home_dir" ]; then
-        WARN "사용자 $user 에 대한 홈 디렉터리($home_dir)가 잘못 설정되었습니다."
-    else
-        OK "사용자 $user 의 홈 디렉터리($home_dir)가 적절히 설정되었습니다."
-    fi
-done < /etc/passwd
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

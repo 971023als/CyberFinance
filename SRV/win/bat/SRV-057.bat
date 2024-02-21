@@ -1,29 +1,27 @@
-# PowerShell 스크립트 예시: 웹 서비스 경로 내 파일의 접근 권한 확인
+@echo off
+setlocal
 
-# 웹 서비스 경로 설정 (실제 경로에 맞게 조정하세요)
-$webServicePath = "C:\inetpub\wwwroot"
+set "TMP1=%SCRIPTNAME%.log"
+> "%TMP1%"
 
-# 웹 서비스 경로 내 파일 접근 권한 확인
-# 예: 특정 사용자 또는 그룹에게 읽기 권한만 부여되어 있는지 확인
-Get-ChildItem -Path $webServicePath -Recurse -File | ForEach-Object {
-    $filePath = $_.FullName
-    $fileAcl = Get-Acl $filePath
-    $hasInappropriatePermission = $false
+echo CODE [SRV-057] Insufficient Access Control Within Web Service Path >> "%TMP1%"
+echo [Good]: Access permissions for files within the web service path are appropriately set >> "%TMP1%"
+echo [Vulnerable]: Access permissions for files within the web service path are not appropriately set >> "%TMP1%"
 
-    foreach ($access in $fileAcl.Access) {
-        # 여기서는 예시로 'Everyone' 그룹에 대한 'FullControl' 권한이 설정되어 있는지를 확인합니다.
-        # 실제 상황에 맞는 조건으로 수정하세요.
-        if ($access.IdentityReference -eq "Everyone" -and $access.FileSystemRights -eq "FullControl") {
-            $hasInappropriatePermission = $true
-            break
-        }
-    }
+:: Set the web service path (adjust according to your actual path)
+set "WEB_SERVICE_PATH=C:\Path\To\Web\Service"
 
-    if ($hasInappropriatePermission) {
-        Write-Host "부적절한 권한이 있는 파일: $filePath"
-    }
-}
+:: List permissions for files within the web service path
+echo Listing permissions for files within %WEB_SERVICE_PATH%: >> "%TMP1%"
+for /R "%WEB_SERVICE_PATH%" %%G in (*.*) do (
+    icacls "%%G" >> "%TMP1%"
+)
 
-# 실행 결과를 로그 파일에 저장합니다.
-$TMP1 = "SRV-057.log"
-"웹 서비스 경로 내 파일의 접근 권한 점검 완료" | Out-File -FilePath $TMP1
+:: Note to the administrator
+echo Note: Please manually review the listed permissions to ensure they are appropriately set. >> "%TMP1%"
+
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

@@ -1,28 +1,27 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-090] Unnecessary Remote Registry Service Activation >> "%TMP1%"
+echo [Good]: The Remote Registry service is disabled >> "%TMP1%"
+echo [Vulnerable]: The Remote Registry service is enabled >> "%TMP1%"
 
-BAR
+:: Check the status of the Remote Registry service
+sc query RemoteRegistry | findstr /C:"STATE" > temp_status.txt
+findstr /C:"RUNNING" temp_status.txt > nul
 
-CODE [SRV-090] 불필요한 원격 레지스트리 서비스 활성화
+if %errorlevel% equ 0 (
+    echo WARN "The Remote Registry service is enabled." >> "%TMP1%"
+) else (
+    echo OK "The Remote Registry service is disabled." >> "%TMP1%"
+)
 
-cat << EOF >> $result
-[양호]: 원격 레지스트리 서비스가 비활성화되어 있는 경우
-[취약]: 원격 레지스트리 서비스가 활성화되어 있는 경우
-EOF
+del temp_status.txt
 
-BAR
+:: Display the results
+type "%TMP1%"
 
-# 원격 레지스트리 서비스 상태 확인
-if systemctl is-active --quiet remote-registry; then
-    WARN "원격 레지스트리 서비스가 활성화되어 있습니다."
-else
-    OK "원격 레지스트리 서비스가 비활성화되어 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

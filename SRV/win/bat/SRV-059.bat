@@ -1,22 +1,35 @@
-# PowerShell 스크립트 예시: IIS에서 서버 명령 실행 기능의 제한 설정 확인 및 조정
+@echo off
+setlocal
 
-# IIS 웹 사이트의 이름 설정 (예: 'Default Web Site')
-$siteName = "Default Web Site"
+set "TMP1=%SCRIPTNAME%.log"
+> "%TMP1%"
 
-# CGI 및 FastCGI 설정 확인
-$CGISettings = Get-WebConfigurationProperty -pspath "IIS:\Sites\$siteName" -filter "system.webServer/handlers" -name "."
+echo CODE [SRV-059] Insufficient Restriction on Web Service Server Command Execution >> "%TMP1%"
+echo [Good]: Server command execution functionality is appropriately restricted in the web service >> "%TMP1%"
+echo [Vulnerable]: Server command execution functionality is inadequately restricted in the web service >> "%TMP1%"
 
-# 서버 명령 실행을 허용하는 CGI 또는 FastCGI 핸들러 검색
-$CGIScripts = $CGISettings.Collection | Where-Object { $_.scriptProcessor -like "*cgi.exe" -or $_.scriptProcessor -like "*fastcgi*" }
+:: Set the path to Apache and Nginx configuration files on Windows
+set "APACHE_CONFIG_FILE=C:\path\to\apache\conf\httpd.conf"
+set "NGINX_CONFIG_FILE=C:\path\to\nginx\conf\nginx.conf"
 
-# 결과 출력
-if ($CGIScripts.Count -gt 0) {
-    Write-Host "WARN: IIS에서 서버 명령 실행이 허용될 수 있습니다."
-    $CGIScripts | Format-Table -Property path, scriptProcessor
-} else {
-    Write-Host "OK: IIS에서 서버 명령 실행 기능이 적절하게 제한됩니다."
-}
+:: Check for server command execution restrictions in Apache
+findstr /R "^[ \t]*ScriptAlias" "%APACHE_CONFIG_FILE%" >nul
+if not errorlevel 1 (
+    echo WARN: Apache may allow server command execution: %APACHE_CONFIG_FILE% >> "%TMP1%"
+) else (
+    echo OK: Server command execution functionality is appropriately restricted in Apache: %APACHE_CONFIG_FILE% >> "%TMP1%"
+)
 
-# 실행 결과를 로그 파일에 저장합니다.
-$TMP1 = "SRV-059.log"
-"웹 서비스에서 서버 명령 실행 기능 제한 설정 점검 완료" | Out-File -FilePath $TMP1
+:: Check for FastCGI script execution restrictions in Nginx
+findstr /R "fastcgi_pass" "%NGINX_CONFIG_FILE%" >nul
+if not errorlevel 1 (
+    echo WARN: Nginx may allow server command execution through FastCGI: %NGINX_CONFIG_FILE% >> "%TMP1%"
+) else (
+    echo OK: Server command execution functionality is appropriately restricted in Nginx: %NGINX_CONFIG_FILE% >> "%TMP1%"
+)
+
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

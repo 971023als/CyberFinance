@@ -1,26 +1,43 @@
-# PowerShell 스크립트 예시: 웹 서비스 설정 파일의 접근 권한 확인
+@echo off
+setlocal
 
-# 중요한 웹 서비스 설정 파일의 경로를 지정합니다.
-$webConfigFiles = @(
-    "C:\inetpub\wwwroot\web.config", # IIS 웹 서비스 구성 파일 예시
-    "C:\Path\To\Another\Web\Service\Config.file" # 기타 웹 서비스 구성 파일 예시
+set "TMP1=%~n0.log"
+> "%TMP1%"
+
+echo CODE [SRV-055] Web Service Configuration File Exposure >> "%TMP1%"
+echo [Good]: Web service configuration files are inaccessible from outside >> "%TMP1%"
+echo [Vulnerable]: Web service configuration files are accessible from outside >> "%TMP1%"
+
+:: Example paths to Apache and Nginx configuration files on Windows (adjust as necessary)
+set "APACHE_CONFIG=C:\path\to\apache\conf\httpd.conf"
+set "NGINX_CONFIG=C:\path\to\nginx\conf\nginx.conf"
+
+:: Check Apache configuration file permissions
+if exist "%APACHE_CONFIG%" (
+    icacls "%APACHE_CONFIG%" | findstr /C:"Everyone:(N)" >nul
+    if not errorlevel 1 (
+        echo WARN: Apache configuration file (%APACHE_CONFIG%) permissions are vulnerable. >> "%TMP1%"
+    ) else (
+        echo OK: Apache configuration file (%APACHE_CONFIG%) is protected from external access. >> "%TMP1%"
+    )
+) else (
+    echo INFO: Apache configuration file (%APACHE_CONFIG%) does not exist. >> "%TMP1%"
 )
 
-# 각 설정 파일의 접근 권한을 확인합니다.
-foreach ($configFile in $webConfigFiles) {
-    if (Test-Path $configFile) {
-        $fileAcl = Get-Acl $configFile
-        $isProtected = $fileAcl.Access | Where-Object { $_.FileSystemRights -eq "FullControl" -and $_.IdentityReference -eq "BUILTIN\Administrators" }
-        if ($null -ne $isProtected) {
-            Write-Output "설정 파일이 보호됩니다: $configFile"
-        } else {
-            Write-Output "설정 파일의 접근 권한이 취약합니다: $configFile"
-        }
-    } else {
-        Write-Output "설정 파일이 존재하지 않습니다: $configFile"
-    }
-}
+:: Check Nginx configuration file permissions
+if exist "%NGINX_CONFIG%" (
+    icacls "%NGINX_CONFIG%" | findstr /C:"Everyone:(N)" >nul
+    if not errorlevel 1 (
+        echo WARN: Nginx configuration file (%NGINX_CONFIG%) permissions are vulnerable. >> "%TMP1%"
+    ) else (
+        echo OK: Nginx configuration file (%NGINX_CONFIG%) is protected from external access. >> "%TMP1%"
+    )
+) else (
+    echo INFO: Nginx configuration file (%NGINX_CONFIG%) does not exist. >> "%TMP1%"
+)
 
-# 실행 결과를 로그 파일에 저장합니다.
-$TMP1 = "SRV-055.log"
-"웹 서비스 설정 파일의 접근 권한 점검 완료" | Out-File -FilePath $TMP1
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

@@ -1,41 +1,30 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-083] System Startup Script Permission Settings >> "%TMP1%"
+echo [Good]: System startup scripts are set with appropriate permissions >> "%TMP1%"
+echo [Vulnerable]: System startup scripts are not set with appropriate permissions >> "%TMP1%"
 
-BAR
+:: Common Windows startup script location (adjust as necessary)
+set "STARTUP_DIR=%ProgramData%\Microsoft\Windows\Start Menu\Programs\Startup"
 
-CODE [SRV-083] 시스템 스타트업 스크립트 권한 설정 미흡
+:: List executable files in the startup directory
+echo Listing scripts in the startup directory: >> "%TMP1%"
+if exist "%STARTUP_DIR%" (
+    for %%f in ("%STARTUP_DIR%\*.*") do (
+        echo %%f >> "%TMP1%"
+        :: Placeholder for permission check (actual check would require more complex scripting or PowerShell)
+        echo INFO: Check permissions of %%f manually or use PowerShell for detailed analysis >> "%TMP1%"
+    )
+) else (
+    echo INFO: The startup directory does not exist >> "%TMP1%"
+)
 
-cat << EOF >> $result
-[양호]: 시스템 스타트업 스크립트의 권한이 적절히 설정된 경우
-[취약]: 시스템 스타트업 스크립트의 권한이 적절히 설정되지 않은 경우
-EOF
+:: Display the results
+type "%TMP1%"
 
-BAR
-
-# 시스템 스타트업 스크립트 디렉터리 목록
-STARTUP_DIRS=("/etc/init.d" "/etc/rc.d" "/etc/systemd" "/usr/lib/systemd")
-
-# 각 스타트업 스크립트의 권한 확인
-for dir in "${STARTUP_DIRS[@]}"; do
-  if [ -d "$dir" ]; then
-    scripts=$(find "$dir" -type f -name "*.sh" -o -name "*.service")
-    for script in $scripts; do
-      permissions=$(stat -c "%a" "$script")
-      if [ "$permissions" -le "755" ]; then
-        OK "$script 스크립트의 권한이 적절합니다. (권한: $permissions)"
-      else
-        WARN "$script 스크립트의 권한이 적절하지 않습니다. (권한: $permissions)"
-      fi
-    done
-  else
-    INFO "$dir 디렉터리가 존재하지 않습니다."
-  fi
-done
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

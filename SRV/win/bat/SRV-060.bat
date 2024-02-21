@@ -1,27 +1,27 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-REM 설정 파일 경로 지정
-set "CONFIG_FILE=C:\path\to\web_service\config.ini"
+set "TMP1=%SCRIPTNAME%.log"
+> "%TMP1%"
 
-REM 기본 계정 정보 확인
-set "DEFAULT_USER=admin"
-set "DEFAULT_PASS=password"
+echo CODE [SRV-060] Unchanged Default Account (ID or Password) in Web Service >> "%TMP1%"
+echo [Good]: The web service's default account (ID or password) has been changed >> "%TMP1%"
+echo [Vulnerable]: The web service's default account (ID or password) remains unchanged >> "%TMP1%"
 
-REM 파일 존재 여부 확인
-if not exist "%CONFIG_FILE%" (
-    echo 설정 파일이 존재하지 않습니다: %CONFIG_FILE%
-    goto end
-)
+:: Example path to a web service configuration file (Adjust path as necessary)
+set "CONFIG_FILE=C:\path\to\web_service\config.txt"
 
-REM 기본 계정(아이디 또는 비밀번호) 변경 여부 확인
-findstr /C:"username=%DEFAULT_USER%" /C:"password=%DEFAULT_PASS%" "%CONFIG_FILE%" >nul
+:: Checking for default accounts (example: 'admin' or 'password')
+findstr /R "username=admin password=password" "%CONFIG_FILE%" >nul
 
 if errorlevel 1 (
-    echo OK: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되었습니다: %CONFIG_FILE%
+    echo OK: The web service's default account (ID or password) has been changed >> "%TMP1%"
 ) else (
-    echo WARN: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않았습니다: %CONFIG_FILE%
+    echo WARN: The web service's default account (ID or password) remains unchanged >> "%TMP1%"
 )
 
-:end
-endlocal
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

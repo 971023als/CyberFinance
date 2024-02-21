@@ -1,29 +1,26 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-079] Inappropriate Permissions Applied to Anonymous Users >> "%TMP1%"
+echo [Good]: Inappropriate permissions have not been applied to anonymous users >> "%TMP1%"
+echo [Vulnerable]: Inappropriate permissions have been applied to anonymous users >> "%TMP1%"
 
-BAR
+:: Placeholder for demonstrating how to check permissions - actual checks should be done with PowerShell
+echo This script demonstrates how to identify files or folders with potentially permissive ACLs for the "Everyone" group. >> "%TMP1%"
+echo For accurate permission checks, consider using PowerShell scripts that can analyze ACLs in detail. >> "%TMP1%"
 
-CODE [SRV-079] 익명 사용자에게 부적절한 권한(Everyone) 적용
+:: Example of listing permissions for a specific directory (adjust the path as necessary)
+echo Listing permissions for the directory C:\ExamplePath: >> "%TMP1%"
+icacls "C:\ExamplePath" >> "%TMP1%"
 
-cat << EOF >> $TMP1
-[양호]: 익명 사용자에게 부적절한 권한이 적용되지 않은 경우
-[취약]: 익명 사용자에게 부적절한 권한이 적용된 경우
-EOF
+:: Note: This does not directly check for "world writable" permissions as in the original script.
+:: It lists the ACLs, which can then be manually reviewed for permissiveness.
 
-BAR
+:: Display the results
+type "%TMP1%"
 
-if [ `find / -type f -perm -2 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " world writable 설정이 되어있는 파일이 있습니다." >> $TMP1
-		return 0
-else
-		OK "※ U-15 결과 : 양호(Good)" >> $TMP1
-		return 0
-fi
-
-cat $TMP1
-
-echo ; echo
+echo.
+echo Script complete.

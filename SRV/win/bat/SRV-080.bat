@@ -1,37 +1,21 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-080] Restriction of Printer Driver Installation by Standard Users >> "%TMP1%"
+echo [Good]: Installation of printer drivers is restricted for standard users >> "%TMP1%"
+echo [Vulnerable]: There are no restrictions for standard users on installing printer drivers >> "%TMP1%"
 
-BAR
+:: Note to the administrator for manual checks
+echo For domain-joined machines, check Group Policy settings related to printer installation restrictions. >> "%TMP1%"
+echo Specifically, review the policies under "Computer Configuration\Administrative Templates\Printers". >> "%TMP1%"
+echo For standalone machines, printer installation restrictions can be configured via the Local Group Policy Editor (gpedit.msc). >> "%TMP1%"
+echo Additionally, check "User Configuration\Administrative Templates\Control Panel\Printers" for user-specific policies. >> "%TMP1%"
 
-CODE [SRV-080] 일반 사용자의 프린터 드라이버 설치 제한 미비
+:: Display the results
+type "%TMP1%"
 
-cat << EOF >> $result
-[양호]: 일반 사용자에 의한 프린터 드라이버 설치가 제한된 경우
-[취약]: 일반 사용자에 의한 프린터 드라이버 설치에 제한이 없는 경우
-EOF
-
-BAR
-
-# CUPS 설정 파일 경로
-CUPS_CONFIG_FILE="/etc/cups/cupsd.conf"
-
-# 설정 파일에서 'SystemGroup' 설정 확인
-if [ -f "$CUPS_CONFIG_FILE" ]; then
-    system_group=$(grep -E "^SystemGroup" "$CUPS_CONFIG_FILE")
-
-    if [ -n "$system_group" ]; then
-        OK "CUPS 설정에서 시스템 그룹이 지정됨: $system_group"
-    else
-        WARN "CUPS 설정에서 시스템 그룹이 지정되지 않음"
-    fi
-else
-    WARN "CUPS 설정 파일($CUPS_CONFIG_FILE)이 존재하지 않습니다."
-fi
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

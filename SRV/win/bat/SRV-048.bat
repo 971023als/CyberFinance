@@ -1,25 +1,26 @@
-# PowerShell 스크립트 예시: 불필요한 웹 서비스 실행 여부 확인 및 중지
+@echo off
+setlocal
 
-# IIS 웹 서비스 및 기타 불필요한 웹 서비스의 이름 목록
-$unnecessaryServices = @("W3SVC", "AnotherWebService")
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-# 각 서비스의 실행 상태 확인 및 중지
-foreach ($service in $unnecessaryServices) {
-    $serviceStatus = Get-Service -Name $service -ErrorAction SilentlyContinue
-    if ($null -ne $serviceStatus) {
-        if ($serviceStatus.Status -eq "Running") {
-            Write-Output "불필요한 서비스가 실행 중입니다: $service"
-            # 서비스를 중지하려면 다음 명령어의 주석을 해제하세요.
-            # Stop-Service -Name $service
-            # Write-Output "$service 서비스가 중지되었습니다."
-        } else {
-            Write-Output "서비스가 실행 중이지 않습니다: $service"
-        }
-    } else {
-        Write-Output "서비스가 설치되어 있지 않습니다: $service"
-    }
-}
+echo CODE [SRV-048] Unnecessary Web Service Running >> "%TMP1%"
+echo [Good]: No unnecessary web services are running >> "%TMP1%"
+echo [Vulnerable]: Unnecessary web services are running >> "%TMP1%"
 
-# 실행 결과를 로그 파일에 저장합니다.
-$TMP1 = "SRV-048.log"
-"불필요한 웹 서비스 실행 여부 점검 완료" | Out-File -FilePath $TMP1
+:: Example check for Apache service directory and unnecessary 'manual' directory
+set "APACHE_CONFIG_PATH=C:\Apache24\conf"
+set "APACHE_ROOT=C:\Apache24"
+
+:: Check for the 'manual' directory in the Apache root directory
+if exist "%APACHE_ROOT%\htdocs\manual\" (
+    echo WARN: Unnecessary 'manual' directory found within the Apache home directory. >> "%TMP1%"
+) else (
+    echo OK: No unnecessary 'manual' directory found within the Apache home directory. >> "%TMP1%"
+)
+
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

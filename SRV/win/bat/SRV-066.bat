@@ -1,13 +1,22 @@
-# DNS Zone Transfer 설정 확인
-$dnsZones = Get-DnsServerZone
+@echo off
+setlocal
 
-foreach ($zone in $dnsZones) {
-    $zoneName = $zone.ZoneName
-    $zoneTransfer = Get-DnsServerZoneTransfer -Name $zoneName
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-    if ($zoneTransfer -ne $null -and $zoneTransfer.AllowTransfer -ne "None") {
-        Write-Host "취약: $zoneName Zone에서 Zone Transfer가 적절하게 제한되지 않았습니다. 허용된 전송: $($zoneTransfer.AllowTransfer)"
-    } else {
-        Write-Host "양호: $zoneName Zone에서 Zone Transfer가 안전하게 제한되어 있습니다."
-    }
-}
+echo CODE [SRV-066] Insufficient DNS Zone Transfer Settings >> "%TMP1%"
+echo [Good]: DNS Zone Transfer is securely restricted >> "%TMP1%"
+echo [Vulnerable]: DNS Zone Transfer is not adequately restricted >> "%TMP1%"
+
+:: Use PowerShell to check DNS Zone Transfer settings
+echo Checking DNS Zone Transfer settings via PowerShell: >> "%TMP1%"
+powershell -Command "Get-DnsServerZone | Select-Object ZoneName, ZoneType, IsDsIntegrated, SecureSecondaries | Format-Table -AutoSize" >> "%TMP1%"
+
+:: Note to administrators
+echo Note: Review the SecureSecondaries property for each zone. 'None' means zone transfers are not allowed; 'Any' indicates a potential security risk. >> "%TMP1%"
+
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

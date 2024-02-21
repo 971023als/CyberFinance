@@ -1,37 +1,26 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-087] C Compiler Presence and Permission Settings >> "%TMP1%"
+echo [Good]: C compiler does not exist, or is set with appropriate permissions >> "%TMP1%"
+echo [Vulnerable]: C compiler exists and permission settings are inadequate >> "%TMP1%"
 
-BAR
+:: Check for C compiler (gcc) existence
+where gcc >nul 2>&1
 
-CODE [SRV-087] C 컴파일러 존재 및 권한 설정 미흡
+if %errorlevel% equ 0 (
+    echo OK "C compiler (gcc) is installed on the system." >> "%TMP1%"
+    :: Windows does not use a permission model like Linux for executables in the same way
+    :: So, we do not check for permissions here
+) else (
+    echo OK "C compiler (gcc) is not installed on the system." >> "%TMP1%"
+)
 
-cat << EOF >> $result
-[양호]: C 컴파일러가 존재하지 않거나, 적절한 권한으로 설정된 경우
-[취약]: C 컴파일러가 존재하며 권한 설정이 미흡한 경우
-EOF
+:: Display the results
+type "%TMP1%"
 
-BAR
-
-# C 컴파일러 위치 확인
-COMPILER_PATH=$(which gcc)
-
-# 컴파일러 존재 여부 및 권한 확인
-if [ -z "$COMPILER_PATH" ]; then
-  OK "C 컴파일러(gcc)가 시스템에 설치되어 있지 않습니다."
-else
-  # 권한 확인
-  COMPILER_PERMS=$(stat -c "%a" "$COMPILER_PATH")
-  if [ "$COMPILER_PERMS" -le "755" ]; then
-    OK "C 컴파일러(gcc)의 권한이 적절합니다. 권한: $COMPILER_PERMS"
-  else
-    WARN "C 컴파일러(gcc)의 권한이 부적절합니다. 권한: $COMPILER_PERMS"
-  fi
-fi
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

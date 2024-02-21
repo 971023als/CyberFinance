@@ -1,23 +1,35 @@
-# PowerShell 스크립트 예시: IIS에서 불필요한 스크립트 매핑 확인
+@echo off
+setlocal
 
-# IIS 웹 사이트의 이름 설정 (예: 'Default Web Site')
-$siteName = "Default Web Site"
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-# 스크립트 맵핑 확인
-Import-Module WebAdministration
-$scriptMaps = Get-WebHandler -PSPath "IIS:\Sites\$siteName"
+echo CODE [SRV-058] Unnecessary Script Mapping in Web Service >> "%TMP1%"
+echo [Good]: No unnecessary script mappings exist in the web service >> "%TMP1%"
+echo [Vulnerable]: Unnecessary script mappings exist in the web service >> "%TMP1%"
 
-# 불필요한 스크립트 매핑 조건을 정의 (예: .php 확장자를 가진 스크립트)
-$unnecessaryScriptMappings = $scriptMaps | Where-Object { $_.Path -like "*.php" }
+:: Set the path to Apache and Nginx configuration files on Windows
+set "APACHE_CONFIG_FILE=C:\path\to\apache\conf\httpd.conf"
+set "NGINX_CONFIG_FILE=C:\path\to\nginx\conf\nginx.conf"
 
-# 결과 출력
-if ($unnecessaryScriptMappings.Count -gt 0) {
-    Write-Host "WARN: IIS에서 불필요한 스크립트 매핑이 발견됨"
-    $unnecessaryScriptMappings | Format-Table -Property Path, ScriptProcessor
-} else {
-    Write-Host "OK: IIS에서 불필요한 스크립트 매핑이 발견되지 않음"
-}
+:: Check for script mappings in Apache
+findstr /R "AddHandler AddType" "%APACHE_CONFIG_FILE%" >nul
+if not errorlevel 1 (
+    echo WARN: Unnecessary script mappings found in Apache: %APACHE_CONFIG_FILE% >> "%TMP1%"
+) else (
+    echo OK: No unnecessary script mappings found in Apache: %APACHE_CONFIG_FILE% >> "%TMP1%"
+)
 
-# 실행 결과를 로그 파일에 저장합니다.
-$TMP1 = "SRV-058.log"
-"웹 서비스의 불필요한 스크립트 매핑 점검 완료" | Out-File -FilePath $TMP1
+:: Check for script mappings in Nginx
+findstr /R "location ~ \.php$" "%NGINX_CONFIG_FILE%" >nul
+if not errorlevel 1 (
+    echo WARN: Unnecessary PHP script mappings found in Nginx: %NGINX_CONFIG_FILE% >> "%TMP1%"
+) else (
+    echo OK: No unnecessary PHP script mappings found in Nginx: %NGINX_CONFIG_FILE% >> "%TMP1%"
+)
+
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.

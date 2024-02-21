@@ -1,29 +1,29 @@
-#!/bin/bash
+@echo off
+setlocal
 
-. function.sh
+:: Define the result file
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+echo CODE [SRV-093] Presence of unnecessary world writable files >> "%TMP1%"
+echo [Good]: There are no unnecessary world writable files in the system >> "%TMP1%"
+echo [Vulnerable]: There are unnecessary world writable files in the system >> "%TMP1%"
 
-BAR
+:: Placeholder directory to check - you would need to adjust this as necessary
+set "checkDir=C:\Path\To\Check"
 
-CODE [SRV-093] 불필요한 world writable 파일 존재
+:: Using icacls to check permissions. This is a very basic and not exhaustive check.
+:: It lists permissions and checks for the presence of "Everyone:(F)" which indicates full control.
+icacls "%checkDir%"*.* /T | findstr "Everyone:(F)" > nul
 
-cat << EOF >> $result
-[양호]: 시스템에 불필요한 world writable 파일이 존재하지 않는 경우
-[취약]: 시스템에 불필요한 world writable 파일이 존재하는 경우
-EOF
+if errorlevel 1 (
+    echo OK "※ U-15 result: Good - No excessively permissive files found." >> "%TMP1%"
+) else (
+    echo WARN "Excessively permissive files found." >> "%TMP1%"
+)
 
-BAR
+:: Display the results
+type "%TMP1%"
 
-if [ `find / -type f -perm -2 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " world writable 설정이 되어있는 파일이 있습니다." >> $TMP1
-		return 0
-else
-		OK "※ U-15 결과 : 양호(Good)" >> $TMP1
-		return 0
-fi
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

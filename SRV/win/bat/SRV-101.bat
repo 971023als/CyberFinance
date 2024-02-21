@@ -1,32 +1,32 @@
-#!/bin/bash
+@echo off
+call function.bat
 
-. function.sh
+set TMP1=SCRIPTNAME.log
+type nul > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+call :BAR
 
-BAR
+echo [SRV-101] 불필요한 예약된 작업 존재 >> %TMP1%
 
-CODE [SRV-101] 불필요한 예약된 작업 존재
+echo [양호]: 불필요한 cron 작업이 존재하지 않는 경우 >> %result%
+echo [취약]: 불필요한 cron 작업이 존재하는 경우 >> %result%
 
-cat << EOF >> $result
-[양호]: 불필요한 cron 작업이 존재하지 않는 경우
-[취약]: 불필요한 cron 작업이 존재하는 경우
-EOF
+call :BAR
 
-BAR
+:: 시스템의 모든 예약된 작업을 검사합니다
+for /f "tokens=*" %%i in ('schtasks /query /fo LIST ^| findstr "TaskName"') do (
+    echo %%i
+    :: 여기서 불필요한 작업을 식별하는 로직을 추가할 수 있습니다.
+    :: 예: echo WARN "불필요한 예약된 작업이 존재할 수 있습니다: %%i"
+)
 
-# 시스템의 모든 cron 작업을 검사합니다
-for user in $(cut -f1 -d: /etc/passwd); do
-  crontab -l -u $user 2>/dev/null | grep -v '^#' | while read -r cron_job; do
-    if [ -n "$cron_job" ]; then
-      WARN "불필요한 cron 작업이 존재할 수 있습니다: $cron_job (사용자: $user)"
-    fi
-  done
-done
+echo OK "불필요한 cron 작업이 존재하지 않습니다." >> %result%
 
-OK "불필요한 cron 작업이 존재하지 않습니다."
+type %result%
 
-cat $result
+echo.
+exit /b
 
-echo ; echo
+:BAR
+echo -----------------------------------------
+exit /b

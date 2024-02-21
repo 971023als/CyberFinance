@@ -1,52 +1,32 @@
-#!/bin/bash
+@echo off
+setlocal enabledelayedexpansion
 
-. function.sh
+set "TMP1=%SCRIPTNAME%.log"
+:: Clear the TMP1 file to start fresh
+echo. > %TMP1%
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+:: Add header information to TMP1
+echo CODE [SRV-095] Files or directories with non-existent owner or group permissions exist>> %TMP1%
+echo [Good]: There are no files or directories with non-existent owner or group permissions>> %TMP1%
+echo [Vulnerable]: There are files or directories with non-existent owner or group permissions>> %TMP1%
 
-BAR
+:: Placeholder for the checks that would need to be adapted for Windows.
+:: For example, checking for unowned files is not straightforward in Windows as it is in Linux.
+:: Similarly, checks specific to Linux filesystems or user management need to be replaced with Windows equivalents or omitted.
 
-CODE [SRV-095] 존재하지 않는 소유자 및 그룹 권한을 가진 파일 또는 디렉터리 존재
+:: Instead of detailed Linux command examples, here's a simplified structure for conditional logic in batch file:
+:: Check for a condition (this is just a placeholder example)
+if exist "somefile.txt" (
+    echo OK "Specific check result: Good" >> %TMP1%
+) else (
+    echo WARN "Specific check result: Vulnerable" >> %TMP1%
+)
 
-cat << EOF >> $result
-[양호]: 시스템에 존재하지 않는 소유자나 그룹 권한을 가진 파일 또는 디렉터리가 없는 경우
-[취약]: 시스템에 존재하지 않는 소유자나 그룹 권한을 가진 파일 또는 디렉터리가 있는 경우
-EOF
+:: Note: The original script's checks are highly Linux-specific and may not have direct equivalents in Windows.
+:: This batch file is a basic framework. You would need to identify the Windows equivalents of the checks you want to perform.
 
-BAR
+:: Display the results
+type %TMP1%
 
-if [ `find / \( -nouser -or -nogroup \) 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " 소유자가 존재하지 않는 파일 및 디렉터리가 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-06 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-if [ `find /dev -type f 2>/dev/null | wc -l` -gt 0 ]; then
-		WARN " /dev 디렉터리에 존재하지 않는 device 파일이 존재합니다." >> $TMP1
-		return 0
-	else
-		OK "※ U-16 결과 : 양호(Good)" >> $TMP1
-		return 0
-	fi
-
-homedirectory_null_count=`awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" && $6==null' /etc/passwd | wc -l`
-	if [ $homedirectory_null_count -gt 0 ]; then
-		WARN " 홈 디렉터리가 존재하지 않는 계정이 있습니다." >> $TMP1
-		return 0
-	else
-		homedirectory_slash_count=`awk -F : '$7!="/bin/false" && $7!="/sbin/nologin" && $1!="root" && $6=="/"' /etc/passwd | wc -l`
-		if [ $homedirectory_slash_count -gt 0 ]; then
-			WARN " 관리자 계정(root)이 아닌데 홈 디렉터리가 '/'로 설정된 계정이 있습니다." >> $TMP1
-			return 0
-		else
-			OK "※ U-58 결과 : 양호(Good)" >> $TMP1
-			return 0
-		fi
-	fi
-
-cat $result
-
-echo ; echo
+echo.
+echo Script complete.

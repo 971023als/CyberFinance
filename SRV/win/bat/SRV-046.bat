@@ -1,15 +1,43 @@
-# PowerShell 스크립트 예시: IIS 디렉터리 브라우징 비활성화
+@echo off
+setlocal
 
-# IIS 웹 사이트의 이름을 지정합니다.
-$siteName = "Default Web Site"
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-# 디렉터리 브라우징 기능을 비활성화합니다.
-Set-WebConfigurationProperty -pspath "IIS:\Sites\$siteName" -filter "system.webServer/directoryBrowse" -name "enabled" -value $False
+echo CODE [SRV-046] Inadequate Web Service Path Configuration >> "%TMP1%"
+echo [Good]: The web service's path configuration is securely configured >> "%TMP1%"
+echo [Vulnerable]: The web service's path configuration is insecurely configured >> "%TMP1%"
 
-# 변경 사항을 확인합니다.
-$directoryBrowseSetting = Get-WebConfigurationProperty -pspath "IIS:\Sites\$siteName" -filter "system.webServer/directoryBrowse" -name "enabled"
-Write-Output "디렉터리 브라우징 설정: $($directoryBrowseSetting.Value)"
+:: Set paths to Apache and Nginx configuration files on Windows
+set "APACHE_CONFIG_FILE=C:\Apache24\conf\apache2.conf"
+set "NGINX_CONFIG_FILE=C:\nginx\conf\nginx.conf"
 
-# 실행 결과를 로그 파일에 저장합니다.
-$TMP1 = "SRV-046.log"
-"웹 서비스의 경로 설정이 안전하게 구성된 경우" | Out-File -FilePath $TMP1 -Append
+:: Check Apache configuration for secure path settings
+if exist "%APACHE_CONFIG_FILE%" (
+    findstr /R /C:"^ *<Directory" /C:"Options -Indexes" "%APACHE_CONFIG_FILE%" >nul
+    if not errorlevel 1 (
+        echo OK: Apache configuration has secure path settings: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+    ) else (
+        echo WARN: Apache configuration may have insecure path settings: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+    )
+) else (
+    echo INFO: Apache configuration file does not exist: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+)
+
+:: Check Nginx configuration for secure path settings
+if exist "%NGINX_CONFIG_FILE%" (
+    findstr /R /C:"^ *location" "%NGINX_CONFIG_FILE%" >nul
+    if not errorlevel 1 (
+        echo OK: Nginx configuration has secure path settings: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+    ) else (
+        echo WARN: Nginx configuration may have insecure path settings: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+    )
+) else (
+    echo INFO: Nginx configuration file does not exist: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+)
+
+:: Display the results
+type "%TMP1%"
+
+echo.
+echo Script complete.
