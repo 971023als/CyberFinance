@@ -4,23 +4,23 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-048] Unnecessary Web Service Running >> "%TMP1%"
-echo [Good]: No unnecessary web services are running >> "%TMP1%"
-echo [Vulnerable]: Unnecessary web services are running >> "%TMP1%"
+echo 코드 [SRV-048] 불필요한 웹 서비스 실행 >> "%TMP1%"
+echo [양호]: 불필요한 웹 서비스가 실행되지 않음 >> "%TMP1%"
+echo [취약]: 불필요한 웹 서비스가 실행됨 >> "%TMP1%"
 
-:: Example check for Apache service directory and unnecessary 'manual' directory
+:: 아파치 서비스 디렉토리 및 불필요한 'manual' 디렉토리 예시 검사
 set "APACHE_CONFIG_PATH=C:\Apache24\conf"
 set "APACHE_ROOT=C:\Apache24"
 
-:: Check for the 'manual' directory in the Apache root directory
+:: 아파치 루트 디렉토리에 'manual' 디렉토리가 있는지 확인
 if exist "%APACHE_ROOT%\htdocs\manual\" (
-    echo WARN: Unnecessary 'manual' directory found within the Apache home directory. >> "%TMP1%"
+    echo 경고: 아파치 홈 디렉토리 내에 불필요한 'manual' 디렉토리가 발견됨. >> "%TMP1%"
 ) else (
-    echo OK: No unnecessary 'manual' directory found within the Apache home directory. >> "%TMP1%"
+    echo OK: 아파치 홈 디렉토리 내에 불필요한 'manual' 디렉토리가 발견되지 않음. >> "%TMP1%"
 )
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
