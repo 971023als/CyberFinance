@@ -4,26 +4,26 @@ setlocal
 set "TMP1=%~n0.log"
 > "%TMP1%"
 
-echo CODE [SRV-074] Presence of Unnecessary or Unmanaged Accounts >> "%TMP1%"
-echo [Good]: There are no unnecessary or unmanaged accounts present >> "%TMP1%"
-echo [Vulnerable]: Unnecessary or unmanaged accounts are present >> "%TMP1%"
+echo 코드 [SRV-074] 불필요하거나 관리되지 않는 계정 존재 >> "%TMP1%"
+echo [양호]: 불필요하거나 관리되지 않는 계정이 존재하지 않음 >> "%TMP1%"
+echo [취약]: 불필요하거나 관리되지 않는 계정이 존재함 >> "%TMP1%"
 
-:: List all user accounts
-echo Listing all user accounts: >> "%TMP1%"
+:: 모든 사용자 계정 나열
+echo 모든 사용자 계정을 나열합니다: >> "%TMP1%"
 net user >> "%TMP1%"
 
-:: Provide guidance for manual review
-echo Please manually review the listed accounts for any that are unnecessary or should not be enabled. >> "%TMP1%"
-echo Consider using PowerShell or the Local Users and Groups MMC snap-in (lusrmgr.msc) for more detailed management. >> "%TMP1%"
+:: 수동 검토를 위한 지침 제공
+echo 나열된 계정 중 불필요하거나 활성화되어서는 안 되는 계정이 있는지 수동으로 검토해 주세요. >> "%TMP1%"
+echo 보다 상세한 관리를 위해 PowerShell 또는 로컬 사용자 및 그룹 MMC 스냅인(lusrmgr.msc) 사용을 고려하세요. >> "%TMP1%"
 
-:: Suggest checking for specific known accounts that should be disabled or carefully managed
-echo Specifically, ensure that the Guest account is disabled and that any default accounts created by software installations are necessary and secure. >> "%TMP1%"
+:: 비활성화되어야 하거나 신중하게 관리되어야 하는 특정 알려진 계정을 확인할 것을 제안
+echo 특히, 게스트 계정이 비활성화되어 있는지 확인하고, 소프트웨어 설치에 의해 생성된 기본 계정이 필요하고 안전한지 확인하세요. >> "%TMP1%"
 
-:: Example command to check the status of the Guest account
-net user Guest | findstr /C:"Account active" >> "%TMP1%"
+:: 게스트 계정의 상태를 확인하는 예시 명령
+net user 게스트 | findstr /C:"계정 활성 상태" >> "%TMP1%"
 
-:: Display the results
+:: 결과 표시
 type "%TMP1%"
 
 echo.
-echo Script complete.
+echo 스크립트 완료.
