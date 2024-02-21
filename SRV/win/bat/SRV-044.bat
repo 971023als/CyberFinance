@@ -1,51 +1,30 @@
-#!/bin/bash
+# Create a log file
+$TMP1 = "{0}.log" -f $MyInvocation.MyCommand.Name
+$TMP1 = Join-Path $env:TEMP $TMP1
+"" > $TMP1
 
-. function.sh
+# Header for the log file
+Add-Content $TMP1 "CODE [SRV-044] Web Service File Upload and Download Size Limit Not Set"
+Add-Content $TMP1 "[Good]: File upload and download size is appropriately limited in the web service"
+Add-Content $TMP1 "[Vulnerable]: File upload and download size is not limited in the web service"
+Add-Content $TMP1 "---------------------------------------------------------"
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+# Check IIS for file upload size limits
+Import-Module WebAdministration
 
-BAR
+# Iterate through all sites
+Get-Website | ForEach-Object {
+    $siteName = $_.Name
+    $configPath = "IIS:\Sites\$siteName"
+    $requestFiltering = Get-WebConfigurationProperty -pspath $configPath -filter "system.webServer/security/requestFiltering/requestLimits" -name "maxAllowedContentLength"
+    
+    $maxSize = $requestFiltering.Value / 1024 / 1024 # Convert from bytes to MB
+    if ($maxSize -lt 30) { # Example threshold of 30 MB
+        Add-Content $TMP1 "OK: `$siteName` limits file uploads to $maxSize MB."
+    } else {
+        Add-Content $TMP1 "WARN: `$siteName` has a high file upload limit ($maxSize MB) or it's not set."
+    }
+}
 
-CODE [SRV-044] 웹 서비스 파일 업로드 및 다운로드 용량 제한 미설정
-
-cat << EOF >> $TMP1
-[양호]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 적절하게 제한된 경우
-[취약]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 제한되지 않은 경우
-EOF
-
-BAR
-
-webconf_files=(".htaccess" "httpd.conf" "apache2.conf" "userdir.conf")
-	for ((i=0; i<${#webconf_files[@]}; i++))
-	do
-		find_webconf_file_count=`find / -name ${webconf_files[$i]} -type f 2>/dev/null | wc -l`
-		if [ $find_webconf_file_count -gt 0 ]; then
-			find_webconf_files=(`find / -name ${webconf_files[$i]} -type f 2>/dev/null`)
-			for ((j=0; j<${#find_webconf_files[@]}; j++))
-			do
-				if [[ ${find_webconf_files[$j]} =~ userdir.conf ]]; then
-					userdirconf_disabled_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'userdir' | grep -i 'disabled' | wc -l`
-					if [ $userdirconf_disabled_count -eq 0 ]; then
-						userdirconf_limitrequestbody_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'LimitRequestBody' | wc -l`
-						if [ $userdirconf_limitrequestbody_count -eq 0 ]; then
-							WARN " Apache 설정 파일에 파일 업로드 및 다운로드를 제한하도록 설정하지 않았습니다." >> $TMP1
-							return 0
-						fi
-					fi
-				else
-					webconf_limitrequestbody_count=`grep -vE '^#|^\s#' ${find_webconf_files[$j]} | grep -i 'LimitRequestBody' | wc -l`
-					if [ $webconf_limitrequestbody_count -eq 0 ]; then
-						WARN " Apache 설정 파일에 파일 업로드 및 다운로드를 제한하도록 설정하지 않았습니다." >> $TMP1
-						return 0
-					fi
-				fi
-			done
-		fi
-	done
-	OK "※ 양호(Good)" >> $TMP1
-	return 0
-
-cat $TMP1
-
-echo ; echo
+# Display the results
+Get-Content $TMP1 | Out-Host
