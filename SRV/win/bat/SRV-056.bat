@@ -1,40 +1,43 @@
 @echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    chcp 949 >nul
-    echo 관리자 권한이 필요합니다...
-    goto UACPrompt
-) else ( goto gotAdmin )
+setlocal
 
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
-    set params = %*:"=""
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-:gotAdmin
-chcp 949 >nul
-color 02
-setlocal enabledelayedexpansion
-echo ------------------------------------------환경 설정 중---------------------------------------
-if exist C:\Window_%COMPUTERNAME%_raw rd /S /Q C:\Window_%COMPUTERNAME%_raw
-if exist C:\Window_%COMPUTERNAME%_result rd /S /Q C:\Window_%COMPUTERNAME%_result
-mkdir C:\Window_%COMPUTERNAME%_raw
-mkdir C:\Window_%COMPUTERNAME%_result
-secedit /EXPORT /CFG C:\Window_%COMPUTERNAME%_raw\Local_Security_Policy.txt >nul
-fsutil file createnew C:\Window_%COMPUTERNAME%_raw\compare.txt 0 >nul
-cd > C:\Window_%COMPUTERNAME%_raw\install_path.txt
-systeminfo > C:\Window_%COMPUTERNAME%_raw\systeminfo.txt
+echo 코드 [SRV-046] 웹 서비스 경로 설정 미흡 >> "%TMP1%"
+echo [양호]: 웹 서비스의 경로 설정이 안전하게 구성됨 >> "%TMP1%"
+echo [취약]: 웹 서비스의 경로 설정이 안전하지 않게 구성됨 >> "%TMP1%"
 
-echo ------------------------------------------IIS 설정 정보 수집 중-----------------------------------
-type %WinDir%\System32\Inetsrv\Config\applicationHost.Config > C:\Window_%COMPUTERNAME%_raw\iis_setting.txt
-findstr /i "physicalPath bindingInformation" C:\Window_%COMPUTERNAME%_raw\iis_setting.txt > C:\Window_%COMPUTERNAME%_raw\iis_paths.txt
+:: Windows에서 Apache 및 Nginx 설정 파일 경로 설정
+set "APACHE_CONFIG_FILE=C:\Apache24\conf\apache2.conf"
+set "NGINX_CONFIG_FILE=C:\nginx\conf\nginx.conf"
 
-echo ------------------------------------------SNMP 및 SMTP 설정 검토 중--------------------------------
-:: SNMP 설정 검토가 필요합니다 (이 부분은 실제 환경에 맞게 구성해야 합니다)
-sc query smtp > C:\Window_%COMPUTERNAME%_result\SMTP_Status.txt
+:: Apache 설정에서 안전한 경로 설정 확인
+if exist "%APACHE_CONFIG_FILE%" (
+    findstr /R /C:"^ *<Directory" /C:"Options -Indexes" "%APACHE_CONFIG_FILE%" >nul
+    if not errorlevel 1 (
+        echo OK: Apache 설정에서 안전한 경로 설정이 확인됨: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+    ) else (
+        echo WARN: Apache 설정에서 안전하지 않은 경로 설정이 확인됨: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+    )
+) else (
+    echo INFO: Apache 설정 파일이 존재하지 않음: "%APACHE_CONFIG_FILE%" >> "%TMP1%"
+)
 
-echo 모든 작업이 성공적으로 완료되었습니다.
-pause
+:: Nginx 설정에서 안전한 경로 설정 확인
+if exist "%NGINX_CONFIG_FILE%" (
+    findstr /R /C:"^ *location" "%NGINX_CONFIG_FILE%" >nul
+    if not errorlevel 1 (
+        echo OK: Nginx 설정에서 안전한 경로 설정이 확인됨: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+    ) else (
+        echo WARN: Nginx 설정에서 안전하지 않은 경로 설정이 확인됨: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+    )
+) else (
+    echo INFO: Nginx 설정 파일이 존재하지 않음: "%NGINX_CONFIG_FILE%" >> "%TMP1%"
+)
+
+:: 결과 표시
+type "%TMP1%"
+
+echo.
+echo 스크립트 완료.

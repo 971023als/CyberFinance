@@ -1,35 +1,34 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 set "TMP1=%~n0.log"
-> "%TMP1%"
+type nul > "!TMP1!"
 
-echo 코드 [SRV-058] 웹 서비스의 불필요한 스크립트 매핑 >> "%TMP1%"
-echo [양호]: 웹 서비스에 불필요한 스크립트 매핑이 존재하지 않음 >> "%TMP1%"
-echo [취약]: 웹 서비스에 불필요한 스크립트 매핑이 존재함 >> "%TMP1%"
+echo ------------------------------------------------ >> "!TMP1!"
+echo 코드 [SRV-058] 웹 서비스의 불필요한 스크립트 매핑 >> "!TMP1!"
+echo [양호]: 웹 서비스에서 파일 업로드 및 다운로드 크기가 적절하게 제한됨 >> "!TMP1!"
+echo [취약]: 웹 서비스에서 파일 업로드 및 다운로드 크기가 제한되지 않음 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-:: Windows에서 Apache와 Nginx 설정 파일 경로 설정
-set "APACHE_CONFIG_FILE=C:\path\to\apache\conf\httpd.conf"
-set "NGINX_CONFIG_FILE=C:\path\to\nginx\conf\nginx.conf"
+:: IIS 웹 서비스의 각 사이트에 대한 파일 업로드 크기 제한을 PowerShell을 사용하여 확인
+powershell -Command "& {
+    Import-Module WebAdministration;
+    $sites = Get-WebSite;
+    foreach ($site in $sites) {
+        $siteName = $site.Name;
+        $configPath = 'IIS:\Sites\' + $siteName;
+        $maxAllowedContentLength = (Get-WebConfigurationProperty -pspath $configPath -filter 'system.webServer/security/requestFiltering/requestLimits' -name 'maxAllowedContentLength').Value;
+        $maxSizeMB = $maxAllowedContentLength / 1024 / 1024;
+        if ($maxSizeMB -le 100) { # 가정된 제한값 100MB
+            Add-Content '!TMP1!' ('OK: ' + $siteName + '은(는) 파일 업로드를 ' + $maxSizeMB + ' MB로 제한합니다.');
+        } else {
+            Add-Content '!TMP1!' ('WARN: ' + $siteName + '은(는) 파일 업로드 제한이 ' + $maxSizeMB + ' MB로 설정되어 있지 않습니다.');
+        }
+    }
+}"
 
-:: Apache에서 스크립트 매핑 확인
-findstr /R "AddHandler AddType" "%APACHE_CONFIG_FILE%" >nul
-if not errorlevel 1 (
-    echo 경고: Apache에서 불필요한 스크립트 매핑이 발견됨: %APACHE_CONFIG_FILE% >> "%TMP1%"
-) else (
-    echo OK: Apache에서 불필요한 스크립트 매핑이 발견되지 않음: %APACHE_CONFIG_FILE% >> "%TMP1%"
-)
-
-:: Nginx에서 스크립트 매핑 확인
-findstr /R "location ~ \.php$" "%NGINX_CONFIG_FILE%" >nul
-if not errorlevel 1 (
-    echo 경고: Nginx에서 불필요한 PHP 스크립트 매핑이 발견됨: %NGINX_CONFIG_FILE% >> "%TMP1%"
-) else (
-    echo OK: Nginx에서 불필요한 PHP 스크립트 매핑이 발견되지 않음: %NGINX_CONFIG_FILE% >> "%TMP1%"
-)
-
-:: 결과 표시
-type "%TMP1%"
+echo ------------------------------------------------ >> "!TMP1!"
+type "!TMP1!"
 
 echo.
 echo 스크립트 완료.
