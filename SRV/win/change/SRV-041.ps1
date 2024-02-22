@@ -1,5 +1,5 @@
 # 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-041_log.txt"
+$TMP1 = "$(Get-Location)\SRV-040_log.txt"
 "" | Set-Content $TMP1
 
 Function Write-BAR {
@@ -18,29 +18,24 @@ Function Write-WARN {
 
 Write-BAR
 
-@"
-[양호]: CGI 스크립트 관리가 적절하게 설정된 경우
-[취약]: CGI 스크립트 관리가 미흡한 경우
-"@ | Out-File -FilePath $TMP1 -Append
+Write-OK "[양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우"
 
 Write-BAR
 
-# Apache 설정 파일 확인
-$ApacheConfigFile = "/etc/apache2/apache2.conf"
+# IIS 웹 사이트의 디렉터리 브라우징 설정을 점검합니다.
+Import-Module WebAdministration
 
-# CGI 스크립트 실행 및 관리 설정 확인
-# 'ExecCGI' 옵션 및 'AddHandler' 또는 'ScriptAlias' 지시어를 확인합니다.
-$CgiExecOption = Select-String -Path $ApacheConfigFile -Pattern "^\s*Options.*ExecCGI"
-$CgiHandlerDirective = Select-String -Path $ApacheConfigFile -Pattern "(AddHandler cgi-script|ScriptAlias)"
-
-if ($CgiExecOption -or $CgiHandlerDirective) {
-    $WarnMessage = "Apache에서 CGI 스크립트 실행이 허용되어 있습니다."
-    if ($CgiExecOption) { $WarnMessage += " ExecCGI 옵션: $($CgiExecOption.Line)" }
-    if ($CgiHandlerDirective) { $WarnMessage += " 핸들러 지시어: $($CgiHandlerDirective.Line)" }
-    Write-WARN $WarnMessage
-} else {
-    Write-OK "Apache에서 CGI 스크립트 실행이 적절하게 제한되어 있습니다."
+$websites = Get-Website
+foreach ($website in $websites) {
+    $directoryBrowsing = Get-WebConfigurationProperty -pspath "IIS:\Sites\$($website.name)" -filter "system.webServer/directoryBrowse" -name "enabled"
+    if ($directoryBrowsing.Value -eq $true) {
+        Write-WARN "웹 사이트 '$($website.name)'에서 디렉터리 리스팅이 활성화되어 있습니다."
+    } else {
+        Write-OK "웹 사이트 '$($website.name)'에서 디렉터리 리스팅이 비활성화되어 있습니다."
+    }
 }
+
+Write-BAR
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Output
