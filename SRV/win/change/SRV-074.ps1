@@ -1,7 +1,7 @@
 # function.ps1 내용 포함 (적절한 경로 지정 필요)
 . .\function.ps1
 
-$TMP1 = "$(SCRIPTNAME).log"
+$TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
 # TMP1 파일 초기화
 Clear-Content -Path $TMP1
 
@@ -20,21 +20,25 @@ $existingAccounts = Get-LocalUser | ForEach-Object { $_.Name }
 $foundAccounts = $existingAccounts | Where-Object { $unnecessaryAccounts -contains $_ }
 
 if ($foundAccounts) {
-    Add-Content -Path $TMP1 -Value "WARN: 불필요한 계정이 존재합니다."
+    foreach ($account in $foundAccounts) {
+        WARN "불필요한 계정이 존재합니다: $account"
+    }
 } else {
-    Add-Content -Path $TMP1 -Value "※ U-49 결과 : 양호(Good)"
+    OK "불필요한 계정이 존재하지 않습니다."
 }
 
-# 관리자 그룹(root)에 불필요한 계정이 등록되어 있는지 검사
+# 관리자 그룹에 불필요한 계정이 등록되어 있는지 검사
 $adminGroupMembers = Get-LocalGroupMember -Group "Administrators" | ForEach-Object { $_.Name.Split('\')[-1] }
 $foundInAdmin = $adminGroupMembers | Where-Object { $unnecessaryAccounts -contains $_ }
 
 if ($foundInAdmin) {
-    Add-Content -Path $TMP1 -Value "WARN: 관리자 그룹(Administrators)에 불필요한 계정이 등록되어 있습니다."
+    foreach ($account in $foundInAdmin) {
+        WARN "관리자 그룹(Administrators)에 불필요한 계정이 등록되어 있습니다: $account"
+    }
 } else {
-    Add-Content -Path $TMP1 -Value "※ U-50 결과 : 양호(Good)"
+    OK "관리자 그룹(Administrators)에 불필요한 계정이 등록되어 있지 않습니다."
 }
 
-Get-Content -Path $TMP1
+Get-Content -Path $TMP1 | Out-Host
 
 Write-Host "`n"

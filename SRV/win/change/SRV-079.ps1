@@ -1,7 +1,7 @@
 # function.ps1 내용 포함 (적절한 경로 지정 필요)
 . .\function.ps1
 
-$TMP1 = "$(SCRIPTNAME).log"
+$TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
 # TMP1 파일 초기화
 Clear-Content -Path $TMP1
 
@@ -9,29 +9,27 @@ BAR
 
 $CODE = "[SRV-079] 익명 사용자에게 부적절한 권한(Everyone) 적용"
 
-$result = "결과 파일 경로를 지정해야 함"
+$result = $TMP1
 Add-Content -Path $result -Value "[양호]: 익명 사용자에게 부적절한 권한이 적용되지 않은 경우"
 Add-Content -Path $result -Value "[취약]: 익명 사용자에게 부적절한 권한이 적용된 경우"
 
 BAR
 
-# 시스템 전체를 검색할 수 있으나, 성능상의 이유로 시스템의 특정 부분을 타겟으로 할 수도 있습니다.
-# 예: C:\ 드라이브 내의 모든 파일 및 폴더에 대한 권한 검사
+# C:\ 드라이브 내의 모든 파일 및 폴더에 대한 권한 검사
 $worldWritableFiles = Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue | Where-Object {
-    try {
-        $acl = Get-Acl -Path $_.FullName
-        $acl.Access | Where-Object { $_.FileSystemRights -match "Write" -and $_.IdentityReference -eq "Everyone" }
-    } catch {
-        $false
-    }
+    $acl = Get-Acl -Path $_.FullName
+    $accessRules = $acl.Access | Where-Object { $_.FileSystemRights -match "Write" -and $_.IdentityReference.Value -eq "Everyone" }
+    return $accessRules
 }
 
 if ($worldWritableFiles) {
-    Add-Content -Path $TMP1 -Value "WARN: world writable 설정이 되어 있는 파일이 있습니다."
+    foreach ($file in $worldWritableFiles) {
+        WARN "Everyone 쓰기 권한이 설정된 항목이 있습니다: $($file.FullName)"
+    }
 } else {
-    Add-Content -Path $TMP1 -Value "※ U-15 결과 : 양호(Good)"
+    OK "Everyone 쓰기 권한이 설정된 항목이 없습니다."
 }
 
-Get-Content -Path $result
+Get-Content -Path $result | Out-Host
 
 Write-Host "`n"
