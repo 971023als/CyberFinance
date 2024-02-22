@@ -7,54 +7,47 @@ If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # 환경 설정
 $computerName = $env:COMPUTERNAME
-$rawDir = "C:\Window_${computerName}_raw"
-$resultDir = "C:\Window_${computerName}_result"
+$resultDir = "C:\Window_${computerName}_Security_Check"
 
 # 기존 디렉터리 삭제 및 새 디렉터리 생성
-Remove-Item -Path $rawDir, $resultDir -Force -Recurse -ErrorAction SilentlyContinue
-New-Item -Path $rawDir, $resultDir -ItemType Directory -Force
+Remove-Item -Path $resultDir -Force -Recurse -ErrorAction SilentlyContinue
+New-Item -Path $resultDir -ItemType Directory -Force
 
 # 로컬 보안 정책 및 시스템 정보 수집
-secedit /export /cfg "$rawDir\Local_Security_Policy.txt"
-Get-SystemInfo | Out-File "$rawDir\systeminfo.txt"
+secedit /export /cfg "$resultDir\Local_Security_Policy.cfg"
+systeminfo | Out-File "$resultDir\SystemInfo.txt"
 
 # IIS 설정 수집
-if (Test-Path $env:windir\System32\Inetsrv\Config\applicationHost.Config) {
-    Get-Content $env:windir\System32\Inetsrv\Config\applicationHost.Config | Out-File "$rawDir\iis_setting.txt"
-    Get-Content "$rawDir\iis_setting.txt" | Select-String "physicalPath|bindingInformation" | Out-File "$rawDir\iis_path1.txt"
+if (Test-Path $env:windir\System32\inetsrv\config\applicationHost.config) {
+    Copy-Item $env:windir\System32\inetsrv\config\applicationHost.config -Destination "$resultDir\IIS_Config.xml"
 }
 
 # 하드디스크 기본 공유 진단
-Write-Host "Checking for unnecessary hard disk shares..."
-$shares = Get-WmiObject -Class Win32_Share -Filter "Name='C$' OR Name='D$'"
-if ($shares) {
-    Write-Host "Default shares found. Consider removing them if not needed."
-} else {
-    Write-Host "No default shares found. This is good for security."
+$defaultShares = Get-SmbShare | Where-Object { $_.Name -match '^[C-Z]\$$' }
+foreach ($share in $defaultShares) {
+    "$($share.Name) default share exists." | Out-File "$resultDir\Default_Shares.txt" -Append
 }
 
-# AutoShareServer 및 AutoShareWks 레지스트리 값 확인
-Write-Host "Checking AutoShareServer and AutoShareWks registry values..."
-$autoShareWks = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name AutoShareWks -ErrorAction SilentlyContinue
-$autoShareServer = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name AutoShareServer -ErrorAction SilentlyContinue
+# AutoShareServer 및 AutoShareWks 레지스트리 값 확인 및 조정
+$regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters"
+$autoShareWks = Get-ItemPropertyValue -Path $regPath -Name "AutoShareWks" -ErrorAction SilentlyContinue
+$autoShareServer = Get-ItemPropertyValue -Path $regPath -Name "AutoShareServer" -ErrorAction SilentlyContinue
 
-if ($autoShareWks -and $autoShareWks.AutoShareWks -ne 0) {
-    Write-Host "AutoShareWks is set. Consider setting it to 0 if not needed."
-} else {
-    Write-Host "AutoShareWks is not set. This is good for security on workstations."
+If ($autoShareWks -eq 1) {
+    Set-ItemProperty -Path $regPath -Name "AutoShareWks" -Value 0
+    "AutoShareWks was enabled and has been disabled." | Out-File "$resultDir\AutoShareSettings.txt" -Append
 }
 
-if ($autoShareServer -and $autoShareServer.AutoShareServer -ne 0) {
-    Write-Host "AutoShareServer is set. Consider setting it to 0 if not needed."
-} else {
-    Write-Host "AutoShareServer is not set. This is good for security on servers."
+If ($autoShareServer -eq 1) {
+    Set-ItemProperty -Path $regPath -Name "AutoShareServer" -Value 0
+    "AutoShareServer was enabled and has been disabled." | Out-File "$resultDir\AutoShareSettings.txt" -Append
 }
 
-# SMTP 서비스 실행 여부 확인
-Write-Host "Checking for unnecessary SMTP service execution..."
-$smtpService = Get-Service -Name SMTP -ErrorAction SilentlyContinue
+# SMTP 서비스 실행 여부 확인 및 조치
+$smtpService = Get-Service -Name "SMTPSVC" -ErrorAction SilentlyContinue
 if ($smtpService -and $smtpService.Status -eq 'Running') {
-    "$smtpService.DisplayName is running." | Out-File "$resultDir\W-Window-${computerName}-rawdata.txt" -Append
+    Stop-Service -Name "SMTPSVC" -Force
+    "SMTP Service was running and has been stopped." | Out-File "$resultDir\SMTP_Service.txt" -Append
 } else {
-    "SMTP Service is not running or not installed." | Out-File "$resultDir\W-Window-${computerName}-rawdata.txt" -Append
+    "SMTP Service is not running." | Out-File "$resultDir\SMTP_Service.txt" -Append
 }

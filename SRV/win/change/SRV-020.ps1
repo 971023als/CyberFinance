@@ -37,35 +37,19 @@ CODE "[SRV-020] 공유에 대한 접근 통제 미비"
 
 BAR
 
-# PowerShell에서는 NFS 및 SMB 공유 접근 통제 검사 방법이 다릅니다.
-# NFS 공유 목록을 확인합니다 (Windows에서 NFS 서버 구성 확인이 필요한 경우).
-# SMB/CIFS 공유 목록을 PowerShell을 사용하여 확인합니다.
+# SMB 공유 접근 통제 검사
+$shares = Get-SmbShare -ErrorAction SilentlyContinue | Get-SmbShareAccess
 
-Function Check-AccessControl {
-    Param (
-        [string]$serviceName,
-        [string]$shareType
-    )
-
-    If ($shareType -eq "SMB") {
-        $shares = Get-SmbShare
-        $looseShares = $shares | Where-Object { $_.Name -like "*everyone*" -or $_.Name -like "*public*" }
-
-        If ($looseShares) {
-            $looseShares | ForEach-Object {
-                WARN "$serviceName 서비스에서 느슨한 공유 접근 통제가 발견됨: $($_.Name)"
-            }
-        } Else {
-            OK "$serviceName 서비스에서 공유 접근 통제가 적절함"
-        }
-    } ElseIf ($shareType -eq "NFS") {
-        # Windows에서 NFS 공유 검사는 다른 접근 방법이 필요할 수 있습니다.
-        INFO "Windows에서 NFS 공유 접근 통제 검사는 지원되지 않을 수 있습니다."
+foreach ($share in $shares) {
+    $everyoneAccess = $share | Where-Object { $_.AccountName -eq 'Everyone' }
+    if ($everyoneAccess) {
+        WARN "SMB/CIFS 서비스에서 'Everyone' 공유 접근 통제가 발견됨: $($share.Name)"
+    } else {
+        OK "SMB/CIFS 서비스에서 공유 접근 통제가 적절함: $($share.Name)"
     }
 }
 
-Check-AccessControl -serviceName "NFS" -shareType "NFS"
-Check-AccessControl -serviceName "SMB/CIFS" -shareType "SMB"
+BAR
 
 Get-Content $TMP1 | Write-Output
 Write-Host

@@ -37,30 +37,26 @@ CODE "[SRV-018] 불필요한 하드디스크 기본 공유 활성화"
 
 BAR
 
-# NFS와 SMB/CIFS 설정 파일을 확인합니다.
-$NFS_EXPORTS_FILE = "/etc/exports"
-$SMB_CONF_FILE = "/etc/samba/smb.conf"
+# SMB 공유 점검
+$SmbShares = Get-SmbShare
 
-Function Check-ShareActivation {
-    Param (
-        [string]$file,
-        [string]$serviceName
-    )
-
-    If (Test-Path $file) {
-        $content = Get-Content $file
-        If ($content -match "^\s*/") {
-            WARN "$serviceName 서비스에서 불필요한 공유가 활성화되어 있습니다: $file"
-        } Else {
-            OK "$serviceName 서비스에서 불필요한 공유가 비활성화되어 있습니다: $file"
-        }
-    } Else {
-        INFO "$serviceName 서비스 설정 파일($file)을 찾을 수 없습니다."
+foreach ($share in $SmbShares) {
+    if ($share.Name -match "C\$|D\$|E\$|F\$") {
+        WARN "SMB 서비스에서 불필요한 하드디스크 기본 공유가 활성화되어 있습니다: $($share.Name)"
+    } else {
+        OK "SMB 서비스에서 불필요한 공유가 비활성화되어 있습니다: $($share.Name)"
     }
 }
 
-Check-ShareActivation -file $NFS_EXPORTS_FILE -serviceName "NFS"
-Check-ShareActivation -file $SMB_CONF_FILE -serviceName "SMB/CIFS"
+# Windows에서 NFS 공유 점검 (옵션)
+# "Services for NFS" 기능이 설치되어 있는 경우에만 적용됩니다.
+If (Get-WindowsFeature FS-NFS-Service).InstallState -eq "Installed" {
+    INFO "NFS 서비스가 설치되어 있습니다. NFS 공유 설정을 수동으로 점검하세요."
+} else {
+    INFO "NFS 서비스가 설치되어 있지 않습니다."
+}
+
+BAR
 
 Get-Content $TMP1 | Write-Output
 Write-Host
