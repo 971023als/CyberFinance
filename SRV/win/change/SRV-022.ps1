@@ -37,19 +37,11 @@ $emptyPasswords = 0
 $accounts = Get-WmiObject -Class Win32_UserAccount -Filter "LocalAccount=True"
 
 foreach ($account in $accounts) {
-    $username = $account.Name
-    $disabled = $account.Disabled
-    $status = $account.Status
-    $lockout = $account.Lockout
-    $passwordRequired = $account.PasswordRequired
-
-    if ($passwordRequired -eq $false) {
-        WARN "비밀번호가 설정되지 않은 계정: $username" 
+    if (-not $account.PasswordRequired) {
+        WARN "비밀번호가 설정되지 않은 계정: $($account.Name)" 
         $emptyPasswords++
-    } elseif ($lockout -eq $true) {
-        OK "비밀번호가 잠긴 계정: $username"
     } else {
-        OK "비밀번호가 설정된 계정: $username"
+        OK "비밀번호가 설정된 계정: $($account.Name)"
     }
 }
 
@@ -64,4 +56,3 @@ BAR
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Output
-Write-Host
