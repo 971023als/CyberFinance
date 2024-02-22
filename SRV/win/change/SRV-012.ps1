@@ -23,12 +23,12 @@ $netrcFiles = Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue -Fi
 if ($netrcFiles.Count -eq 0) {
     "OK: 시스템에 .netrc 파일이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
 } else {
-    "WARN: 다음 위치에 .netrc 파일이 존재합니다:" | Out-File -FilePath $TMP1 -Append
-    # .netrc 파일의 권한 확인 및 출력
     foreach ($file in $netrcFiles) {
-        $permissions = (Get-Acl $file.FullName).Access | ForEach-Object { $_.FileSystemRights }
-        "파일 위치: $($file.FullName)" | Out-File -FilePath $TMP1 -Append
-        "권한 확인: $permissions" | Out-File -FilePath $TMP1 -Append
+        "WARN: .netrc 파일이 발견되었습니다. 위치: $($file.FullName)" | Out-File -FilePath $TMP1 -Append
+        # 발견된 .netrc 파일 삭제 또는 이동
+        # Remove-Item $file.FullName -Force
+        # 또는 안전한 위치로 파일 이동
+        # Move-Item $file.FullName -Destination "안전한_디렉토리_경로"
     }
 }
 

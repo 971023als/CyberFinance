@@ -28,45 +28,28 @@ BAR
 BAR
 
 # 익명 계정 접속 제한 설정 확인
-$ftpUserExists = Get-Content -Path C:\Windows\System32\drivers\etc\passwd | Where-Object { $_ -match "^(ftp|anonymous)" }
+$ftpUserExists = Get-Content -Path "C:\Windows\System32\drivers\etc\passwd" -ErrorAction SilentlyContinue | Where-Object { $_ -match "^(ftp|anonymous)" }
 
-if ($ftpUserExists) {
-    $fileExistsCount = 0
-    $proftpdConfFiles = Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue -Filter "proftpd.conf"
-    $vsftpdConfFiles = Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue -Filter "vsftpd.conf"
-    
-    # ProFTPD 설정 파일 검사
-    foreach ($file in $proftpdConfFiles) {
-        $content = Get-Content -Path $file.FullName
-        if ($content -match '<Anonymous' -and $content -match '</Anonymous>') {
-            if ($content -match 'User\s' -or $content -match 'UserAlias\s') {
-                WARN " ${file.FullName} 파일에서 'User' 또는 'UserAlias' 옵션이 삭제 또는 주석 처리되어 있지 않습니다."
-                return
-            }
-        }
-    }
-
-    # VsFTPD 설정 파일 검사
-    foreach ($file in $vsftpdConfFiles) {
-        $content = Get-Content -Path $file.FullName
-        $anonymousEnable = $content | Where-Object { $_ -match 'anonymous_enable' }
-        if ($anonymousEnable) {
-            if ($anonymousEnable -match 'yes') {
-                WARN " ${file.FullName} 파일에서 익명 ftp 접속을 허용하고 있습니다."
-                return
-            }
-        } else {
-            WARN " ${file.FullName} 파일에 익명 ftp 접속을 설정하는 옵션이 없습니다."
-            return
-        }
-    }
-
-    if (-not $proftpdConfFiles -and -not $vsftpdConfFiles) {
-        WARN " 익명 ftp 접속을 설정하는 파일이 없습니다."
-        return
-    }
+if (-not $ftpUserExists) {
+    OK "Anonymous FTP (익명 ftp) 접속이 차단되었습니다."
 } else {
-    OK "Anonymous FTP (익명 ftp) 접속을 차단"
+    # FTP 설정 파일 검색
+    $ftpConfFiles = Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue -Filter "*.conf" | Where-Object { $_.Name -match "proftpd|vsftpd" }
+
+    if ($ftpConfFiles.Count -eq 0) {
+        WARN "FTP 설정 파일이 발견되지 않았습니다. 익명 FTP 접속 설정을 수동으로 검증해야 할 수 있습니다."
+    } else {
+        foreach ($file in $ftpConfFiles) {
+            $content = Get-Content -Path $file.FullName -ErrorAction SilentlyContinue
+            if ($file.Name -match "proftpd" -and $content -match '<Anonymous.*?>.*</Anonymous>') {
+                WARN "${file.FullName} 파일에서 익명 접속(<Anonymous>) 설정이 발견되었습니다."
+            } elseif ($file.Name -match "vsftpd" -and $content -match '^anonymous_enable=YES') {
+                WARN "${file.FullName} 파일에서 'anonymous_enable=YES' 설정이 발견되었습니다."
+            } else {
+                OK "${file.FullName} 파일에서 익명 FTP 접속이 적절히 제한되었습니다."
+            }
+        }
+    }
 }
 
 BAR
