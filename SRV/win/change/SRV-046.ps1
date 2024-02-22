@@ -30,30 +30,17 @@ Write-BAR
 
 Write-BAR
 
-# Apache 설정 확인
-$APACHE_CONFIG_FILE = "/etc/apache2/apache2.conf"
-If (Test-Path $APACHE_CONFIG_FILE) {
-    $apacheConfig = Get-Content $APACHE_CONFIG_FILE
-    If ($apacheConfig -match "^\s*<Directory" -and $apacheConfig -match "Options -Indexes") {
-        Write-OK "Apache 설정에서 적절한 경로 설정이 확인됨: $APACHE_CONFIG_FILE"
+# IIS 설정 확인
+$IIS_CONFIG_FILE = "$env:windir\system32\inetsrv\config\applicationHost.config"
+If (Test-Path $IIS_CONFIG_FILE) {
+    $iisConfig = Get-Content $IIS_CONFIG_FILE
+    If ($iisConfig -match "<directoryBrowse enabled=\"false\"") {
+        Write-OK "IIS 설정에서 디렉토리 브라우징 비활성화 확인됨: $IIS_CONFIG_FILE"
     } Else {
-        Write-WARN "Apache 설정에서 취약한 경로 설정이 확인됨: $APACHE_CONFIG_FILE"
+        Write-WARN "IIS 설정에서 디렉토리 브라우징이 활성화되어 있음: $IIS_CONFIG_FILE"
     }
 } Else {
-    Write-INFO "Apache 설정 파일이 존재하지 않습니다: $APACHE_CONFIG_FILE"
-}
-
-# Nginx 설정 확인
-$NGINX_CONFIG_FILE = "/etc/nginx/nginx.conf"
-If (Test-Path $NGINX_CONFIG_FILE) {
-    $nginxConfig = Get-Content $NGINX_CONFIG_FILE
-    If ($nginxConfig -match "^\s*location") {
-        Write-OK "Nginx 설정에서 적절한 경로 설정이 확인됨: $NGINX_CONFIG_FILE"
-    } Else {
-        Write-WARN "Nginx 설정에서 취약한 경로 설정이 확인됨: $NGINX_CONFIG_FILE"
-    }
-} Else {
-    Write-INFO "Nginx 설정 파일이 존재하지 않습니다: $NGINX_CONFIG_FILE"
+    Write-INFO "IIS 설정 파일이 존재하지 않습니다: $IIS_CONFIG_FILE"
 }
 
 # 최종 결과를 출력합니다.
