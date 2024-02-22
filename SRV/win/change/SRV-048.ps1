@@ -37,18 +37,21 @@ foreach ($file in $webconfFiles) {
     }
 }
 
-# Apache 및 Httpd ServerRoot 설정 확인
-# PowerShell에서 직접 Apache 및 Httpd 명령을 실행하여 ServerRoot를 가져오는 것은 일반적이지 않으므로, 이 부분은 실제 환경에 맞게 조정할 필요가 있습니다.
-
-# ServerRoot 디렉토리 내 manual 디렉토리 검사
+# ServerRoot 디렉토리 내 manual 디렉토리 검사 및 제거
 foreach ($dir in $serverRootDirectories) {
-    $manualDirExists = Test-Path -Path "$dir\manual" -ErrorAction SilentlyContinue
+    $manualDirPath = "$dir\manual"
+    $manualDirExists = Test-Path -Path $manualDirPath -ErrorAction SilentlyContinue
     if ($manualDirExists) {
-        Write-Result "WARN: Apache 홈 디렉터리 내 기본으로 생성되는 불필요한 파일 및 디렉터리가 제거되어 있지 않습니다."
-        return
+        Remove-Item -Path $manualDirPath -Recurse -Force
+        Write-Result "OK: Apache 홈 디렉터리에서 불필요한 'manual' 디렉토리를 제거하여 양호한 상태를 확보했습니다."
+    } else {
+        Write-Result "OK: Apache 홈 디렉터리 내 불필요한 'manual' 디렉토리가 존재하지 않습니다. 결과 : 양호(Good)"
     }
 }
 
-Write-Result "OK: 결과 : 양호(Good)"
+# 모든 ServerRoot 디렉토리가 처리되었을 때만 양호한 결과를 기록
+if (!$serverRootDirectories) {
+    Write-Result "WARN: Apache ServerRoot 디렉토리를 찾을 수 없습니다. 웹 서버 구성을 확인하세요."
+}
 
 Get-Content $TMP1 | Write-Output
