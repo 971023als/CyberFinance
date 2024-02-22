@@ -17,19 +17,29 @@ BAR
 
 BAR
 
-# SMTP 포트 상태 확인
-$smtpPorts = 25
-$netStat = Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -eq $smtpPorts }
-if ($netStat) {
-    "SMTP 포트($smtpPorts)가 열려 있습니다. 릴레이 제한 설정을 확인하세요." | Out-File -FilePath $TMP1 -Append
+# SMTP 포트 상태 확인 및 IIS SMTP 릴레이 설정 조정
+$smtpPort = 25
+$smtpPortStatus = Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -eq $smtpPort }
+
+if ($smtpPortStatus) {
+    "SMTP 포트($smtpPort)가 열려 있습니다. 릴레이 제한 설정을 확인하고 조정합니다." | Out-File -FilePath $TMP1 -Append
+    
+    # IIS 관리 도구를 사용하여 릴레이 설정을 조정하거나, PowerShell을 사용해 설정 확인
+    # 예: IIS SMTP 릴레이 제한 설정 확인
+    $relayRestrictions = Get-SmtpRelayRestrictions -Server "localhost"
+    if ($relayRestrictions -eq "Only the list below" -and $relayRestrictions.AllowList -ne $null) {
+        "SMTP 릴레이 제한이 적절하게 설정되어 있습니다." | Out-File -FilePath $TMP1 -Append
+    } else {
+        "SMTP 릴레이 제한이 적절하게 설정되지 않았습니다. 설정을 조정해야 합니다." | Out-File -FilePath $TMP1 -Append
+        # 예시: 릴레이 제한 설정 조정
+        # Set-SmtpRelayRestrictions -Server "localhost" -Restriction "Only the list below" -AllowList @("특정 허용 IP")
+    }
 } else {
-    "SMTP 포트($smtpPorts)가 닫혀 있습니다. 서비스가 비활성화되었거나 릴레이 제한이 설정될 수 있습니다." | Out-File -FilePath $TMP1 -Append
+    "SMTP 포트($smtpPort)가 닫혀 있습니다. 서비스가 비활성화되었거나 릴레이 제한이 설정될 수 있습니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# Windows 환경에서는 SMTP 릴레이 설정을 IIS를 통해 관리합니다.
-# IIS SMTP 설정 점검 (예시)
-# 이 부분은 환경에 따라 달라질 수 있으므로, 실제 구현시 IIS 관리 도구나 PowerShell cmdlet을 참조하세요.
-
 BAR
+
+# 결과 출력
 Get-Content $TMP1
 Write-Host `n

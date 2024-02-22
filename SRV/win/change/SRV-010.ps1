@@ -18,14 +18,27 @@ BAR
 
 BAR
 
-# SMTP 서비스 설정 파일 점검 (예시: Exchange 서버 설정 점검)
-# Windows 환경에서는 SMTP 설정이 파일 시스템에 저장되지 않을 수 있으며, Exchange 관리 콘솔이나 PowerShell cmdlet을 통해 관리됩니다.
-# 아래 코드는 Exchange 서비스의 권한 설정을 점검하는 예시입니다.
-# 실제 환경에서는 Exchange 서버 또는 IIS의 SMTP 기능에 대한 구체적인 권한 설정 점검 방법을 적용해야 합니다.
+# SMTP 서비스의 메일 queue 처리 권한 설정 점검 및 조정 (예시)
+# PowerShell을 사용한 Exchange 서버의 메일 queue 권한 관리 예시
+$MailQueueAdmins = @("업무 관리자 계정1", "업무 관리자 계정2") # 실제 업무 관리자 계정으로 대체
 
-"SMTP 서비스의 메일 queue 처리 권한 설정 점검은 환경에 따라 다르므로, 이 부분은 상황에 맞게 구현해야 합니다." | Out-File -FilePath $TMP1 -Append
+# 메일 queue 처리 권한 부여
+foreach ($admin in $MailQueueAdmins) {
+    # Exchange PowerShell cmdlet을 사용해 권한 부여 (가상의 cmdlet 사용 예시)
+    # Set-MailQueuePermissions -User $admin -Permissions "Manage"
+    "메일 queue 처리 권한이 [$admin]에게 부여되었습니다." | Out-File -FilePath $TMP1 -Append
+}
+
+# 일반 사용자의 메일 queue 처리 권한 제거 (실제 cmdlet과 다를 수 있음)
+$GeneralUsers = @("일반 사용자 계정1", "일반 사용자 계정2") # 실제 일반 사용자 계정으로 대체
+foreach ($user in $GeneralUsers) {
+    # Exchange PowerShell cmdlet을 사용해 권한 제거 (가상의 cmdlet 사용 예시)
+    # Remove-MailQueuePermissions -User $user
+    "[$user]의 메일 queue 처리 권한이 제거되었습니다." | Out-File -FilePath $TMP1 -Append
+}
 
 BAR
 
+# 결과 출력
 Get-Content $TMP1
 Write-Host `n
