@@ -21,16 +21,21 @@ Write-BAR
 Write-BAR
 
 # 웹 서비스 경로 설정
-$WEB_SERVICE_PATH = "C:\path\to\web\service" # 실제 경로에 맞게 조정하세요.
+$WEB_SERVICE_PATH = "C:\inetpub\wwwroot" # 실제 환경에 따라 경로 조정 필요
 
 # 웹 서비스 경로 내 파일 접근 권한 확인
-$incorrectPermissions = Get-ChildItem -Path $WEB_SERVICE_PATH -Recurse -File | Where-Object {
-    ($_.Mode -notmatch "d-----") -and ($_.Mode -notmatch "-----") # PowerShell에서는 파일 권한을 직접적으로 숫자로 표현하지 않으므로, Mode 속성을 검사합니다.
+$FilesWithIncorrectPermissions = Get-ChildItem -Path $WEB_SERVICE_PATH -Recurse -File | Where-Object {
+    $acl = Get-Acl $_.FullName
+    $acl.Access | Where-Object { 
+        # 여기서는 "Everyone" 그룹에 대한 "FullControl", "Modify", "Write" 권한을 검사합니다.
+        # 실제 조건은 환경에 맞게 조정하세요.
+        $_.FileSystemRights -match "FullControl|Modify|Write" -and $_.IdentityReference -eq "Everyone"
+    }
 }
 
-if ($incorrectPermissions) {
+if ($FilesWithIncorrectPermissions.Count -gt 0) {
     Write-Result "WARN: 웹 서비스 경로 내에 부적절한 파일 권한이 있습니다."
-    $incorrectPermissions | ForEach-Object { Write-Result $_.FullName }
+    $FilesWithIncorrectPermissions | ForEach-Object { Write-Result $_.FullName }
 } else {
     Write-Result "OK: 웹 서비스 경로 내의 모든 파일의 권한이 적절하게 설정되어 있습니다."
 }

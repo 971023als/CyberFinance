@@ -20,32 +20,23 @@ Write-BAR
 
 Write-BAR
 
-# 웹 서비스 설정 파일의 예시 경로
-$APACHE_CONFIG = "C:\path\to\apache2\apache2.conf" # 예시 경로, 실제 경로로 변경 필요
-$NGINX_CONFIG = "C:\path\to\nginx\nginx.conf" # 예시 경로, 실제 경로로 변경 필요
+# 웹 서비스 설정 파일의 경로 설정
+# 여기서는 IIS 웹 사이트의 루트 디렉토리를 예로 들며, 실제 환경에 맞게 경로를 조정해야 합니다.
+$WebConfigPaths = Get-ChildItem -Path C:\inetpub\wwwroot\ -Filter web.config -Recurse
 
-# Apache 설정 파일의 접근 권한 확인
-if (Test-Path $APACHE_CONFIG) {
-    $filePermission = (Get-Acl $APACHE_CONFIG).AccessToString
-    if ($filePermission -like "*-rw-------*") {
-        Write-Result "OK: Apache 설정 파일($APACHE_CONFIG)이 외부 접근으로부터 보호됩니다."
+foreach ($WebConfigPath in $WebConfigPaths) {
+    $filePermission = (Get-Acl $WebConfigPath.FullName).AccessToString
+    # 접근 권한이 적절히 제한되어 있는지 확인
+    # 예시: 웹 서버와 관리자만 읽기 권한을 가지며, 그 외에는 접근 불가능해야 함
+    if ($filePermission -notlike "*Everyone Allow*" -and $filePermission -like "*Read*") {
+        Write-Result "OK: 웹 서비스 설정 파일($($WebConfigPath.FullName))이 외부 접근으로부터 보호됩니다."
     } else {
-        Write-Result "WARN: Apache 설정 파일($APACHE_CONFIG)의 접근 권한이 취약합니다."
+        Write-Result "WARN: 웹 서비스 설정 파일($($WebConfigPath.FullName))의 접근 권한이 취약합니다."
     }
-} else {
-    Write-Result "INFO: Apache 설정 파일($APACHE_CONFIG)이 존재하지 않습니다."
 }
 
-# Nginx 설정 파일의 접근 권한 확인
-if (Test-Path $NGINX_CONFIG) {
-    $filePermission = (Get-Acl $NGINX_CONFIG).AccessToString
-    if ($filePermission -like "*-rw-------*") {
-        Write-Result "OK: Nginx 설정 파일($NGINX_CONFIG)이 외부 접근으로부터 보호됩니다."
-    } else {
-        Write-Result "WARN: Nginx 설정 파일($NGINX_CONFIG)의 접근 권한이 취약합니다."
-    }
-} else {
-    Write-Result "INFO: Nginx 설정 파일($NGINX_CONFIG)이 존재하지 않습니다."
+if ($WebConfigPaths.Count -eq 0) {
+    Write-Result "INFO: web.config 파일이 검색되지 않았습니다."
 }
 
 Get-Content $TMP1 | Write-Output

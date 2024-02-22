@@ -1,42 +1,41 @@
 # 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-047_log.txt"
+$TMP1 = "$(Get-Location)\SRV-048_log.txt"
 "" | Set-Content $TMP1
 
 Function Write-BAR {
     "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-OK {
+Function Write-Result {
     Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
+    $message | Out-File -FilePath $TMP1 -Append
 }
 
 Write-BAR
 
 @"
-[양호]: 웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하지 않는 경우
-[취약]: 웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하는 경우
+[양호]: 불필요한 웹 서비스가 실행되지 않고 있는 경우
+[취약]: 불필요한 웹 서비스가 실행되고 있는 경우
 "@ | Out-File -FilePath $TMP1 -Append
 
 Write-BAR
 
-# IIS 웹 사이트의 루트 디렉토리 경로를 설정합니다.
-# 이 예에서는 C:\inetpub\wwwroot를 사용하지만, 실제 경로에 맞게 조정해야 합니다.
-$webRootPath = "C:\inetpub\wwwroot"
+# IIS에서 실행 중인 모든 웹 사이트 나열
+$websites = Get-Website
 
-# 웹 서비스 경로 내 심볼릭 링크 파일 검사
-$symLinks = Get-ChildItem -Path $webRootPath -Recurse | Where-Object { $_.Attributes -match 'ReparsePoint' }
+# IIS에서 실행 중인 모든 웹 애플리케이션 나열
+$webApplications = Get-WebApplication
 
-if ($symLinks.Count -eq 0) {
-    Write-OK "웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하지 않습니다: 양호"
+# 웹 사이트 및 웹 애플리케이션 검토
+if ($websites.Count -eq 0 -and $webApplications.Count -eq 0) {
+    Write-Result "OK: 실행 중인 웹 서비스가 없습니다. 결과: 양호(Good)"
 } else {
-    foreach ($link in $symLinks) {
-        Write-WARN "불필요한 심볼릭 링크 파일이 존재합니다: $($link.FullName)"
+    Write-Result "WARN: 다음 웹 서비스가 실행 중입니다. 필요에 따라 검토 및 조치가 필요할 수 있습니다."
+    foreach ($site in $websites) {
+        Write-Result "웹 사이트: $($site.Name)"
+    }
+    foreach ($app in $webApplications) {
+        Write-Result "웹 애플리케이션: $($app.ApplicationPool)"
     }
 }
 

@@ -20,6 +20,7 @@ $siteNames = Get-ChildItem IIS:\Sites
 
 foreach ($site in $siteNames) {
     $handlers = Get-WebConfiguration "/system.webServer/handlers" -PSPath IIS:\Sites\$($site.Name)
+    # 특정 확장자 매핑을 확인할 때는 여기서 조건을 조정하세요.
     $unnecessaryHandlers = $handlers.Collection | Where-Object { $_.path -eq "*.php" -or $_.path -eq "*.cgi" } # 예시: .php와 .cgi 확장자 매핑 확인
 
     if ($unnecessaryHandlers) {

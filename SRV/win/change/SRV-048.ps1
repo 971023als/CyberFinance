@@ -20,38 +20,23 @@ Write-BAR
 
 Write-BAR
 
-# 웹 서비스 설정 파일 목록
-$webconfFiles = @(".htaccess", "httpd.conf", "apache2.conf")
-$serverRootDirectories = @()
+# IIS에서 실행 중인 모든 웹 사이트 나열
+$websites = Get-Website
 
-# 설정 파일 검색 및 ServerRoot 디렉토리 찾기
-foreach ($file in $webconfFiles) {
-    $findWebconfFiles = Get-ChildItem -Path C:\ -Filter $file -Recurse -ErrorAction SilentlyContinue
-    foreach ($f in $findWebconfFiles) {
-        $content = Get-Content $f.FullName
-        foreach ($line in $content) {
-            if ($line -match "ServerRoot") {
-                $serverRootDirectories += $line -replace '.*ServerRoot\s+"', '' -replace '"', ''
-            }
-        }
+# IIS에서 실행 중인 모든 웹 애플리케이션 나열
+$webApplications = Get-WebApplication
+
+# 웹 사이트 및 웹 애플리케이션 검토
+if ($websites.Count -eq 0 -and $webApplications.Count -eq 0) {
+    Write-Result "OK: 실행 중인 웹 서비스가 없습니다. 결과: 양호(Good)"
+} else {
+    Write-Result "WARN: 다음 웹 서비스가 실행 중입니다. 필요에 따라 검토 및 조치가 필요할 수 있습니다."
+    foreach ($site in $websites) {
+        Write-Result "웹 사이트: $($site.Name)"
     }
-}
-
-# ServerRoot 디렉토리 내 manual 디렉토리 검사 및 제거
-foreach ($dir in $serverRootDirectories) {
-    $manualDirPath = "$dir\manual"
-    $manualDirExists = Test-Path -Path $manualDirPath -ErrorAction SilentlyContinue
-    if ($manualDirExists) {
-        Remove-Item -Path $manualDirPath -Recurse -Force
-        Write-Result "OK: Apache 홈 디렉터리에서 불필요한 'manual' 디렉토리를 제거하여 양호한 상태를 확보했습니다."
-    } else {
-        Write-Result "OK: Apache 홈 디렉터리 내 불필요한 'manual' 디렉토리가 존재하지 않습니다. 결과 : 양호(Good)"
+    foreach ($app in $webApplications) {
+        Write-Result "웹 애플리케이션: $($app.ApplicationPool)"
     }
-}
-
-# 모든 ServerRoot 디렉토리가 처리되었을 때만 양호한 결과를 기록
-if (!$serverRootDirectories) {
-    Write-Result "WARN: Apache ServerRoot 디렉토리를 찾을 수 없습니다. 웹 서버 구성을 확인하세요."
 }
 
 Get-Content $TMP1 | Write-Output
