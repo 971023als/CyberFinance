@@ -25,25 +25,19 @@ Write-BAR
 
 Write-BAR
 
-$webconfFiles = @(".htaccess", "httpd.conf", "apache2.conf", "userdir.conf")
+# IIS 웹 사이트의 루트 디렉토리 경로를 설정합니다.
+# 이 예에서는 C:\inetpub\wwwroot를 사용하지만, 실제 경로에 맞게 조정해야 합니다.
+$webRootPath = "C:\inetpub\wwwroot"
 
-foreach ($file in $webconfFiles) {
-    $findWebconfFiles = Get-ChildItem -Path C:\ -Filter $file -Recurse -ErrorAction SilentlyContinue
-    foreach ($f in $findWebconfFiles) {
-        $webConfContent = Get-Content $f.FullName
-        if ($webConfContent -match "Options.*SymLinksIfOwnerMatch" -and -not $webConfContent -match "Options.*FollowSymLinks") {
-            Write-OK "Apache 설정 파일에서 심볼릭 링크 사용이 안전하게 제한됨: $($f.FullName)"
-        } elseif ($webConfContent -match "Options.*FollowSymLinks") {
-            Write-WARN "Apache 설정 파일에 심볼릭 링크 사용을 제한하도록 설정하지 않습니다: $($f.FullName)"
-        }
-    }
-}
+# 웹 서비스 경로 내 심볼릭 링크 파일 검사
+$symLinks = Get-ChildItem -Path $webRootPath -Recurse | Where-Object { $_.Attributes -match 'ReparsePoint' }
 
-if ($findWebconfFiles.Count -eq 0) {
-    Write-OK "※ U-39 결과 : 양호(Good)"
+if ($symLinks.Count -eq 0) {
+    Write-OK "웹 서비스 경로 내 불필요한 심볼릭 링크 파일이 존재하지 않습니다: 양호"
 } else {
-    # 만약 양호한 구성이 하나도 발견되지 않았다면, 모든 파일이 취약한 구성을 가지고 있다고 판단할 수 있습니다.
-    Write-WARN "※ U-39 결과 : 취약(Vulnerable)"
+    foreach ($link in $symLinks) {
+        Write-WARN "불필요한 심볼릭 링크 파일이 존재합니다: $($link.FullName)"
+    }
 }
 
 Get-Content $TMP1 | Write-Output
