@@ -1,5 +1,11 @@
-$TMP1 = "$(SCRIPTNAME).log"
+# 로그 파일 초기화 및 기본 정보 기록
+$TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
 Clear-Content -Path $TMP1
+
+# 구분선 추가
+function BAR {
+    Add-Content -Path $TMP1 -Value ("-" * 50)
+}
 
 BAR
 
@@ -10,17 +16,22 @@ Add-Content -Path $TMP1 -Value "[취약]: 스케줄러 작업의 권한 설정�
 
 BAR
 
-# 스케줄러 작업 조회
-$scheduledTasks = Get-ScheduledTask | Where-Object { $_.Principal.UserId -notlike "SYSTEM" -and $_.Principal.UserId -notlike "LOCAL SERVICE" -and $_.Principal.UserId -notlike "NETWORK SERVICE" }
+# 스케줄러 작업 조회 및 권한 검사
+$scheduledTasks = Get-ScheduledTask | Where-Object {
+    $_.Principal.UserId -notmatch '^(NT AUTHORITY\\SYSTEM|NT AUTHORITY\\LOCAL SERVICE|NT AUTHORITY\\NETWORK SERVICE)$'
+}
 
 if ($scheduledTasks) {
     foreach ($task in $scheduledTasks) {
-        Add-Content -Path $TMP1 -Value "WARN: 사용자 권한으로 실행되는 스케줄러 작업이 있습니다: $($task.TaskName)"
+        $taskName = $task.TaskName
+        $userId = $task.Principal.UserId
+        Add-Content -Path $TMP1 -Value "WARN: 사용자 권한으로 실행되는 스케줄러 작업이 있습니다: TaskName: $taskName, UserId: $userId"
     }
 } else {
     Add-Content -Path $TMP1 -Value "OK: 모든 스케줄러 작업이 적절한 권한으로 설정되어 있습니다."
 }
 
-Get-Content -Path $TMP1
+# 로그 파일의 내용을 출력
+Get-Content -Path $TMP1 | Out-Host
 
 Write-Host "`n"
