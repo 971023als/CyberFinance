@@ -23,35 +23,24 @@ Function Write-WARN {
 
 Write-BAR
 
-@"
-[양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우
-[취약]: 서비스에 대한 IP 및 포트 접근 제한이 설정되지 않은 경우
-"@ | Out-File -FilePath $TMP1 -Append
+Write-CODE "[양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우"
 
 Write-BAR
 
-$HostsDenyPath = "/etc/hosts.deny"
-$HostsAllowPath = "/etc/hosts.allow"
+# Windows 방화벽 규칙 점검
+$FirewallRules = Get-NetFirewallRule -Enabled True -Direction Inbound | Where-Object { $_.Action -eq "Block" }
 
-if (Test-Path $HostsDenyPath) {
-    $DenyAllAll = Select-String -Path $HostsDenyPath -Pattern "ALL\s*:\s*ALL" -CaseSensitive
-    if ($DenyAllAll) {
-        if (Test-Path $HostsAllowPath) {
-            $AllowAllAll = Select-String -Path $HostsAllowPath -Pattern "ALL\s*:\s*ALL" -CaseSensitive
-            if ($AllowAllAll) {
-                Write-WARN "/etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다."
-            } else {
-                Write-OK "※ U-18 결과 : 양호(Good)"
-            }
-        } else {
-            Write-OK "※ U-18 결과 : 양호(Good)"
-        }
-    } else {
-        Write-WARN "/etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다."
+if ($FirewallRules.Count -gt 0) {
+    foreach ($rule in $FirewallRules) {
+        $ruleName = $rule.Name
+        $ruleDisplayName = $rule.DisplayName
+        Write-OK "방화벽 규칙 '$ruleDisplayName'($ruleName)에 의해 특정 인바운드 트래픽이 차단됩니다."
     }
 } else {
-    Write-WARN "/etc/hosts.deny 파일이 없습니다."
+    Write-WARN "인바운드 트래픽을 차단하는 활성화된 방화벽 규칙이 없습니다."
 }
+
+Write-BAR
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Host

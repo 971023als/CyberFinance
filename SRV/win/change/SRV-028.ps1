@@ -23,26 +23,28 @@ Function Write-WARN {
 
 Write-BAR
 
-@"
-[양호]: SSH 원격 터미널 접속 타임아웃이 적절하게 설정된 경우
-[취약]: SSH 원격 터미널 접속 타임아웃이 설정되지 않은 경우
-"@ | Out-File -FilePath $TMP1 -Append
+Write-CODE "[양호]: SSH 원격 터미널 접속 타임아웃이 적절하게 설정된 경우"
 
 Write-BAR
 
-# SSH 설정 파일을 확인합니다.
-$SSH_CONFIG_FILE = "/etc/ssh/sshd_config"
+# SSH 설정 파일 경로 지정
+$SSHConfigFile = "C:\ProgramData\ssh\sshd_config"
 
-# ClientAliveInterval과 ClientAliveCountMax를 확인합니다.
-# 이 값들은 무활동 상태의 SSH 세션을 얼마나 오랫동안 유지할지 결정합니다.
-$ClientAliveInterval = Get-Content $SSH_CONFIG_FILE | Where-Object { $_ -match "^ClientAliveInterval" }
-$ClientAliveCountMax = Get-Content $SSH_CONFIG_FILE | Where-Object { $_ -match "^ClientAliveCountMax" }
+if (Test-Path $SSHConfigFile) {
+    $configContent = Get-Content $SSHConfigFile
+    $ClientAliveInterval = $configContent | Where-Object { $_ -match "^ClientAliveInterval\s+\d+" }
+    $ClientAliveCountMax = $configContent | Where-Object { $_ -match "^ClientAliveCountMax\s+\d+" }
 
-if ($ClientAliveInterval -and $ClientAliveCountMax) {
-    Write-OK "SSH 원격 터미널 타임아웃 설정이 적절하게 구성되어 있습니다."
+    if ($ClientAliveInterval -and $ClientAliveCountMax) {
+        Write-OK "SSH 원격 터미널 타임아웃 설정이 적절하게 구성되어 있습니다: `n$ClientAliveInterval`n$ClientAliveCountMax"
+    } else {
+        Write-WARN "SSH 원격 터미널 타임아웃 설정이 미비합니다."
+    }
 } else {
-    Write-WARN "SSH 원격 터미널 타임아웃 설정이 미비합니다."
+    Write-WARN "SSH 서버 구성 파일($SSHConfigFile)이 존재하지 않습니다."
 }
+
+Write-BAR
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Host

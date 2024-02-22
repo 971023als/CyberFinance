@@ -18,49 +18,20 @@ Function Write-WARN {
 
 Write-BAR
 
-@"
-[양호]: FTP 서비스가 비활성화 되어 있는 경우
-[취약]: FTP 서비스가 활성화 되어 있는 경우
-"@ | Out-File -FilePath $TMP1 -Append
+Write-OK "[양호]: FTP 서비스가 비활성화 되어 있는 경우"
 
 Write-BAR
 
 # FTP 서비스가 실행 중인지 확인합니다.
-$netstatOutput = netstat -ano | Select-String -Pattern ":21\s"
-if ($netstatOutput) {
-    Write-WARN "ftp 서비스가 실행 중입니다."
+$ftpService = Get-Service -Name 'FTPSVC*' -ErrorAction SilentlyContinue
+
+if ($ftpService -and $ftpService.Status -eq 'Running') {
+    Write-WARN "FTP 서비스가 실행 중입니다."
 } else {
-    # vsftpd.conf 및 proftpd.conf 파일의 존재 여부와 설정을 확인합니다.
-    $vsftpdConfFiles = Get-ChildItem -Path / -Filter "vsftpd.conf" -Recurse -ErrorAction SilentlyContinue
-    $proftpdConfFiles = Get-ChildItem -Path / -Filter "proftpd.conf" -Recurse -ErrorAction SilentlyContinue
-
-    $ftpServiceActive = $False
-
-    foreach ($file in $vsftpdConfFiles, $proftpdConfFiles) {
-        $content = Get-Content $file.FullName
-        foreach ($line in $content) {
-            if ($line -match "listen_port=(\d+)" -or $line -match "Port (\d+)") {
-                $port = $matches[1]
-                $netstatPortCheck = netstat -ano | Select-String -Pattern ":$port\s"
-                if ($netstatPortCheck) {
-                    Write-WARN "ftp 서비스가 실행 중입니다: $($file.FullName)"
-                    $ftpServiceActive = $True
-                    break
-                }
-            }
-        }
-        if ($ftpServiceActive) { break }
-    }
-
-    if (-not $ftpServiceActive) {
-        $psFtpCount = (Get-Process | Where-Object { $_.ProcessName -match 'ftp|vsftpd|proftpd' }).Count
-        if ($psFtpCount -gt 0) {
-            Write-WARN "ftp 서비스가 실행 중입니다."
-        } else {
-            Write-OK "※ U-61 결과 : 양호(Good)"
-        }
-    }
+    Write-OK "FTP 서비스가 비활성화 되어 있습니다."
 }
+
+Write-BAR
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Output

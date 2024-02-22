@@ -25,37 +25,19 @@ Write-BAR
 
 Write-BAR
 
-# 취약한 서비스 목록
-$services = @("echo", "discard", "daytime", "chargen")
+# 취약한 서비스 목록 예시 (Windows 환경에 맞게 수정 필요)
+$services = @("Telnet", "RemoteRegistry", "lmhosts")
 
-# /etc/xinetd.d 폴더 내의 서비스 파일들을 확인합니다.
-if (Test-Path -Path "/etc/xinetd.d") {
-    foreach ($service in $services) {
-        $filePath = "/etc/xinetd.d/$service"
-        if (Test-Path -Path $filePath) {
-            $content = Get-Content -Path $filePath
-            $disabled = $content | Where-Object { $_ -match "disable\s*=\s*yes" }
-            if (-not $disabled) {
-                Write-WARN "$service 서비스가 /etc/xinetd.d 디렉터리 내 서비스 파일에서 실행 중입니다."
-                exit
-            }
-        }
+foreach ($service in $services) {
+    $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
+    if ($null -ne $svc -and $svc.Status -eq 'Running') {
+        Write-WARN "$service 서비스가 활성화되어 있습니다. 비활성화를 고려하세요."
+    } else {
+        Write-OK "$service 서비스는 비활성화되어 있거나 설치되지 않았습니다."
     }
 }
 
-# /etc/inetd.conf 파일에서 서비스들을 확인합니다.
-if (Test-Path -Path "/etc/inetd.conf") {
-    $inetdConfContent = Get-Content -Path "/etc/inetd.conf"
-    foreach ($service in $services) {
-        $enabled = $inetdConfContent | Where-Object { $_ -match $service -and -not $_.StartsWith('#') }
-        if ($enabled) {
-            Write-WARN "$service 서비스가 /etc/inetd.conf 파일에서 실행 중입니다."
-            exit
-        }
-    }
-}
-
-Write-OK "※ U-23 결과 : 양호(Good)"
+Write-BAR
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Output

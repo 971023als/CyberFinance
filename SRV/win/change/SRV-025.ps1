@@ -23,44 +23,31 @@ Function WARN {
 
 BAR
 
-@"
-[양호]: hosts.equiv 및 .rhosts 파일이 없거나, 안전하게 구성된 경우
-[취약]: hosts.equiv 또는 .rhosts 파일에 취약한 설정이 있는 경우
-"@ | Out-File -FilePath $TMP1 -Append
+CODE "[SRV-022] 원격 접근 제어 설정 미비 및 공유 폴더 접근 권한 미설정"
 
 BAR
 
-# hosts.equiv 및 .rhosts 파일의 존재 및 내용을 확인합니다.
-$hostsEquiv = "/etc/hosts.equiv"
-$userDirectories = Get-ChildItem -Path C:\Users -Directory | Select-Object -ExpandProperty FullName
-$checkFiles = @($hostsEquiv) + $userDirectories | ForEach-Object { $_ + "\.rhosts" }
+# 원격 데스크톱 접근 설정 점검
+$RDPStatus = (Get-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\').fDenyTSConnections
+if ($RDPStatus -eq 1) {
+    OK "원격 데스크톱 접근이 비활성화되어 있습니다."
+} else {
+    WARN "원격 데스크톱 접근이 활성화되어 있습니다. 접근 제어 설정을 검토하세요."
+}
 
-foreach ($file in $checkFiles) {
-    if (Test-Path $file) {
-        $fileOwner = (Get-Acl $file).Owner
-        if ($fileOwner -eq "BUILTIN\Administrators" -or $fileOwner -eq $env:COMPUTERNAME + "\Administrator") {
-            $filePermission = (Get-Acl $file).AccessToString
-            if ($filePermission -match "\+"){
-                WARN "$file 파일에 '+' 설정이 있습니다."
-            }
-            else {
-                OK "$file 파일이 안전하게 구성되어 있습니다."
-            }
-        }
-        else {
-            WARN "$file 파일의 소유자(owner)가 Administrator가 아닙니다."
-        }
+# 공유 폴더 권한 설정 점검
+$Shares = Get-SmbShare | Where-Object { $_.Name -notmatch '^(ADMIN\$|C\$|IPC\$)' }
+foreach ($Share in $Shares) {
+    $Permissions = Get-SmbShareAccess -Name $Share.Name
+    $EveryonePermission = $Permissions | Where-Object { $_.AccountName -eq 'Everyone' }
+    if ($null -ne $EveryonePermission) {
+        WARN "공유 폴더 '$($Share.Name)'에 Everyone 권한이 부여되어 있습니다."
+    } else {
+        OK "공유 폴더 '$($Share.Name)'의 권한 설정이 적절합니다."
     }
 }
 
-# r 계열 서비스 사용 확인 (Windows 환경에 대한 직접적인 대응은 PowerShell에서 제한적입니다.)
-$services = "rsh", "rexec", "rlogin"
-foreach ($service in $services) {
-    $serviceStatus = Get-Service $service -ErrorAction SilentlyContinue
-    if ($null -ne $serviceStatus -and $serviceStatus.Status -eq 'Running') {
-        WARN "$service 서비스가 실행 중입니다."
-    }
-}
+BAR
 
 # 최종 결과 출력
 Get-Content $TMP1 | Write-Host
