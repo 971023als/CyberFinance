@@ -1,55 +1,59 @@
 # 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-040_log.txt"
+$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
 "" | Set-Content $TMP1
 
-Function Write-BAR {
+Function BAR {
     "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-OK {
+Function CODE {
     Param ([string]$message)
-    "$message" | Out-File -FilePath $TMP1 -Append
+    $message | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-WARN {
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
+}
+
+Function WARN {
     Param ([string]$message)
     "WARN: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-Write-BAR
+BAR
+
+CODE "[SRV-040] 웹 서비스 디렉터리 리스팅 방지"
+
+BAR
 
 @"
 [양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우
 [취약]: 웹 서비스 디렉터리 리스팅 방지 설정이 미흡한 경우
 "@ | Out-File -FilePath $TMP1 -Append
 
-Write-BAR
+BAR
 
 $webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf", "userdir.conf")
+$warnings = $false
+
 foreach ($file in $webConfFiles) {
     $findWebConfFiles = Get-ChildItem -Path / -Filter $file -Recurse -ErrorAction SilentlyContinue
     foreach ($confFile in $findWebConfFiles) {
-        if ($confFile.Name -eq "userdir.conf") {
-            $content = Get-Content $confFile.FullName
-            $userdirConfDisabledCount = ($content | Where-Object { $_ -match "userdir" -and $_ -match "disabled"}).Count
-            if ($userdirConfDisabledCount -eq 0) {
-                $userdirConfIndexesCount = ($content | Where-Object { $_ -match "Options" -and $_ -notmatch "\-indexes" -and $_ -match "indexes"}).Count
-                if ($userdirConfIndexesCount -gt 0) {
-                    Write-WARN "Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다: $($confFile.FullName)"
-                    return
-                }
-            }
-        } else {
-            $content = Get-Content $confFile.FullName
-            $webConfFileIndexesCount = ($content | Where-Object { $_ -match "Options" -and $_ -notmatch "\-indexes" -and $_ -match "indexes"}).Count
-            if ($webConfFileIndexesCount -gt 0) {
-                Write-WARN "Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다: $($confFile.FullName)"
-                return
-            }
+        $content = Get-Content $confFile.FullName
+        $indexesOptionCount = ($content | Where-Object { $_ -match "Options" -and $_ -match "Indexes"}).Count
+        if ($indexesOptionCount -gt 0) {
+            WARN "Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다: $($confFile.FullName)"
+            $warnings = $true
+            break
         }
     }
+    if ($warnings) { break }
 }
-Write-OK "※ 양호(Good)"
+
+if (-not $warnings) {
+    OK "※ 양호(Good)"
+}
 
 # 최종 결과를 출력합니다.
 Get-Content $TMP1 | Write-Output

@@ -1,22 +1,31 @@
 # 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-044_log.txt"
+$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
 "" | Set-Content $TMP1
 
-Function Write-BAR {
+Function BAR {
     "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-WARN {
+Function CODE {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
+
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
+}
+
+Function WARN {
     Param ([string]$message)
     "WARN: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-OK {
-    Param ([string]$message)
-    "$message" | Out-File -FilePath $TMP1 -Append
-}
+BAR
 
-Write-BAR
+CODE "[SRV-044] 웹 서비스에서 파일 업로드 및 다운로드 용량이 제한"
+
+BAR
 
 @"
 [양호]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 적절하게 제한된 경우

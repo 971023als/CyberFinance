@@ -1,24 +1,36 @@
 # 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-040_log.txt"
+$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
 "" | Set-Content $TMP1
 
-Function Write-BAR {
+Function BAR {
     "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-OK {
+Function CODE {
     Param ([string]$message)
-    "$message" | Out-File -FilePath $TMP1 -Append
+    $message | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-WARN {
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
+}
+
+Function WARN {
     Param ([string]$message)
     "WARN: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-Write-BAR
+BAR
 
-Write-OK "[양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우"
+CODE "[SRV-040] 웹 서비스 디렉터리 리스팅 방지"
+
+BAR
+
+@"
+[양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우
+[취약]: 웹 서비스 디렉터리 리스팅 방지 설정이 미흡한 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
 Write-BAR
 

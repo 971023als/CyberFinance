@@ -1,22 +1,31 @@
 # 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-043_log.txt"
+$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
 "" | Set-Content $TMP1
 
-Function Write-BAR {
+Function BAR {
     "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-WARN {
+Function CODE {
+    Param ([string]$message)
+    $message | Out-File -FilePath $TMP1 -Append
+}
+
+Function OK {
+    Param ([string]$message)
+    "OK: $message" | Out-File -FilePath $TMP1 -Append
+}
+
+Function WARN {
     Param ([string]$message)
     "WARN: $message" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-OK {
-    Param ([string]$message)
-    "$message" | Out-File -FilePath $TMP1 -Append
-}
+BAR
 
-Write-BAR
+CODE "[SRV-043] 웹 서비스 디렉터리 리스팅 방지"
+
+BAR
 
 @"
 [양호]: 웹 서비스 경로에 불필요한 파일이 존재하지 않는 경우
