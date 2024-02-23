@@ -1,53 +1,39 @@
-﻿# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
-"" | Set-Content $TMP1
+﻿@echo off
+setlocal enabledelayedexpansion
 
-Function BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-025] 취약한 hosts.equiv 또는 .rhosts 설정 존재 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: hosts.equiv 및 .rhosts 파일이 없거나, 안전하게 구성된 경우 >> !TMP1!
+echo [취약]: hosts.equiv 또는 .rhosts 파일에 취약한 설정이 있는 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-BAR
-
-CODE "[SRV-022] 원격 접근 제어 설정 미비 및 공유 폴더 접근 권한 미설정"
-
-BAR
-
-# 원격 데스크톱 접근 설정 점검
-$RDPStatus = (Get-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\').fDenyTSConnections
-if ($RDPStatus -eq 1) {
-    OK "원격 데스크톱 접근이 비활성화되어 있습니다."
-} else {
-    WARN "원격 데스크톱 접근이 활성화되어 있습니다. 접근 제어 설정을 검토하세요."
-}
-
-# 공유 폴더 권한 설정 점검
-$Shares = Get-SmbShare | Where-Object { $_.Name -notmatch '^(ADMIN\$|C\$|IPC\$)' }
-foreach ($Share in $Shares) {
-    $Permissions = Get-SmbShareAccess -Name $Share.Name
-    $EveryonePermission = $Permissions | Where-Object { $_.AccountName -eq 'Everyone' }
-    if ($null -ne $EveryonePermission) {
-        WARN "공유 폴더 '$($Share.Name)'에 Everyone 권한이 부여되어 있습니다."
+:: SSH 보안 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    $SshdConfigPath = 'C:\ProgramData\ssh\sshd_config';
+    if (Test-Path $SshdConfigPath) {
+        $ConfigContent = Get-Content $SshdConfigPath;
+        $SecureSettings = @('PermitEmptyPasswords no', 'PasswordAuthentication yes');
+        $InsecureSettingsFound = $false;
+        foreach ($setting in $SecureSettings) {
+            if (-not ($ConfigContent -contains $setting)) {
+                Add-Content !TMP1! ('WARN: SSH 설정에서 보안이 미흡한 설정 발견: ' + $setting);
+                $InsecureSettingsFound = $true;
+            }
+        }
+        if (-not $InsecureSettingsFound) {
+            Add-Content !TMP1! 'OK: SSH 서비스의 보안 설정이 적절하게 구성되어 있습니다.';
+        }
     } else {
-        OK "공유 폴더 '$($Share.Name)'의 권한 설정이 적절합니다."
+        Add-Content !TMP1! 'INFO: SSH 구성 파일(sshd_config)이 존재하지 않습니다.';
     }
-}
+}"
 
-BAR
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-# 최종 결과 출력
-Get-Content $TMP1 | Write-Host
+echo.

@@ -1,48 +1,34 @@
-﻿# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-026_log.txt"
-"" | Set-Content $TMP1
+﻿@echo off
+setlocal enabledelayedexpansion
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function Write-CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-026] root 계정 원격 접속 제한 미비 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: SSH를 통한 Administrator 계정의 원격 접속이 제한된 경우 >> !TMP1!
+echo [취약]: SSH를 통한 Administrator 계정의 원격 접속이 제한되지 않은 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
-Write-CODE "[양호]: 관리자 계정을 통한 SSH 원격 접속이 적절하게 제한된 경우"
-
-Write-BAR
-
-# Windows에서 OpenSSH 서버 구성 파일 확인
-$SSHConfigFile = "C:\ProgramData\ssh\sshd_config"
-if (Test-Path $SSHConfigFile) {
-    # 관리자 계정의 원격 접속 제한 설정 확인
-    $configContent = Get-Content $SSHConfigFile
-    $adminAccessSetting = $configContent | Where-Object { $_ -match "Match User administrator" }
-    if ($null -ne $adminAccessSetting) {
-        Write-OK "관리자 계정을 통한 SSH 원격 접속이 적절하게 제한됩니다."
+:: SSH 구성 파일에서 PermitRootLogin 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    $SshdConfigPath = 'C:\ProgramData\ssh\sshd_config';
+    if (Test-Path $SshdConfigPath) {
+        $ConfigContent = Get-Content $SshdConfigPath;
+        $PermitRootLogin = $ConfigContent | Where-Object { $_ -match 'PermitRootLogin' };
+        if ($PermitRootLogin -match 'no') {
+            Add-Content !TMP1! 'OK: SSH를 통한 Administrator 계정의 원격 접속이 제한되어 있습니다.';
+        } else {
+            Add-Content !TMP1! 'WARN: SSH를 통한 Administrator 계정의 원격 접속 제한 설정이 미흡합니다.';
+        }
     } else {
-        Write-WARN "SSH를 통한 관리자 계정의 원격 접속 제한 설정이 미흡합니다. 설정을 검토하세요."
+        Add-Content !TMP1! 'INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다.';
     }
-} else {
-    Write-WARN "OpenSSH 서버 구성 파일($SSHConfigFile)이 존재하지 않습니다."
-}
+}"
 
-Write-BAR
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Host
+echo.
