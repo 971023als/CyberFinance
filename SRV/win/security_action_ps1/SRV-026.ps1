@@ -1,34 +1,36 @@
-﻿@echo off
-setlocal enabledelayedexpansion
+﻿# 임시 로그 파일 생성
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-set "TMP1=%~n0.log"
-type nul > !TMP1!
+# 메시지 구분자
+function BAR {
+    "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------------ >> !TMP1!
-echo CODE [SRV-026] root 계정 원격 접속 제한 미비 >> !TMP1!
-echo ------------------------------------------------ >> !TMP1!
+BAR
+"CODE [SRV-026] root 계정 원격 접속 제한 미비" | Out-File -FilePath $TMP1 -Append
+@"
+[양호]: SSH를 통한 Administrator 계정의 원격 접속이 제한된 경우
+[취약]: SSH를 통한 Administrator 계정의 원격 접속이 제한되지 않은 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-echo [양호]: SSH를 통한 Administrator 계정의 원격 접속이 제한된 경우 >> !TMP1!
-echo [취약]: SSH를 통한 Administrator 계정의 원격 접속이 제한되지 않은 경우 >> !TMP1!
-echo ------------------------------------------------ >> !TMP1!
+BAR
 
-:: SSH 구성 파일에서 PermitRootLogin 설정 확인 (PowerShell 사용)
-powershell -Command "& {
-    $SshdConfigPath = 'C:\ProgramData\ssh\sshd_config';
-    if (Test-Path $SshdConfigPath) {
-        $ConfigContent = Get-Content $SshdConfigPath;
-        $PermitRootLogin = $ConfigContent | Where-Object { $_ -match 'PermitRootLogin' };
-        if ($PermitRootLogin -match 'no') {
-            Add-Content !TMP1! 'OK: SSH를 통한 Administrator 계정의 원격 접속이 제한되어 있습니다.';
-        } else {
-            Add-Content !TMP1! 'WARN: SSH를 통한 Administrator 계정의 원격 접속 제한 설정이 미흡합니다.';
-        }
+# SSH 구성 파일에서 PermitRootLogin 설정 확인
+$SshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
+if (Test-Path $SshdConfigPath) {
+    $ConfigContent = Get-Content $SshdConfigPath
+    $PermitRootLogin = $ConfigContent | Where-Object { $_ -match 'PermitRootLogin' }
+    if ($PermitRootLogin -match 'no') {
+        "OK: SSH를 통한 Administrator 계정의 원격 접속이 제한되어 있습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        Add-Content !TMP1! 'INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다.';
+        "WARN: SSH를 통한 Administrator 계정의 원격 접속 제한 설정이 미흡합니다." | Out-File -FilePath $TMP1 -Append
     }
-}"
+} else {
+    "INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
+}
 
-echo ------------------------------------------------ >> !TMP1!
-type !TMP1!
+BAR
 
-echo.
+# 결과 출력
+Get-Content $TMP1 | Write-Host
