@@ -1,24 +1,38 @@
-# 결과 파일 정의
-$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_TCPSecuritySettings.log"
-New-Item -Path $TMP1 -ItemType File
+@echo off
+setlocal
 
-# 고급 보안 구성된 Windows 방화벽 규칙 확인
-$firewallRules = Get-NetFirewallRule -Enabled True -Direction Inbound | Where-Object { $_.Action -eq 'Block' -or $_.Action -eq 'Allow' }
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-# 파일에 결과 저장
-foreach ($rule in $firewallRules) {
-    $ruleDisplay = "규칙 이름: $($rule.Name), 방향: $($rule.Direction), 액션: $($rule.Action), 프로토콜: $($rule.Protocol), 로컬 포트: $($rule.LocalPort)"
-    if ($rule.Action -eq 'Block') {
-        "WARN: 차단된 규칙 - $ruleDisplay" | Out-File -FilePath $TMP1 -Append
-    } else {
-        "OK: 허용된 규칙 - $ruleDisplay" | Out-File -FilePath $TMP1 -Append
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-135] TCP 보안 설정 미비 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
+
+echo [양호]: 필수 TCP 보안 설정이 적절히 구성된 경우 >> %TMP1%
+echo [취약]: 필수 TCP 보안 설정이 구성되지 않은 경우 >> %TMP1%
+
+echo ---------------------------------------- >> %TMP1%
+
+:: PowerShell을 사용하여 TCP 관련 레지스트리 설정 확인
+powershell -Command "& { 
+    $paths = @(
+        'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\TcpWindowSize',
+        'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Tcp1323Opts',
+        'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\SynAttackProtect'
+    )
+    foreach ($path in $paths) {
+        if (Test-Path $path) {
+            $value = Get-ItemProperty -Path $path
+            echo 'OK: ' + $path + ' 설정이 존재합니다: ' + $value
+        } else {
+            echo 'WARN: ' + $path + ' 설정이 없습니다.'
+        }
     }
-}
+}" >> %TMP1%
 
-# 결과 파일이 비어 있으면, 적절한 TCP 보안 설정이 구성되지 않았다고 가정
-if (!(Get-Content -Path $TMP1)) {
-    "INFO: 고급 보안에 구성된 TCP 관련 Windows 방화벽 규칙이 없습니다." | Out-File -FilePath $TMP1
-}
+type %TMP1%
 
-# 결과 파일 출력
-Get-Content -Path $TMP1
+echo.
+echo.
+
+endlocal
