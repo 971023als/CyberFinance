@@ -1,50 +1,35 @@
-﻿# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-028_log.txt"
-"" | Set-Content $TMP1
+﻿@echo off
+setlocal enabledelayedexpansion
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function Write-CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-028] 원격 터미널 접속 타임아웃 미설정 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: SSH 원격 터미널 접속 타임아웃이 적절하게 설정된 경우 >> !TMP1!
+echo [취약]: SSH 원격 터미널 접속 타임아웃이 설정되지 않은 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
-Write-CODE "[양호]: SSH 원격 터미널 접속 타임아웃이 적절하게 설정된 경우"
-
-Write-BAR
-
-# SSH 설정 파일 경로 지정
-$SSHConfigFile = "C:\ProgramData\ssh\sshd_config"
-
-if (Test-Path $SSHConfigFile) {
-    $configContent = Get-Content $SSHConfigFile
-    $ClientAliveInterval = $configContent | Where-Object { $_ -match "^ClientAliveInterval\s+\d+" }
-    $ClientAliveCountMax = $configContent | Where-Object { $_ -match "^ClientAliveCountMax\s+\d+" }
-
-    if ($ClientAliveInterval -and $ClientAliveCountMax) {
-        Write-OK "SSH 원격 터미널 타임아웃 설정이 적절하게 구성되어 있습니다: `n$ClientAliveInterval`n$ClientAliveCountMax"
+:: SSH 타임아웃 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    $SshdConfigPath = 'C:\ProgramData\ssh\sshd_config';
+    if (Test-Path $SshdConfigPath) {
+        $ConfigContent = Get-Content $SshdConfigPath;
+        $ClientAliveInterval = $ConfigContent | Where-Object { $_ -match '^ClientAliveInterval' };
+        $ClientAliveCountMax = $ConfigContent | Where-Object { $_ -match '^ClientAliveCountMax' };
+        if ($ClientAliveInterval -and $ClientAliveCountMax) {
+            Add-Content !TMP1! 'OK: SSH 원격 터미널 타임아웃 설정이 적절하게 구성되어 있습니다.';
+        } else {
+            Add-Content !TMP1! 'WARN: SSH 원격 터미널 타임아웃 설정이 미비합니다.';
+        }
     } else {
-        Write-WARN "SSH 원격 터미널 타임아웃 설정이 미비합니다."
+        Add-Content !TMP1! 'INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다.';
     }
-} else {
-    Write-WARN "SSH 서버 구성 파일($SSHConfigFile)이 존재하지 않습니다."
-}
+}"
 
-Write-BAR
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Host
+echo.
