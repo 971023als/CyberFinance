@@ -1,49 +1,33 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-029_log.txt"
-"" | Set-Content $TMP1
+@echo off
+setlocal enabledelayedexpansion
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function Write-CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-029] SMB 세션 중단 관리 설정 미비 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: SMB 서비스의 세션 중단 시간이 적절하게 설정된 경우 >> !TMP1!
+echo [취약]: SMB 서비스의 세션 중단 시간 설정이 미비한 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
-Write-CODE "[양호]: SMB 서비스의 세션 중단 시간이 적절하게 설정된 경우"
-
-Write-BAR
-
-# SMB 세션 중단 시간 설정을 확인합니다.
-$autoDisconnect = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name "autodisconnect" -ErrorAction SilentlyContinue
-
-if ($null -ne $autoDisconnect) {
-    $value = $autoDisconnect.autodisconnect
-    if ($value -ge 0) {
-        Write-OK "SMB 세션 중단 시간(autodisconnect)이 적절하게 설정되어 있습니다: $value 분"
+:: SMB 세션 중단 시간 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    $path = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters';
+    $deadtime = Get-ItemPropertyValue -Path $path -Name 'autodisconnect' -ErrorAction SilentlyContinue;
+    if ($null -ne $deadtime) {
+        if ($deadtime -gt 0) {
+            Add-Content !TMP1! ('OK: SMB 세션 중단 시간(autodisconnect)이 적절하게 설정되어 있습니다: ' + $deadtime + ' 분');
+        } else {
+            Add-Content !TMP1! 'WARN: SMB 세션 중단 시간(autodisconnect) 설정이 미비합니다.';
+        }
+    } else {
+        Add-Content !TMP1! 'WARN: SMB 세션 중단 시간(autodisconnect) 설정이 레지스트리에 존재하지 않습니다.';
     }
-    else {
-        Write-WARN "SMB 세션 중단 시간(autodisconnect) 설정이 미비합니다."
-    }
-}
-else {
-    Write-WARN "SMB 세션 중단 시간(autodisconnect) 설정이 레지스트리에 존재하지 않습니다."
-}
+}"
 
-Write-BAR
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Host
+echo.

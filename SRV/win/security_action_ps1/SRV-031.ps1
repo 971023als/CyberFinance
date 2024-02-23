@@ -1,47 +1,29 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-031_log.txt"
-"" | Set-Content $TMP1
+@echo off
+setlocal enabledelayedexpansion
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-031] 계정 목록 및 네트워크 공유 이름 노출 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 노출되지 않는 경우 >> !TMP1!
+echo [취약]: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 노출되는 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Write-BAR
+:: 네트워크 공유의 열거 제한 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    $registryPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters';
+    $restrictNullSessAccess = Get-ItemPropertyValue -Path $registryPath -Name 'RestrictNullSessAccess' -ErrorAction SilentlyContinue;
+    if ($null -ne $restrictNullSessAccess -and $restrictNullSessAccess -eq 1) {
+        Add-Content !TMP1! 'OK: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 적절하게 보호되고 있습니다.';
+    } else {
+        Add-Content !TMP1! 'WARN: SMB 서비스에서 계정 목록 또는 네트워크 공유 이름이 노출될 수 있습니다.';
+    }
+}"
 
-@"
-[양호]: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 노출되지 않는 경우
-[취약]: SMB 서비스에서 계정 목록 및 네트워크 공유 이름이 노출되는 경우
-"@ | Out-File -FilePath $TMP1 -Append
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-Write-BAR
-
-# 네트워크 보안: LAN Manager 인증 수준 점검
-$lmAuthLevel = Get-ItemPropertyValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "LmCompatibilityLevel" -ErrorAction SilentlyContinue
-if ($null -ne $lmAuthLevel -and $lmAuthLevel -ge 3) {
-    Write-OK "네트워크 보안: LAN Manager 인증 수준이 적절하게 설정되어 있습니다. (값: $lmAuthLevel)"
-} else {
-    Write-WARN "네트워크 보안: LAN Manager 인증 수준 설정이 미비합니다. (권장 값: 3 이상)"
-}
-
-# SMB 서명 요구사항 점검
-$smbSigningRequired = Get-ItemPropertyValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name "requiresecuritysignature" -ErrorAction SilentlyContinue
-if ($null -ne $smbSigningRequired -and $smbSigningRequired -eq 1) {
-    Write-OK "SMB 서명 요구사항이 적절하게 설정되어 있습니다."
-} else {
-    Write-WARN "SMB 서명 요구사항이 설정되지 않았습니다. (권장: 활성화)"
-}
-
-Write-BAR
-
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Host
+echo.

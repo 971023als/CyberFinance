@@ -1,40 +1,33 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-034_log.txt"
-"" | Set-Content $TMP1
+@echo off
+setlocal enabledelayedexpansion
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-034] 불필요한 서비스 활성화 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: 불필요한 서비스가 비활성화된 경우 >> !TMP1!
+echo [취약]: 불필요한 서비스가 활성화된 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Write-BAR
+:: 불필요한 서비스 목록
+set "services=Telnet RemoteRegistry"
 
-Write-OK "[양호]: 불필요한 서비스가 비활성화된 경우"
+:: 서비스 상태 확인 (PowerShell 사용)
+for %%s in (!services!) do (
+    powershell -Command "& {
+        $service = Get-Service -Name '%%s' -ErrorAction SilentlyContinue;
+        if ($service -and $service.Status -eq 'Running') {
+            Add-Content !TMP1! ('WARN: 불필요한 서비스 ''%%s''가 활성화되어 있습니다.');
+        } else {
+            Add-Content !TMP1! ('OK: 서비스 ''%%s''가 비활성화되어 있거나, 시스템에 설치되지 않았습니다.');
+        }
+    }"
+)
 
-Write-BAR
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-# 불필요한 서비스 목록 예시
-$unnecessaryServices = @("Telnet", "RemoteRegistry", "Fax")
-
-foreach ($service in $unnecessaryServices) {
-    $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
-    if ($null -ne $svc -and $svc.Status -eq 'Running') {
-        Write-WARN "불필요한 서비스 '$service'가 활성화되어 있습니다. 비활성화를 고려하세요."
-    } else {
-        Write-OK "서비스 '$service'는 비활성화되어 있거나 설치되지 않았습니다."
-    }
-}
-
-Write-BAR
-
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Output
+echo.
