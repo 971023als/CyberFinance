@@ -1,33 +1,27 @@
-# function.ps1 파일 포함 (예: BAR, OK, WARN 함수 정의 포함)
-. .\function.ps1
+@echo off
+setlocal
 
-$TMP1 = "$(Get-Location)\SRV-060_log.txt"
-# TMP1 파일을 초기화합니다.
-Clear-Content -Path $TMP1
+set "TMP1=%SCRIPTNAME%.log"
+> "%TMP1%"
 
-BAR
+echo 코드 [SRV-060] 웹 서비스의 기본 계정(아이디 또는 비밀번호) 미변경 >> "%TMP1%"
+echo [양호]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨 >> "%TMP1%"
+echo [취약]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음 >> "%TMP1%"
 
-$CODE = "[SRV-060] IIS 웹 서비스 기본 계정(아이디 또는 비밀번호) 미변경"
+:: 웹 서비스 설정 파일의 예시 경로 (필요에 따라 경로 조정)
+set "CONFIG_FILE=C:\path\to\web_service\config.txt"
 
-# 결과를 TMP1 파일에 기록
-$result = $TMP1
-Add-Content -Path $result -Value "[양호]: IIS 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경된 경우"
-Add-Content -Path $result -Value "[취약]: IIS 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않은 경우"
+:: 기본 계정 확인 (예시: 'admin' 또는 'password')
+findstr /R "username=admin password=password" "%CONFIG_FILE%" >nul
 
-BAR
+if errorlevel 1 (
+    echo OK: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨 >> "%TMP1%"
+) else (
+    echo 경고: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음 >> "%TMP1%"
+)
 
-# IIS 웹 서비스의 기본 계정 설정 파일 경로
-# 실제 경로로 변경 필요. 예를 들어, web.config 파일 또는 기타 사용자 계정 정보를 저장하는 파일.
-$CONFIG_FILE = "C:\inetpub\wwwroot\YourApp\web.config"
+:: 결과 표시
+type "%TMP1%"
 
-# 기본 계정 설정 확인
-# 'admin'과 'password'는 예시입니다. 실제 기본 계정 이름과 비밀번호에 따라 조정하세요.
-If ((Select-String -Path $CONFIG_FILE -Pattern "username='admin'|password='password'" -Quiet)) {
-    WARN "IIS 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않았습니다: $CONFIG_FILE"
-} Else {
-    OK "IIS 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되었습니다: $CONFIG_FILE"
-}
-
-Get-Content -Path $result | Out-Host
-
-Write-Host "`n"
+echo.
+echo 스크립트 완료.
