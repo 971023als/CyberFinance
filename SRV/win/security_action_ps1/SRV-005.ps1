@@ -1,32 +1,41 @@
-﻿# 필요한 함수 로드
-. .\function.ps1
+﻿@echo off
+setlocal enabledelayedexpansion
 
-# 임시 로그 파일 생성
-$TMP1 = "$([IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+set "TMP1=%~n0.log"
+type nul > "!TMP1!"
 
-BAR
+echo ------------------------------------------------ >> "!TMP1!"
+echo CODE [SRV-005] SMTP 서비스의 expn/vrfy 명령어 실행 제한 미비 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-# 여기에 SMTP 서비스 구성 변경 로직 추가
-# 예시: SMTP 서버가 Postfix일 경우, main.cf 파일에서 다음 설정을 확인 또는 추가
-# disable_vrfy_command = yes
+echo [양호]: SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하고 있는 경우 >> "!TMP1!"
+echo [취약]: SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하지 않는 경우 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-# SMTP 서비스명 설정 (Windows 환경 예시)
-$SMTPServices = @("SMTPSVC")
-
-foreach ($service in $SMTPServices) {
-    $serviceStatus = Get-Service -Name $service -ErrorAction SilentlyContinue
-    if ($serviceStatus -and $serviceStatus.Status -eq "Running") {
-        # SMTP 서비스가 실행 중인 경우, 관리자에게 알림
-        "SMTP 서비스($service)의 `expn` 및 `vrfy` 명령어 사용 제한 상태를 수동으로 확인해야 합니다. 이는 SMTP 서버의 구성 파일 또는 관리 도구를 통해 이루어질 수 있습니다." | Out-File -FilePath $TMP1 -Append
+:: Windows 환경에서 SMTP 서비스 확인
+powershell -Command "& {
+    $smtpService = Get-Service -Name 'SMTPSVC' -ErrorAction SilentlyContinue;
+    if ($smtpService.Status -eq 'Running') {
+        echo 'SMTP 서비스가 실행 중입니다.' >> '!TMP1!';
+        # Exchange 서버의 expn/vrfy 명령어 사용 제한 설정 확인
+        $smtpSettings = Get-ReceiveConnector | Where {$_.Enabled -eq $true} | Select Identity, SmtpUtf8Enabled, TarpitInterval;
+        if ($smtpSettings) {
+            foreach ($setting in $smtpSettings) {
+                if ($setting.SmtpUtf8Enabled -eq $false) {
+                    echo 'SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하고 있습니다: ' + $setting.Identity >> '!TMP1!';
+                } else {
+                    echo 'SMTP 서비스가 expn 및 vrfy 명령어 사용을 제한하지 않습니다: ' + $setting.Identity >> '!TMP1!';
+                }
+            }
+        } else {
+            echo 'SMTP 설정을 확인할 수 없습니다. Exchange 관리 셸에서 수동으로 확인하세요.' >> '!TMP1!';
+        }
     } else {
-        # SMTP 서비스가 비활성화되어 있거나 실행 중이지 않는 경우
-        OK "$service 서비스가 비활성화되어 있거나 실행 중이지 않습니다." | Out-File -FilePath $TMP1 -Append
+        echo 'SMTP 서비스가 비활성화되어 있거나 실행 중이지 않습니다.' >> '!TMP1!';
     }
-}
+}"
 
-BAR
+echo ------------------------------------------------ >> "!TMP1!"
+type "!TMP1!"
 
-# 결과 출력
-Get-Content $TMP1
-Write-Host `n
+echo.

@@ -1,31 +1,32 @@
-﻿# 필요한 함수 로드
-. .\function.ps1
+﻿@echo off
+setlocal enabledelayedexpansion
 
-# 임시 로그 파일 생성
-$TMP1 = "$([IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-BAR
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-006] SMTP 서비스 로그 수준 설정 미흡 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-# SMTP 서비스 로그 수준 설정 조정
-# IIS SMTP 서비스에 대한 로그 형식을 W3C로 설정
-$smtpLogPath = 'MACHINE/WEBROOT/APPHOST'
-$logFormatProperty = "system.applicationHost/sites/siteDefaults/logFile/logFormat"
-$logFormatValue = "W3C"
+echo [양호]: SMTP 서비스의 로그 수준이 적절하게 설정되어 있는 경우 >> !TMP1!
+echo [취약]: SMTP 서비스의 로그 수준이 낮거나, 로그가 충분히 수집되지 않는 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-# 현재 로그 설정 확인
-$currentLogSetting = Get-WebConfigurationProperty -pspath $smtpLogPath -filter $logFormatProperty -name "Value"
+:: SMTP 로그 설정 확인 (PowerShell 사용 예시)
+powershell -Command "& {
+    # SMTP 서비스 로그 설정을 확인하는 PowerShell 코드
+    # 예시로는 Get-TransportServer 또는 Get-SendConnector cmdlet 사용을 가정
+    # 실제 환경에 맞게 조정 필요
+    $logLevel = Get-TransportServer | Select-Object -ExpandProperty LogLevel;
+    
+    if ($logLevel -eq 'Medium' -or $logLevel -eq 'High') {
+        Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 적절하게 설정됨.'
+    } else {
+        Add-Content !TMP1! 'SMTP 서비스의 로그 수준이 낮게 설정됨 또는 설정이 확인되지 않음.'
+    }
+}"
 
-# 로그 형식이 W3C가 아닌 경우, W3C로 변경
-if ($currentLogSetting.Value -ne $logFormatValue) {
-    Set-WebConfigurationProperty -pspath $smtpLogPath -filter $logFormatProperty -name "Value" -value $logFormatValue
-    OK "SMTP 서비스의 로그 수준이 적절하게 설정됨 (W3C로 설정됨)." | Out-File -FilePath $TMP1 -Append
-} else {
-    OK "SMTP 서비스의 로그 수준이 이미 적절하게 설정됨 (현재 설정: W3C)." | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-BAR
-
-# 결과 출력 및 로그 파일 내용 확인
-Get-Content $TMP1
-Write-Host `n
+echo.

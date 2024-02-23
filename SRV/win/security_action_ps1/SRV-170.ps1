@@ -1,68 +1,32 @@
-@echo off
+# 결과 파일 정의
+$TMP1 = "$env:SCRIPTNAME.log"
+# 결과 파일 초기화
+"" | Set-Content -Path $TMP1
 
-call function.bat
+# 구분선 함수
+Function Bar {
+    "----------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-set TMP1=%SCRIPTNAME%.log
-type NUL > %TMP1%
+Bar
 
-call :BAR
+# 코드 및 상태 정보 출력
+@"
+CODE [SRV-170] SMTP 서비스 정보 노출
+[양호]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우
+[취약]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되는 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-echo CODE [SRV-170] SMTP 서비스 정보 노출
+Bar
 
-(
-echo [양호]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우
-echo [취약]: SMTP 서비스에서 버전 정보 및 기타 세부 정보가 노출되는 경우
-) >> %result%
+# SMTP 서비스 설정 확인 로직 (Windows 환경에 맞게 조정 필요)
+# Windows에서는 IIS를 통한 SMTP 서비스 관리가 일반적이며, PowerShell을 통한 직접적인 확인이 제한적일 수 있습니다.
+# 이 부분은 시스템 관리자가 직접 SMTP 서비스의 설정을 검토하거나, 관리 도구를 통해 확인해야 할 수 있습니다.
 
-call :BAR
+# 예시 메시지
+"INFO: SMTP 서비스의 정보 노출 관련 설정은 IIS 관리 콘솔 또는 해당 SMTP 서버의 구성 파일을 통해 확인해야 합니다." | Out-File -FilePath $TMP1 -Append
 
-:: SMTP 서버 설정 확인 (예: Postfix, Sendmail 등)
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Write-Output
 
-:: Postfix 예시
-set postfix_config=/etc/postfix/main.cf
-if exist "%postfix_config%" (
-    findstr /c:"^smtpd_banner = $myhostname" "%postfix_config%" > NUL
-    if errorlevel 1 (
-        call :WARN "Postfix에서 버전 정보가 노출됩니다."
-    ) else (
-        call :OK "Postfix에서 버전 정보 노출이 제한됩니다."
-    )
-) else (
-    call :INFO "Postfix 서버 설정 파일이 존재하지 않습니다."
-)
-
-:: Sendmail 예시
-set sendmail_config=/etc/mail/sendmail.cf
-if exist "%sendmail_config%" (
-    findstr /c:"O SmtpGreetingMessage=$j" "%sendmail_config%" > NUL
-    if errorlevel 1 (
-        call :WARN "Sendmail에서 버전 정보가 노출됩니다."
-    ) else (
-        call :OK "Sendmail에서 버전 정보 노출이 제한됩니다."
-    )
-) else (
-    call :INFO "Sendmail 서버 설정 파일이 존재하지 않습니다."
-)
-
-type %result%
-
-echo.
-echo.
-
-goto :eof
-
-:BAR
-echo ----------------------------------------
-goto :eof
-
-:OK
-echo %~1
-goto :eof
-
-:WARN
-echo %~1
-goto :eof
-
-:INFO
-echo %~1
-goto :eof
+Write-Host "`nScript complete."

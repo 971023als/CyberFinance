@@ -1,62 +1,39 @@
-@echo off
-call function.bat
+# 필요한 외부 스크립트 또는 모듈 호출 (여기서는 가정된 예시입니다)
+# . .\function.ps1
 
-set TMP1=%SCRIPTNAME%.log
-type NUL > %TMP1%
+# 결과 파일 정의
+$TMP1 = "$env:SCRIPTNAME.log"
+# 결과 파일 초기화
+"" | Set-Content -Path $TMP1
 
-call :BAR
+# 구분선 함수
+Function Bar {
+    "----------------------------------------" | Out-File -FilePath $TMP1 -Append
+}
 
-echo CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
+Bar
 
-(
-echo [양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
-echo [취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
-) >> %result%
+# 코드 및 상태 정보 출력
+@"
+CODE [SRV-166] 불필요한 숨김 파일 또는 디렉터리 존재
+[양호]: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않는 경우
+[취약]: 불필요한 숨김 파일 또는 디렉터리가 존재하는 경우
+"@ | Out-File -FilePath $TMP1 -Append
 
-call :BAR
+Bar
 
-:: 시스템에서 숨김 파일 및 디렉터리 검색
-setlocal EnableDelayedExpansion
-set hidden_files=
-set hidden_dirs=
+# 시스템에서 숨김 파일 및 디렉터리 검색
+$hiddenFiles = Get-ChildItem -Path "C:\" -Recurse -File -Hidden -ErrorAction SilentlyContinue
+$hiddenDirs = Get-ChildItem -Path "C:\" -Recurse -Directory -Hidden -ErrorAction SilentlyContinue
 
-for /r %%i in (.*.*) do (
-    if exist %%i (
-        if "%%~ai"=="H" (
-            set hidden_files=!hidden_files! %%i
-        )
-    )
-)
+if ($hiddenFiles.Count -eq 0 -and $hiddenDirs.Count -eq 0) {
+    "OK: 불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    $allHidden = $hiddenFiles + $hiddenDirs
+    "WARN: 다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: $($allHidden -join ', ')" | Out-File -FilePath $TMP1 -Append
+}
 
-for /d /r %%i in (.*.) do (
-    if exist %%i (
-        if "%%~ai"=="H" (
-            set hidden_dirs=!hidden_dirs! %%i
-        )
-    )
-)
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Write-Output
 
-if "%hidden_files%"=="" if "%hidden_dirs%"=="" (
-    call :OK "불필요한 숨김 파일 또는 디렉터리가 존재하지 않습니다."
-) else (
-    call :WARN "다음의 불필요한 숨김 파일 또는 디렉터리가 존재합니다: %hidden_files% %hidden_dirs%"
-)
-
-type %result%
-
-echo.
-echo.
-
-goto :eof
-
-:BAR
-echo ----------------------------------------
-goto :eof
-
-:OK
-echo %~1
-goto :eof
-
-:WARN
-echo %~1
-goto :eof
+Write-Host "`nScript complete."
