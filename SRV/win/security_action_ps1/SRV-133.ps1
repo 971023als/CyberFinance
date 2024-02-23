@@ -1,18 +1,32 @@
-# 결과 파일 정의
-$TMP1 = "$(Get-Location)\SCRIPTNAME.log"
-"CODE [SRV-133] Cron 서비스 사용 계정 제한 미비" | Out-File -FilePath $TMP1
+@echo off
+setlocal
 
-# Task Scheduler에서 모든 태스크 조회
-$tasks = Get-ScheduledTask | Where-Object {$_.Principal.UserId -notmatch 'SYSTEM|LOCALSERVICE|NETWORKSERVICE'}
+set TMP1=%SCRIPTNAME%.log
+type NUL > %TMP1%
 
-# 특정 계정에 대한 작업 실행 제한 검사
-if ($tasks.Count -eq 0) {
-    "OK: 모든 스케줄된 태스크가 시스템 계정으로 제한되어 있습니다." | Out-File -FilePath $TMP1 -Append
-} else {
-    foreach ($task in $tasks) {
-        "WARN: $($task.TaskName) 태스크가 $($task.Principal.UserId) 계정으로 실행되도록 설정되어 있습니다." | Out-File -FilePath $TMP1 -Append
+echo ---------------------------------------- >> %TMP1%
+echo CODE [SRV-133] Cron 서비스 사용 계정 제한 미비 >> %TMP1%
+echo ---------------------------------------- >> %TMP1%
+
+echo [양호]: Cron 서비스 사용이 특정 계정으로 제한되어 있는 경우 >> %TMP1%
+echo [취약]: Cron 서비스 사용이 제한되지 않은 경우 >> %TMP1%
+
+echo ---------------------------------------- >> %TMP1%
+
+:: PowerShell을 사용하여 작업 스케줄러의 작업과 실행 계정 확인
+powershell -Command "& {
+    $scheduledTasks = Get-ScheduledTask | Where-Object { $_.State -eq 'Ready' }
+    foreach ($task in $scheduledTasks) {
+        $taskName = $task.TaskName
+        $taskPath = $task.TaskPath
+        $principal = $task.Principal.UserId
+        echo ""$taskPath$taskName 실행 계정: $principal"" >> '%TMP1%'
     }
-}
+}" >> %TMP1%
 
-# 결과 파일 출력
-Get-Content -Path $TMP1
+type %TMP1%
+
+echo.
+echo.
+
+endlocal
