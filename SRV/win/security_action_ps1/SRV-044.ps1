@@ -1,62 +1,39 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
-"" | Set-Content $TMP1
+@echo off
+setlocal enabledelayedexpansion
 
-Function BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+:: 로그 파일 이름 설정
+set "TMP1=%~n0.log"
+:: 로그 파일 초기화
+type nul > "!TMP1!"
 
-Function CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> "!TMP1!"
+echo 코드 [SRV-044] 웹 서비스 파일 업로드 및 다운로드 크기 제한 미설정 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
+echo [양호]: 웹 서비스에서 파일 업로드 및 다운로드 크기가 적절하게 제한됨 >> "!TMP1!"
+echo [취약]: 웹 서비스에서 파일 업로드 및 다운로드 크기가 제한되지 않음 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-Function OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Function WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-BAR
-
-CODE "[SRV-044] 웹 서비스에서 파일 업로드 및 다운로드 용량이 제한"
-
-BAR
-
-@"
-[양호]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 적절하게 제한된 경우
-[취약]: 웹 서비스에서 파일 업로드 및 다운로드 용량이 제한되지 않은 경우
-"@ | Out-File -FilePath $TMP1 -Append
-
-BAR
-
-$webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf", "userdir.conf")
-$limitRequestBodyFound = $false
-
-foreach ($webConfFile in $webConfFiles) {
-    $findWebConfFiles = Get-ChildItem -Recurse -Path C:\ -Filter $webConfFile -ErrorAction SilentlyContinue
-    foreach ($file in $findWebConfFiles) {
-        $content = Get-Content -Path $file.FullName
-        $limitRequestBodyLines = $content | Where-Object { $_ -match 'LimitRequestBody' }
-        if ($limitRequestBodyLines) {
-            $limitRequestBodyFound = $true
-            break
+:: PowerShell을 사용하여 IIS 설정 확인
+powershell -Command "& {
+    $logPath = '%TMP1%';
+    Import-Module WebAdministration;
+    Get-Website | ForEach-Object {
+        $siteName = $_.Name;
+        $configPath = 'IIS:\Sites\' + $siteName;
+        $requestFiltering = Get-WebConfigurationProperty -pspath $configPath -filter 'system.webServer/security/requestFiltering/requestLimits' -name 'maxAllowedContentLength';
+        
+        $maxSize = $requestFiltering.Value / 1024 / 1024; # 바이트에서 MB로 변환
+        if ($maxSize -lt 30) { # 예시 임계값 30MB
+            Add-Content -Path $logPath -Value ('OK: ' + $siteName + ' 사이트는 파일 업로드를 ' + $maxSize + ' MB로 제한합니다.');
+        } else {
+            Add-Content -Path $logPath -Value ('WARN: ' + $siteName + ' 사이트는 파일 업로드 제한이 높음 (' + $maxSize + ' MB) 또는 설정되지 않음.');
         }
-    }
-    if ($limitRequestBodyFound) {
-        break
-    }
-}
+    };
+    Get-Content -Path $logPath | Out-Host;
+}"
 
-if (-not $limitRequestBodyFound) {
-    WARN "Apache 설정 파일에 파일 업로드 및 다운로드를 제한하도록 설정하지 않았거나, 설정 파일이 발견되지 않았습니다."
-} else {
-    OK "※ 양호(Good)"
-}
+echo ------------------------------------------------ >> "!TMP1!"
+type "!TMP1!"
 
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Output
+echo.
+echo 스크립트 완료.
