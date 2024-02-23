@@ -1,57 +1,33 @@
-﻿# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-027_log.txt"
-"" | Set-Content $TMP1
+﻿# 임시 로그 파일 생성
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+# 메시지 구분자
+function BAR {
+    "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
+BAR
+"CODE [SRV-027] 서비스 접근 IP 및 포트 제한 미비" | Out-File -FilePath $TMP1 -Append
 @"
 [양호]: 서비스에 대한 IP 및 포트 접근 제한이 적절하게 설정된 경우
 [취약]: 서비스에 대한 IP 및 포트 접근 제한이 설정되지 않은 경우
 "@ | Out-File -FilePath $TMP1 -Append
 
-Write-BAR
+BAR
 
-$HostsDenyPath = "/etc/hosts.deny"
-$HostsAllowPath = "/etc/hosts.allow"
-
-if (Test-Path $HostsDenyPath) {
-    $DenyAllAll = Select-String -Path $HostsDenyPath -Pattern "ALL\s*:\s*ALL" -CaseSensitive
-    if ($DenyAllAll) {
-        if (Test-Path $HostsAllowPath) {
-            $AllowAllAll = Select-String -Path $HostsAllowPath -Pattern "ALL\s*:\s*ALL" -CaseSensitive
-            if ($AllowAllAll) {
-                Write-WARN "/etc/hosts.allow 파일에 'ALL : ALL' 설정이 있습니다."
-            } else {
-                Write-OK "※ U-18 결과 : 양호(Good)"
-            }
-        } else {
-            Write-OK "※ U-18 결과 : 양호(Good)"
-        }
-    } else {
-        Write-WARN "/etc/hosts.deny 파일에 'ALL : ALL' 설정이 없습니다."
+# 방화벽 규칙 확인
+$FirewallRules = Get-NetFirewallRule -Enabled True -Direction Inbound | Where-Object { $_.Action -eq 'Block' }
+if ($FirewallRules.Count -gt 0) {
+    foreach ($rule in $FirewallRules) {
+        $ruleName = $rule.DisplayName
+        "OK: 방화벽 규칙 '$ruleName'가 접근을 차단하도록 설정되어 있습니다." | Out-File -FilePath $TMP1 -Append
     }
 } else {
-    Write-WARN "/etc/hosts.deny 파일이 없습니다."
+    "WARN: 서비스에 대한 IP 및 포트 접근 제한을 설정하는 방화벽 규칙이 없습니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# 최종 결과를 출력합니다.
+BAR
+
+# 결과 출력
 Get-Content $TMP1 | Write-Host
