@@ -1,31 +1,26 @@
-# PowerShell 함수 파일 포함 (function.ps1 등으로 가정)
-. .\function.ps1
+# 로그 파일 생성 및 초기화
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-$TMP1 = "$(SCRIPTNAME).log"
-# TMP1 파일을 초기화합니다.
-Clear-Content -Path $TMP1
+# 메시지 출력
+"코드 [SRV-060] 웹 서비스의 기본 계정(아이디 또는 비밀번호) 미변경" | Out-File -FilePath $TMP1 -Append
+"[양호]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨" | Out-File -FilePath $TMP1 -Append
+"[취약]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음" | Out-File -FilePath $TMP1 -Append
 
-BAR
+# 웹 서비스 설정 파일의 예시 경로
+$CONFIG_FILE = "C:\path\to\web_service\config.txt"
 
-$CODE = "[SRV-060] 웹 서비스 기본 계정(아이디 또는 비밀번호) 미변경"
+# 기본 계정 확인
+$pattern = "username=admin password=password"
+$match = Select-String -Path $CONFIG_FILE -Pattern $pattern
 
-$result = "결과 파일 경로 지정 필요"
-# 결과 파일에 내용을 추가합니다.
-Add-Content -Path $result -Value "[양호]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경된 경우"
-Add-Content -Path $result -Value "[취약]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않은 경우"
-
-BAR
-
-# 웹 서비스의 기본 계정 설정 파일 경로
-$CONFIG_FILE = "/etc/web_service/config"
-
-# 기본 계정 설정 확인
-If ((Select-String -Path $CONFIG_FILE -Pattern "username=admin|password=password" -Quiet)) {
-    WARN "웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않았습니다: $CONFIG_FILE"
-} Else {
-    OK "웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되었습니다: $CONFIG_FILE"
+if ($match) {
+    "경고: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음" | Out-File -FilePath $TMP1 -Append
+} else {
+    "OK: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨" | Out-File -FilePath $TMP1 -Append
 }
 
-Get-Content -Path $result
+# 결과 표시
+Get-Content -Path $TMP1 | Write-Output
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."
