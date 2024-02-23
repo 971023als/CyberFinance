@@ -1,42 +1,30 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-055_log.txt"
-"" | Set-Content $TMP1
+@echo off
+setlocal
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+> "%TMP1%"
 
-Function Write-Result {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo 코드 [SRV-055] 웹 서비스 설정 파일 노출 >> "%TMP1%"
+echo [양호]: 웹 서비스 설정 파일이 외부에서 접근 불가능함 >> "%TMP1%"
+echo [취약]: 웹 서비스 설정 파일이 외부에서 접근 가능함 >> "%TMP1%"
 
-Write-BAR
+:: IIS 웹.config 설정 파일의 예시 경로
+set "IIS_CONFIG=%SystemRoot%\System32\inetsrv\config\applicationHost.config"
 
-@"
-[양호]: 웹 서비스 설정 파일이 외부에서 접근 불가능한 경우
-[취약]: 웹 서비스 설정 파일이 외부에서 접근 가능한 경우
-"@ | Out-File -FilePath $TMP1 -Append
+:: IIS 설정 파일 권한 확인
+if exist "%IIS_CONFIG%" (
+    icacls "%IIS_CONFIG%" | findstr /C:"Everyone:(N)" >nul
+    if not errorlevel 1 (
+        echo 경고: IIS 설정 파일 (%IIS_CONFIG%) 권한이 취약함. >> "%TMP1%"
+    ) else (
+        echo OK: IIS 설정 파일 (%IIS_CONFIG%)이 외부 접근으로부터 보호됨. >> "%TMP1%"
+    )
+) else (
+    echo 정보: IIS 설정 파일 (%IIS_CONFIG%)이 존재하지 않음. >> "%TMP1%"
+)
 
-Write-BAR
+:: 결과 표시
+type "%TMP1%"
 
-# 웹 서비스 설정 파일의 경로 설정
-# 여기서는 IIS 웹 사이트의 루트 디렉토리를 예로 들며, 실제 환경에 맞게 경로를 조정해야 합니다.
-$WebConfigPaths = Get-ChildItem -Path C:\inetpub\wwwroot\ -Filter web.config -Recurse
-
-foreach ($WebConfigPath in $WebConfigPaths) {
-    $filePermission = (Get-Acl $WebConfigPath.FullName).AccessToString
-    # 접근 권한이 적절히 제한되어 있는지 확인
-    # 예시: 웹 서버와 관리자만 읽기 권한을 가지며, 그 외에는 접근 불가능해야 함
-    if ($filePermission -notlike "*Everyone Allow*" -and $filePermission -like "*Read*") {
-        Write-Result "OK: 웹 서비스 설정 파일($($WebConfigPath.FullName))이 외부 접근으로부터 보호됩니다."
-    } else {
-        Write-Result "WARN: 웹 서비스 설정 파일($($WebConfigPath.FullName))의 접근 권한이 취약합니다."
-    }
-}
-
-if ($WebConfigPaths.Count -eq 0) {
-    Write-Result "INFO: web.config 파일이 검색되지 않았습니다."
-}
-
-Get-Content $TMP1 | Write-Output
+echo.
+echo 스크립트 완료.
