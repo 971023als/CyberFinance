@@ -1,51 +1,29 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-055_log.txt"
-"" | Set-Content $TMP1
+# 로그 파일 생성 및 초기화
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+# 메시지 출력
+"코드 [SRV-055] 웹 서비스 설정 파일 노출" | Out-File -FilePath $TMP1 -Append
+"[양호]: 웹 서비스 설정 파일이 외부에서 접근 불가능함" | Out-File -FilePath $TMP1 -Append
+"[취약]: 웹 서비스 설정 파일이 외부에서 접근 가능함" | Out-File -FilePath $TMP1 -Append
 
-Function Write-Result {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+# IIS 웹.config 설정 파일의 예시 경로
+$IIS_CONFIG = "$env:SystemRoot\System32\inetsrv\config\applicationHost.config"
 
-Write-BAR
-
-@"
-[양호]: 웹 서비스 설정 파일이 외부에서 접근 불가능한 경우
-[취약]: 웹 서비스 설정 파일이 외부에서 접근 가능한 경우
-"@ | Out-File -FilePath $TMP1 -Append
-
-Write-BAR
-
-# 웹 서비스 설정 파일의 예시 경로
-$APACHE_CONFIG = "C:\path\to\apache2\apache2.conf" # 예시 경로, 실제 경로로 변경 필요
-$NGINX_CONFIG = "C:\path\to\nginx\nginx.conf" # 예시 경로, 실제 경로로 변경 필요
-
-# Apache 설정 파일의 접근 권한 확인
-if (Test-Path $APACHE_CONFIG) {
-    $filePermission = (Get-Acl $APACHE_CONFIG).AccessToString
-    if ($filePermission -like "*-rw-------*") {
-        Write-Result "OK: Apache 설정 파일($APACHE_CONFIG)이 외부 접근으로부터 보호됩니다."
+# IIS 설정 파일 권한 확인
+if (Test-Path $IIS_CONFIG) {
+    $acl = Get-Acl $IIS_CONFIG
+    $everyoneAccess = $acl.Access | Where-Object { $_.IdentityReference -eq 'Everyone' -and $_.FileSystemRights -eq 'Read' }
+    if ($null -ne $everyoneAccess) {
+        "경고: IIS 설정 파일 ($IIS_CONFIG) 권한이 취약함." | Out-File -FilePath $TMP1 -Append
     } else {
-        Write-Result "WARN: Apache 설정 파일($APACHE_CONFIG)의 접근 권한이 취약합니다."
+        "OK: IIS 설정 파일 ($IIS_CONFIG)이 외부 접근으로부터 보호됨." | Out-File -FilePath $TMP1 -Append
     }
 } else {
-    Write-Result "INFO: Apache 설정 파일($APACHE_CONFIG)이 존재하지 않습니다."
+    "정보: IIS 설정 파일 ($IIS_CONFIG)이 존재하지 않음." | Out-File -FilePath $TMP1 -Append
 }
 
-# Nginx 설정 파일의 접근 권한 확인
-if (Test-Path $NGINX_CONFIG) {
-    $filePermission = (Get-Acl $NGINX_CONFIG).AccessToString
-    if ($filePermission -like "*-rw-------*") {
-        Write-Result "OK: Nginx 설정 파일($NGINX_CONFIG)이 외부 접근으로부터 보호됩니다."
-    } else {
-        Write-Result "WARN: Nginx 설정 파일($NGINX_CONFIG)의 접근 권한이 취약합니다."
-    }
-} else {
-    Write-Result "INFO: Nginx 설정 파일($NGINX_CONFIG)이 존재하지 않습니다."
-}
+# 결과 표시
+Get-Content -Path $TMP1 | Write-Output
 
-Get-Content $TMP1 | Write-Output
+Write-Host "`n스크립트 완료."
