@@ -1,26 +1,25 @@
-@echo off
-setlocal
+# 스크립트 이름과 로그 파일 설정
+$SCRIPTNAME = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)
+$TMP1 = "$SCRIPTNAME.log"
 
-set "SCRIPTNAME=%~n0"
-set "TMP1=%SCRIPTNAME%.log"
+# 로그 파일 초기화
+"" | Set-Content -Path $TMP1
 
-:: 로그 파일 초기화
-type NUL > "%TMP1%"
+# 로그 파일에 헤더 및 정보 추가
+"BAR" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-174] 불필요한 DNS 서비스 실행" | Out-File -FilePath $TMP1 -Append
+"[양호]: DNS 서비스가 비활성화되어 있는 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: DNS 서비스가 활성화되어 있는 경우" | Out-File -FilePath $TMP1 -Append
+"BAR" | Out-File -FilePath $TMP1 -Append
 
-echo BAR >> "%TMP1%"
-echo CODE [SRV-174] 불필요한 DNS 서비스 실행 >> "%TMP1%"
-echo [양호]: DNS 서비스가 비활성화되어 있는 경우 >> "%TMP1%"
-echo [취약]: DNS 서비스가 활성화되어 있는 경우 >> "%TMP1%"
-echo BAR >> "%TMP1%"
+# DNS 서비스 상태 확인 (여기서는 "Dnscache" 서비스를 예로 들었습니다. 실제 서비스 이름에 맞게 조정해야 합니다.)
+$serviceStatus = Get-Service -Name "Dnscache" -ErrorAction SilentlyContinue
 
-:: DNS 서비스 상태 확인 (여기서는 "Dnscache" 서비스를 예로 들었습니다. 실제 서비스 이름에 맞게 조정해야 합니다.)
-sc query "Dnscache" | find "RUNNING"
-if %ERRORLEVEL% == 0 (
-    echo WARN "DNS 서비스(Dnscache)가 활성화되어 있습니다." >> "%TMP1%"
-) else (
-    echo OK "DNS 서비스(Dnscache)가 비활성화되어 있습니다." >> "%TMP1%"
-)
+if ($serviceStatus.Status -eq 'Running') {
+    "WARN DNS 서비스(Dnscache)가 활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    "OK DNS 서비스(Dnscache)가 비활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+}
 
-type "%TMP1%"
-
-endlocal
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Write-Output
