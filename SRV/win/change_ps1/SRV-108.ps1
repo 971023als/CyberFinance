@@ -1,12 +1,16 @@
-$TMP1 = "$(SCRIPTNAME).log"
-Clear-Content -Path $TMP1
+function BAR {
+    Add-Content -Path $global:TMP1 -Value ("-" * 50)
+}
+
+$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+Clear-Content -Path $global:TMP1
 
 BAR
 
 $CODE = "[SRV-108] 로그에 대한 접근통제 및 관리 미흡"
 
-Add-Content -Path $TMP1 -Value "[양호]: 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있는 경우"
-Add-Content -Path $TMP1 -Value "[취약]: 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있지 않은 경우"
+Add-Content -Path $global:TMP1 -Value "[양호]: 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있는 경우"
+Add-Content -Path $global:TMP1 -Value "[취약]: 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있지 않은 경우"
 
 BAR
 
@@ -26,13 +30,13 @@ foreach ($logName in $eventLogNames) {
 }
 
 if ($incorrectSettings.Count -eq 0) {
-    Add-Content -Path $TMP1 -Value "OK: 모든 중요 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있습니다."
+    Add-Content -Path $global:TMP1 -Value "OK: 모든 중요 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있습니다."
 } else {
     foreach ($setting in $incorrectSettings) {
-        Add-Content -Path $TMP1 -Value "WARN: $setting"
+        Add-Content -Path $global:TMP1 -Value "WARN: $setting"
     }
 }
 
-Get-Content -Path $TMP1
+Get-Content -Path $global:TMP1 | Out-Host
 
 Write-Host "`n"
