@@ -1,17 +1,36 @@
-# 결과 파일 초기화
-$TMP1 = "SRV-151_AnonymousSIDNameTranslationPolicyCheck.log"
-"익명 SID/이름 변환 허용 정책 확인" | Out-File -FilePath $TMP1
-"====================================" | Out-File -FilePath $TMP1 -Append
+# 결과 파일 경로 설정
+$ScriptName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)
+$TMP1 = "$ScriptName.log"
 
-# 익명 SID/이름 변환 허용 정책 확인
-$policyCheck = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "DisableAnonymousSIDNameTranslation"
+# 로그 파일 초기화
+"" | Set-Content -Path $TMP1
 
-# 결과 분석 및 파일에 기록
-if ($policyCheck.DisableAnonymousSIDNameTranslation -eq 1) {
-    "익명 SID/이름 변환을 허용하지 않습니다. (정책 활성화)" | Out-File -FilePath $TMP1 -Append
+# 로그 파일에 헤더 정보 추가
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-151] 익명 SID/이름 변환 허용" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: 익명 SID/이름 변환을 허용하지 않는 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: 익명 SID/이름 변환을 허용하는 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+
+# 보안 정책 내보내기
+$secpolPath = "$env:TEMP\secpol.cfg"
+secedit /export /cfg $secpolPath
+
+# 익명 SID/이름 변환 정책 확인
+$secpolContent = Get-Content -Path $secpolPath
+$anonymousSidTranslationPolicy = $secpolContent -match "SeDenyNetworkLogonRight\s*=\s*S-1-1-0"
+
+if ($anonymousSidTranslationPolicy) {
+    "OK: 익명 SID/이름 변환을 허용하지 않습니다." | Out-File -FilePath $TMP1 -Append
 } else {
-    "익명 SID/이름 변환을 허용합니다. (정책 비활성화 또는 설정되지 않음)" | Out-File -FilePath $TMP1 -Append
+    "WARN: 익명 SID/이름 변환을 허용합니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# 결과 파일 내용 출력
+# 임시 파일 정리
+Remove-Item -Path $secpolPath
+
+# 결과 파일 출력
 Get-Content -Path $TMP1 | Write-Output
+
+Write-Host "`nScript complete."

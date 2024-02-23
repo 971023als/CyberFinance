@@ -1,21 +1,37 @@
-# 로컬 관리자 그룹 멤버 확인
-$adminGroupMembers = Get-LocalGroupMember -Group "Administrators"
+# 결과 로그 파일 경로 정의
+$ScriptName = $MyInvocation.MyCommand.Name.Replace(".ps1", "")
+$TMP1 = "$ScriptName.log"
 
-# 결과 파일 경로 설정
-$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_LocalLogonPolicyCheck.log"
+# 로그 파일 초기화
+"" | Set-Content -Path $TMP1
 
-# 결과 파일에 헤더 추가
-"로컬 로그온 허용 정책 확인" | Out-File -FilePath $TMP1
-"====================================" | Out-File -FilePath $TMP1 -Append
+# 로그 파일에 헤더 정보 추가
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-150] 로컬 로그온 허용" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: 웹 서버에서 버전 정보 및 운영체제 정보 노출이 제한된 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: 웹 서버에서 버전 정보 및 운영체제 정보가 노출되는 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-# 관리자 그룹 멤버 출력
-"로컬 'Administrators' 그룹 멤버:" | Out-File -FilePath $TMP1 -Append
-$adminGroupMembers | ForEach-Object {
-    $_.Name | Out-File -FilePath $TMP1 -Append
+# IIS 서버 설정 확인
+Import-Module WebAdministration
+
+$removeServerHeader = (Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter 'system.webServer/security/requestFiltering' -name '.').removeServerHeader
+$xPoweredByHeader = (Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter 'system.webServer/httpProtocol/customHeaders' -name '.').collection | Where-Object { $_.name -eq 'X-Powered-By' }
+
+if($removeServerHeader -eq $true) {
+    "OK: 서버 헤더 제거가 활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    "WARN: 서버 헤더 제거가 활성화되어 있지 않습니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# 결과 파일 내용 출력
+if($xPoweredByHeader) {
+    "WARN: X-Powered-By 헤더가 노출됩니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    "OK: X-Powered-By 헤더 노출이 제한됩니다." | Out-File -FilePath $TMP1 -Append
+}
+
+# 결과 출력
 Get-Content -Path $TMP1 | Write-Output
 
-# 추가 안내 메시지
-"`n추가 확인이 필요한 경우, secpol.msc 또는 그룹 정책 편집기(GPEDIT.MSC)를 통해 '로컬 정책 > 보안 옵션'에서 로컬 로그온 관련 정책을 확인하세요." | Out-File -FilePath $TMP1 -Append
+Write-Host "Script complete."
