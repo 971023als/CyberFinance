@@ -7,7 +7,7 @@ Clear-Content -Path $global:TMP1
 
 BAR
 
-$CODE = "[U-91] 불필요하게 SUID, SGID bit가 설정된 파일 존재"
+$CODE = "[SRV-091] 불필요하게 SUID, SGID bit가 설정된 파일 존재"
 
 Add-Content -Path $global:TMP1 -Value "[양호]: SUID 및 SGID 비트가 필요하지 않은 파일에 설정되지 않은 경우"
 Add-Content -Path $global:TMP1 -Value "[취약]: SUID 및 SGID 비트가 필요하지 않은 파일에 설정된 경우"
