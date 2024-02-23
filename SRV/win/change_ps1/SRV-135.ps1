@@ -1,5 +1,6 @@
 # 결과 파일 정의
 $TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_TCPSecuritySettings.log"
+New-Item -Path $TMP1 -ItemType File
 
 # 고급 보안 구성된 Windows 방화벽 규칙 확인
 $firewallRules = Get-NetFirewallRule -Enabled True -Direction Inbound | Where-Object { $_.Action -eq 'Block' -or $_.Action -eq 'Allow' }

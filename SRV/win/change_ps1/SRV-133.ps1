@@ -1,5 +1,5 @@
 # 결과 파일 정의
-$TMP1 = "SCRIPTNAME.log"
+$TMP1 = "$(Get-Location)\SCRIPTNAME.log"
 "CODE [SRV-133] Cron 서비스 사용 계정 제한 미비" | Out-File -FilePath $TMP1
 
 # Task Scheduler에서 모든 태스크 조회

@@ -1,5 +1,8 @@
 # 결과 파일 정의
-$TMP1 = "SCRIPTNAME.log"
+$TMP1 = "$(Get-Location)\SCRIPTNAME.log"
+Remove-Item -Path $TMP1 -ErrorAction Ignore
+New-Item -Path $TMP1 -ItemType File
+
 "CODE [SRV-131] SU 명령 사용가능 그룹 제한 미비" | Out-File -FilePath $TMP1
 
 # 관리자 그룹 멤버 확인

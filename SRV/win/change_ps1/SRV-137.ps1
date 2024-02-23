@@ -1,5 +1,6 @@
 # 결과 파일 정의
 $TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_NetworkServiceAccessRestrictions.log"
+New-Item -Path $TMP1 -ItemType File
 
 # Windows Firewall에서 인바운드 규칙 확인
 $inboundRules = Get-NetFirewallRule -Direction Inbound | Where-Object { $_.Enabled -eq "True" -and $_.Action -eq "Block" }

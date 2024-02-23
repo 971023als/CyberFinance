@@ -1,5 +1,6 @@
 # 결과 파일 정의
 $TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_DEPStatus.log"
+New-Item -Path $TMP1 -ItemType File
 
 # 스택 영역 실행 방지 설정 확인
 $depStatus = Get-WmiObject -Class Win32_OperatingSystem | Select-Object -ExpandProperty DataExecutionPrevention_SupportPolicy

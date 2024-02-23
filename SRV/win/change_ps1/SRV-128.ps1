@@ -1,5 +1,5 @@
 # 결과 파일 정의
-$TMP1 = "SCRIPTNAME.log"
+$TMP1 = "$(Get-Location)\SCRIPTNAME.log"
 Remove-Item -Path $TMP1 -ErrorAction Ignore
 New-Item -Path $TMP1 -ItemType File
 
