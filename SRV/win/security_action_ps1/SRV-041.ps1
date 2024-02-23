@@ -1,41 +1,32 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-040_log.txt"
-"" | Set-Content $TMP1
+@echo off
+setlocal enabledelayedexpansion
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function Write-OK {
-    Param ([string]$message)
-    "$message" | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-041] 웹 서비스의 CGI 스크립트 관리 미흡 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
+echo [양호]: CGI 스크립트 관리가 적절하게 설정된 경우 >> !TMP1!
+echo [취약]: CGI 스크립트 관리가 미흡한 경우 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Write-BAR
-
-Write-OK "[양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우"
-
-Write-BAR
-
-# IIS 웹 사이트의 디렉터리 브라우징 설정을 점검합니다.
-Import-Module WebAdministration
-
-$websites = Get-Website
-foreach ($website in $websites) {
-    $directoryBrowsing = Get-WebConfigurationProperty -pspath "IIS:\Sites\$($website.name)" -filter "system.webServer/directoryBrowse" -name "enabled"
-    if ($directoryBrowsing.Value -eq $true) {
-        Write-WARN "웹 사이트 '$($website.name)'에서 디렉터리 리스팅이 활성화되어 있습니다."
+:: CGI 스크립트 실행 설정 확인 (PowerShell 사용)
+powershell -Command "& {
+    Import-Module WebAdministration;
+    $cgiSettings = Get-WebConfiguration -Filter '/system.webServer/handlers' -PSPath 'IIS:\';
+    $cgiHandlers = $cgiSettings.Collection | Where-Object { $_.path -eq '*.cgi' -or $_.path -eq '*.pl' };
+    if ($cgiHandlers) {
+        foreach ($handler in $cgiHandlers) {
+            Add-Content !TMP1! ('WARN: CGI 스크립트 (' + $handler.path + ') 실행이 허용되어 있습니다.');
+        }
     } else {
-        Write-OK "웹 사이트 '$($website.name)'에서 디렉터리 리스팅이 비활성화되어 있습니다."
+        Add-Content !TMP1! 'OK: CGI 스크립트 실행이 적절하게 제한되어 있습니다.';
     }
-}
+}"
 
-Write-BAR
+echo ------------------------------------------------ >> !TMP1!
+type !TMP1!
 
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Output
+echo.
