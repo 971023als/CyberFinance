@@ -1,55 +1,35 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-040_log.txt"
-"" | Set-Content $TMP1
+# 임시 로그 파일 생성
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+# 메시지 구분자 함수
+function BAR {
+    "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-OK {
-    Param ([string]$message)
-    "$message" | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
+BAR
+"CODE [SRV-040] 웹 서비스 디렉터리 리스팅 방지 설정 미흡" | Out-File -FilePath $TMP1 -Append
 
 @"
 [양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우
 [취약]: 웹 서비스 디렉터리 리스팅 방지 설정이 미흡한 경우
 "@ | Out-File -FilePath $TMP1 -Append
 
-Write-BAR
+BAR
 
-$webConfFiles = @(".htaccess", "httpd.conf", "apache2.conf", "userdir.conf")
-foreach ($file in $webConfFiles) {
-    $findWebConfFiles = Get-ChildItem -Path / -Filter $file -Recurse -ErrorAction SilentlyContinue
-    foreach ($confFile in $findWebConfFiles) {
-        if ($confFile.Name -eq "userdir.conf") {
-            $content = Get-Content $confFile.FullName
-            $userdirConfDisabledCount = ($content | Where-Object { $_ -match "userdir" -and $_ -match "disabled"}).Count
-            if ($userdirConfDisabledCount -eq 0) {
-                $userdirConfIndexesCount = ($content | Where-Object { $_ -match "Options" -and $_ -notmatch "\-indexes" -and $_ -match "indexes"}).Count
-                if ($userdirConfIndexesCount -gt 0) {
-                    Write-WARN "Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다: $($confFile.FullName)"
-                    return
-                }
-            }
-        } else {
-            $content = Get-Content $confFile.FullName
-            $webConfFileIndexesCount = ($content | Where-Object { $_ -match "Options" -and $_ -notmatch "\-indexes" -and $_ -match "indexes"}).Count
-            if ($webConfFileIndexesCount -gt 0) {
-                Write-WARN "Apache 설정 파일에 디렉터리 검색 기능을 사용하도록 설정되어 있습니다: $($confFile.FullName)"
-                return
-            }
-        }
+# 디렉터리 브라우징 설정 확인
+Import-Module WebAdministration
+$sites = Get-Website
+foreach ($site in $sites) {
+    $directoryBrowsing = Get-WebConfigurationProperty -pspath "IIS:\Sites\$($site.name)" -filter 'system.webServer/directoryBrowse' -name 'enabled'
+    if ($directoryBrowsing.Value -eq $true) {
+        "WARN: 웹 사이트 '$($site.name)'에서 디렉터리 브라우징이 활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+    } else {
+        "OK: 웹 사이트 '$($site.name)'에서 디렉터리 브라우징이 비활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
     }
 }
-Write-OK "※ 양호(Good)"
 
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Output
+BAR
+
+# 결과 출력
+Get-Content -Path $TMP1 | Write-Host
