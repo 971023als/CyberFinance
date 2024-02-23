@@ -1,52 +1,35 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-029_log.txt"
-"" | Set-Content $TMP1
+# 임시 로그 파일 생성
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+# 메시지 구분자
+function BAR {
+    "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
+BAR
+"CODE [SRV-029] SMB 세션 중단 관리 설정 미비" | Out-File -FilePath $TMP1 -Append
 @"
 [양호]: SMB 서비스의 세션 중단 시간이 적절하게 설정된 경우
 [취약]: SMB 서비스의 세션 중단 시간 설정이 미비한 경우
 "@ | Out-File -FilePath $TMP1 -Append
 
-Write-BAR
+BAR
 
-# SMB 설정 파일을 확인합니다.
-$SMB_CONF_FILE = "/etc/samba/smb.conf"
-
-# SMB 세션 중단 시간 설정을 확인합니다.
-# 여기서는 'deadtime' 설정을 예로 듭니다.
-if (Get-Content $SMB_CONF_FILE | Select-String "^deadtime") {
-    $deadtime = (Get-Content $SMB_CONF_FILE | Select-String "^deadtime").ToString().Split("=")[1].Trim()
+# SMB 세션 중단 시간 설정 확인
+$path = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+$deadtime = Get-ItemPropertyValue -Path $path -Name 'autodisconnect' -ErrorAction SilentlyContinue
+if ($null -ne $deadtime) {
     if ($deadtime -gt 0) {
-        Write-OK "SMB 세션 중단 시간(deadtime)이 적절하게 설정되어 있습니다: $deadtime 분"
+        "OK: SMB 세션 중단 시간(autodisconnect)이 적절하게 설정되어 있습니다: $deadtime 분" | Out-File -FilePath $TMP1 -Append
+    } else {
+        "WARN: SMB 세션 중단 시간(autodisconnect) 설정이 미비합니다." | Out-File -FilePath $TMP1 -Append
     }
-    else {
-        Write-WARN "SMB 세션 중단 시간(deadtime) 설정이 미비합니다."
-    }
-}
-else {
-    Write-WARN "SMB 세션 중단 시간(deadtime) 설정이 '$SMB_CONF_FILE' 파일에 존재하지 않습니다."
+} else {
+    "WARN: SMB 세션 중단 시간(autodisconnect) 설정이 레지스트리에 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# 최종 결과를 출력합니다.
+BAR
+
+# 결과 출력
 Get-Content $TMP1 | Write-Host
