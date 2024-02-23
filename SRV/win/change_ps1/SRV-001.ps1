@@ -1,20 +1,26 @@
-﻿# SNMP 구성 파일의 경로 설정
-$snmpdconfFile = "C:\Path\To\snmpd.conf" # 실제 경로로 수정 필요
+﻿@echo off
+setlocal enabledelayedexpansion
 
-# 구성 파일이 존재하는지 확인
-if (Test-Path $snmpdconfFile) {
-    # 구성 파일 내용을 읽어옴
-    $fileContent = Get-Content $snmpdconfFile
+set "TMP1=%~n0.log"
+type nul > "!TMP1!"
 
-    # "public" 또는 "private" 스트링을 안전한 값으로 변경
-    # 여기서 "YourSecureString"을 각각 고유하고 복잡한 값으로 대체해야 함
-    $fileContent = $fileContent -replace 'public', 'YourSecureString1'
-    $fileContent = $fileContent -replace 'private', 'YourSecureString2'
+echo ------------------------------------------------ >> "!TMP1!"
+echo CODE [SRV-001] SNMP 서비스 Get Community 스트링 설정 오류 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-    # 변경된 내용을 구성 파일에 다시 씀
-    $fileContent | Out-File -FilePath $snmpdconfFile
+echo [양호]: SNMP Community 스트링이 복잡하고 예측 불가능하게 설정된 경우 >> "!TMP1!"
+echo [취약]: SNMP Community 스트링이 기본값이거나 예측 가능하게 설정된 경우 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-    Write-Host "SNMP Community 스트링이 안전하게 업데이트되었습니다."
-} else {
-    Write-Host "SNMP 구성 파일($snmpdconfFile)을 찾을 수 없습니다."
-}
+:: SNMP 서비스 실행 중인지 확인
+sc queryex SNMP | find /i "RUNNING" > nul
+if errorlevel 1 (
+    echo SNMP 서비스가 실행 중이지 않습니다. >> "!TMP1!"
+) else (
+    :: SNMP 설정 확인 (PowerShell을 사용하여 레지스트리 검사)
+    powershell -Command "$snmpRegPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities'; $snmpCommunities = Get-ItemProperty -Path $snmpRegPath; if ($snmpCommunities -eq $null) { echo 'SNMP Community 스트링 설정을 찾을 수 없습니다.' >> '!TMP1!' } else { foreach ($community in $snmpCommunities.PSObject.Properties) { if ($community.Name -eq 'public' -or $community.Name -eq 'private') { echo '취약: 기본 SNMP Community 스트링($community.Name)이 사용되고 있습니다.' >> '!TMP1!' break } else { echo '양호: 기본 SNMP Community 스트링이 사용되지 않습니다.' >> '!TMP1!' break } } }"
+)
+
+echo ------------------------------------------------ >> "!TMP1!"
+type "!TMP1!"
+echo.

@@ -1,25 +1,29 @@
-# DNS 서버의 동적 업데이트 설정을 확인합니다.
-# 이 예제는 Windows 환경에서 실행되어야 하며, DNS 서버 역할이 설치되어 있어야 합니다.
+@echo off
+SetLocal EnableDelayedExpansion
 
-# 설치된 모든 DNS 영역을 가져옵니다.
-$dnsZones = Get-DnsServerZone
+set "SCRIPTNAME=%~n0"
+set "TMP1=%SCRIPTNAME%.log"
 
-foreach ($zone in $dnsZones) {
-    # 동적 업데이트 설정을 확인합니다.
-    $dynamicUpdate = $zone.DynamicUpdate
+:: 로그 파일 초기화
+type NUL > "%TMP1%"
 
-    switch ($dynamicUpdate) {
-        "None" {
-            Write-Host "영역 $($zone.ZoneName)은 동적 업데이트가 비활성화되어 있습니다. - 양호"
-        }
-        "NonsecureAndSecure" {
-            Write-Host "영역 $($zone.ZoneName)은 모든 동적 업데이트를 허용합니다. - 취약"
-        }
-        "Secure" {
-            Write-Host "영역 $($zone.ZoneName)은 보안 동적 업데이트만 허용합니다. - 양호"
-        }
-        default {
-            Write-Host "영역 $($zone.ZoneName)의 동적 업데이트 설정을 확인할 수 없습니다."
-        }
+echo BAR >> "%TMP1%"
+echo CODE [SRV-173] DNS 서비스의 취약한 동적 업데이트 설정 >> "%TMP1%"
+echo [양호]: DNS 동적 업데이트가 안전하게 구성된 경우 >> "%TMP1%"
+echo [취약]: DNS 동적 업데이트가 취약하게 구성된 경우 >> "%TMP1%"
+echo BAR >> "%TMP1%"
+
+:: DNS 설정 확인 (PowerShell을 사용)
+PowerShell -Command "& {
+    $dnsZones = Get-DnsServerZone;
+    $vulnerableZones = $dnsZones | Where-Object { $_.IsDsIntegrated -eq $false -and $_.DynamicUpdate -ne 'None' };
+    if ($vulnerableZones) {
+        'WARN DNS 동적 업데이트 설정이 취약합니다: ' + $vulnerableZones.ZoneName
+    } else {
+        'OK DNS 동적 업데이트가 안전하게 구성되어 있습니다.'
     }
-}
+}" >> "%TMP1%"
+
+type "%TMP1%"
+
+EndLocal

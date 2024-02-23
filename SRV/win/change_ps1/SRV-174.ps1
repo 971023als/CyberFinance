@@ -1,16 +1,26 @@
-# DNS 서비스의 실행 상태를 확인합니다.
-# 이 스크립트는 Windows 환경에서 DNS 서버 역할이 설치되어 있는지 확인합니다.
+@echo off
+setlocal
 
-# DNS 서버 서비스의 상태를 가져옵니다.
-$dnsServiceStatus = Get-Service -Name 'DNS' -ErrorAction SilentlyContinue
+set "SCRIPTNAME=%~n0"
+set "TMP1=%SCRIPTNAME%.log"
 
-if ($null -ne $dnsServiceStatus) {
-    # DNS 서비스의 상태를 확인합니다.
-    if ($dnsServiceStatus.Status -eq 'Running') {
-        Write-Host "DNS 서비스가 활성화되어 있습니다. - 취약"
-    } else {
-        Write-Host "DNS 서비스가 비활성화되어 있습니다. - 양호"
-    }
-} else {
-    Write-Host "DNS 서비스가 이 시스템에 설치되어 있지 않습니다. - 정보"
-}
+:: 로그 파일 초기화
+type NUL > "%TMP1%"
+
+echo BAR >> "%TMP1%"
+echo CODE [SRV-174] 불필요한 DNS 서비스 실행 >> "%TMP1%"
+echo [양호]: DNS 서비스가 비활성화되어 있는 경우 >> "%TMP1%"
+echo [취약]: DNS 서비스가 활성화되어 있는 경우 >> "%TMP1%"
+echo BAR >> "%TMP1%"
+
+:: DNS 서비스 상태 확인 (여기서는 "Dnscache" 서비스를 예로 들었습니다. 실제 서비스 이름에 맞게 조정해야 합니다.)
+sc query "Dnscache" | find "RUNNING"
+if %ERRORLEVEL% == 0 (
+    echo WARN "DNS 서비스(Dnscache)가 활성화되어 있습니다." >> "%TMP1%"
+) else (
+    echo OK "DNS 서비스(Dnscache)가 비활성화되어 있습니다." >> "%TMP1%"
+)
+
+type "%TMP1%"
+
+endlocal

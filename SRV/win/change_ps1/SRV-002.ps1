@@ -1,37 +1,45 @@
-﻿# 필요한 함수를 포함하는 외부 스크립트를 로드합니다.
-. .\function.ps1
+﻿@echo off
+setlocal enabledelayedexpansion
 
-# 임시 로그 파일 생성
-$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+set "TMP1=%~n0.log"
+type nul > "!TMP1!"
 
-# SNMP 구성 파일의 경로
-$snmpdconfFile = "C:\Path\To\snmpd.conf" # 실제 경로로 수정
+echo ------------------------------------------------ >> "!TMP1!"
+echo CODE [SRV-002] SNMP 서비스 Set Community 스트링 설정 오류 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-# 구성 파일이 존재하는지 확인
-if (Test-Path $snmpdconfFile) {
-    # 구성 파일 내용을 읽어옴
-    $fileContent = Get-Content $snmpdconfFile
+echo [양호]: SNMP Set Community 스트링이 복잡하고 예측 불가능하게 설정된 경우 >> "!TMP1!"
+echo [취약]: SNMP Set Community 스트링이 기본값이거나 예측 가능하게 설정된 경우 >> "!TMP1!"
+echo ------------------------------------------------ >> "!TMP1!"
 
-    # "public" 또는 "private" 스트링을 안전한 값으로 변경
-    $secureStringSet = "SecureSetString" # 안전한 Set Community 스트링으로 교체
-    $fileContent = $fileContent -replace 'public', $secureStringSet
-    $fileContent = $fileContent -replace 'private', $secureStringSet
+:: SNMP 서비스 실행 중인지 확인
+sc queryex SNMP | find /i "RUNNING" >nul
+if errorlevel 1 (
+    echo SNMP 서비스가 실행 중이지 않습니다. >> "!TMP1!"
+) else (
+    :: SNMP 설정 확인 (PowerShell을 사용하여 레지스트리 검사)
+    powershell -Command "& {
+        $snmpRegPathSet = 'HKLM:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities';
+        $snmpCommunitiesSet = Get-ItemProperty -Path $snmpRegPathSet;
+        if ($snmpCommunitiesSet -eq $null) {
+            echo 'SNMP Set Community 스트링 설정을 찾을 수 없습니다.' >> '!TMP1!';
+        } else {
+            $isVulnerableSet = $false;
+            foreach ($community in $snmpCommunitiesSet.PSObject.Properties) {
+                if ($community.Value -eq 4) {
+                    echo '취약: SNMP Set Community 스트링($community.Name)이 기본값 또는 예측 가능한 값으로 설정되어 있습니다.' >> '!TMP1!';
+                    $isVulnerableSet = $true;
+                    break;
+                }
+            }
+            if (-not $isVulnerableSet) {
+                echo '양호: SNMP Set Community 스트링이 기본값 또는 예측 가능한 값으로 설정되지 않았습니다.' >> '!TMP1!';
+            }
+        }
+    }"
+)
 
-    # 변경된 내용을 구성 파일에 씀
-    $fileContent | Out-File -FilePath $snmpdconfFile
+echo ------------------------------------------------ >> "!TMP1!"
+type "!TMP1!"
 
-    # 로그 파일에 양호한 결과 기록
-    BAR | Out-File -FilePath $TMP1 -Append
-    OK "SNMP Set Community 스트링이 안전하게 업데이트되었습니다." | Out-File -FilePath $TMP1 -Append
-    BAR | Out-File -FilePath $TMP1 -Append
-} else {
-    # 구성 파일을 찾을 수 없는 경우 로그 파일에 취약한 결과 기록
-    BAR | Out-File -FilePath $TMP1 -Append
-    WARN "SNMP 구성 파일($snmpdconfFile)을 찾을 수 없음" | Out-File -FilePath $TMP1 -Append
-    BAR | Out-File -FilePath $TMP1 -Append
-}
-
-# 결과 출력
-Get-Content $TMP1
-Write-Host `n
+echo.
