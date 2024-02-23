@@ -1,28 +1,29 @@
-# 결과 파일 정의
-$TMP1 = "$(Get-Date -Format 'yyyyMMddHHmmss')_SystemResourceOwnershipPermissions.log"
+# 스크립트 이름 정의
+$ScriptName = "SCRIPTNAME"
 
-# 중요 시스템 자원 파일 목록
-$systemResources = @(
-    "C:\Windows\System32\drivers\etc\hosts",
-    "C:\Path\To\Another\Important\File"
-)
+# 로그 파일 경로 설정
+$TMP1 = "$ScriptName.log"
 
-foreach ($resource in $systemResources) {
-    if (Test-Path $resource) {
-        $acl = Get-Acl $resource
-        $owner = $acl.Owner
-        $permissions = $acl.AccessToString
+# 로그 파일 초기화
+"" | Set-Content -Path $TMP1
 
-        # 예시로, 소유자가 'SYSTEM'이고 권한이 'FullControl'인지 검사
-        if ($owner -eq "NT AUTHORITY\SYSTEM" -and $permissions.Contains("FullControl")) {
-            "OK: $resource 은 적절한 소유자($owner) 및 권한을 가집니다." | Out-File -FilePath $TMP1 -Append
-        } else {
-            "WARN: $resource 은 부적절한 소유자($owner) 또는 권한을 가집니다." | Out-File -FilePath $TMP1 -Append
-        }
-    } else {
-        "INFO: $resource 파일이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
-    }
-}
+# 로그 파일에 정보 출력
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-139] 시스템 자원 소유권 변경 권한 설정 미흡" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: 중요 시스템 자원의 소유권 변경 권한이 제한되어 있는 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: 중요 시스템 자원의 소유권 변경 권한이 제한되어 있지 않은 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-# 결과 파일 출력
-Get-Content -Path $TMP1
+# 타겟 경로 설정
+$targetPath = "C:\Windows\System32"
+
+# 파일 권한 확인 (icacls와 유사한 출력)
+$acl = Get-Acl -Path $targetPath
+$acl.Access | Out-File -FilePath $TMP1 -Append
+
+# 추가적인 권한 분석 로직은 필요에 따라 구현
+"파일 권한 분석 결과는 $TMP1 파일을 참조하십시오." | Out-File -FilePath $TMP1 -Append
+
+# 로그 파일 출력
+Get-Content -Path $TMP1 | Write-Output
