@@ -1,47 +1,36 @@
-﻿# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-026_log.txt"
-"" | Set-Content $TMP1
+﻿# 임시 로그 파일 생성
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
+# 메시지 구분자
+function BAR {
+    "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 }
 
-Function Write-CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
+BAR
+"CODE [SRV-026] root 계정 원격 접속 제한 미비" | Out-File -FilePath $TMP1 -Append
 @"
-[양호]: SSH를 통한 root 계정의 원격 접속이 제한된 경우
-[취약]: SSH를 통한 root 계정의 원격 접속이 제한되지 않은 경우
+[양호]: SSH를 통한 Administrator 계정의 원격 접속이 제한된 경우
+[취약]: SSH를 통한 Administrator 계정의 원격 접속이 제한되지 않은 경우
 "@ | Out-File -FilePath $TMP1 -Append
 
-Write-BAR
+BAR
 
-# SSH 설정 파일에서 root 로그인을 허용하는 설정을 확인합니다.
-$SSHConfigFile = "/etc/ssh/sshd_config"
-if (Test-Path $SSHConfigFile) {
-    $PermitRootLogin = (Get-Content $SSHConfigFile | Where-Object {$_ -match "^\s*PermitRootLogin\s+yes"} )
-    if ($null -ne $PermitRootLogin) {
-        Write-WARN "SSH를 통한 root 계정의 원격 접속이 제한되지 않습니다."
+# SSH 구성 파일에서 PermitRootLogin 설정 확인
+$SshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
+if (Test-Path $SshdConfigPath) {
+    $ConfigContent = Get-Content $SshdConfigPath
+    $PermitRootLogin = $ConfigContent | Where-Object { $_ -match 'PermitRootLogin' }
+    if ($PermitRootLogin -match 'no') {
+        "OK: SSH를 통한 Administrator 계정의 원격 접속이 제한되어 있습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        Write-OK "SSH를 통한 root 계정의 원격 접속이 제한됩니다."
+        "WARN: SSH를 통한 Administrator 계정의 원격 접속 제한 설정이 미흡합니다." | Out-File -FilePath $TMP1 -Append
     }
 } else {
-    Write-WARN "SSH 설정 파일($SSHConfigFile)이 존재하지 않습니다."
+    "INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# 최종 결과를 출력합니다.
+BAR
+
+# 결과 출력
 Get-Content $TMP1 | Write-Host
