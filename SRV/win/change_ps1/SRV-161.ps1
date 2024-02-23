@@ -1,30 +1,31 @@
-# FTP 관련 설정 파일의 경로를 배열로 정의
-$ftpUsersFiles = @(
-    "C:\Path\To\ftpusers",
-    "C:\Other\Path\To\ftpusers" # Windows 환경에 맞는 실제 경로로 변경
-)
+# 결과 파일 정의 및 초기화
+$ScriptName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)
+$TMP1 = "$ScriptName.log"
+"" | Set-Content -Path $TMP1
 
-# 파일 존재 여부 및 권한 확인
-foreach ($file in $ftpUsersFiles) {
-    if (Test-Path $file) {
-        $fileInfo = Get-Item $file
-        $acl = Get-Acl $file
-        $owner = $acl.Owner
-        $permissions = $acl.Access | Where-Object { $_.FileSystemRights -match "FullControl|Modify|Write" }
+# 헤더 정보 출력
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-161] ftpusers 파일의 소유자 및 권한 설정 미흡" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: ftpusers 파일의 소유자가 root이고, 권한이 644 이하인 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: ftpusers 파일의 소유자가 root가 아니거나, 권한이 644 이상인 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-        if ($owner -eq "BUILTIN\Administrators" -or $owner -eq "NT AUTHORITY\SYSTEM") {
-            if ($permissions.Count -eq 0) {
-                Write-Host "파일 $file 의 소유자가 시스템 또는 관리자이고, 쓰기 권한이 제한되어 있습니다. - 양호"
-            } else {
-                Write-Host "파일 $file 의 쓰기 권한이 부적절하게 설정되어 있습니다. - 취약"
-            }
-        } else {
-            Write-Host "파일 $file 의 소유자가 시스템 또는 관리자가 아닙니다. - 취약"
-        }
-    } else {
-        Write-Host "파일 $file 은 존재하지 않습니다."
-    }
+# 파일 경로 설정 - 실제 경로로 변경 필요
+$file_path = "C:\path\to\your\file.txt"
+
+# 파일 존재 여부 확인
+if (-not (Test-Path -Path $file_path)) {
+    "WARN: 지정된 파일이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
+} else {
+    # 파일 권한 확인 (icacls 사용)
+    "파일 권한:" | Out-File -FilePath $TMP1 -Append
+    icacls $file_path | Out-File -FilePath $TMP1 -Append
+    # 실제 권한 분석 및 조건 비교 로직은 여기에 구현
 }
 
-# 주의: Windows 환경에서 FTP 서비스 구성은 서비스 제공자(IIS, FileZilla Server 등)에 따라 다르며, 
-# ftpusers와 같은 특정 파일 대신 서비스 구성 콘솔이나 관리 도구를 통해 접근 제어를 설정할 수 있습니다.
+# 결과 출력
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+Get-Content -Path $TMP1 | Write-Output
+
+Write-Host "`nScript complete."
