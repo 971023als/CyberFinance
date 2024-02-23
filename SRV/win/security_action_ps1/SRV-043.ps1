@@ -1,53 +1,31 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\$(($MyInvocation.MyCommand.Name).Replace('.ps1', '.log'))"
-"" | Set-Content $TMP1
+@echo off
+setlocal enabledelayedexpansion
 
-Function BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
+set "TMP1=%~n0.log"
+type nul > !TMP1!
 
-Function CODE {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
+echo ------------------------------------------------ >> !TMP1!
+echo CODE [SRV-043] 웹 서비스 경로 내 불필요한 파일 존재 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
+echo [양호]: 웹 서비스 경로 내 불필요한 파일이 존재하지 않음 >> !TMP1!
+echo [취약]: 웹 서비스 경로 내 불필요한 파일이 존재함 >> !TMP1!
+echo ------------------------------------------------ >> !TMP1!
 
-Function OK {
-    Param ([string]$message)
-    "OK: $message" | Out-File -FilePath $TMP1 -Append
-}
+:: 기본 IIS 웹 서비스 경로 설정
+set "WEB_SERVICE_PATH=C:\inetpub\wwwroot"
 
-Function WARN {
-    Param ([string]$message)
-    "WARN: $message" | Out-File -FilePath $TMP1 -Append
-}
+:: 웹 서비스 경로 내 흔히 발견되는 불필요한 파일 목록 작성
+echo %WEB_SERVICE_PATH% 내 흔히 발견되는 불필요한 파일 검사 중: >> !TMP1!
+dir "%WEB_SERVICE_PATH%\*.bak" /s /b >> !TMP1!
+dir "%WEB_SERVICE_PATH%\*.tmp" /s /b >> !TMP1!
+dir "%WEB_SERVICE_PATH%\*test*" /s /b >> !TMP1!
+dir "%WEB_SERVICE_PATH%\*example*" /s /b >> !TMP1!
 
-BAR
+:: 주의: 이 스크립트는 흔한 패턴을 기반으로 파일을 나열합니다. 수동으로 검토해 주세요.
+echo 주의: 나열된 파일을 수동으로 검토하여 필요한 파일인지 확인해 주세요. >> !TMP1!
 
-CODE "[SRV-043] 웹 서비스 디렉터리 리스팅 방지"
+:: 결과 표시
+type !TMP1!
 
-BAR
-
-@"
-[양호]: 웹 서비스 디렉터리 리스팅이 적절하게 방지된 경우
-[취약]: 웹 서비스 디렉터리 리스팅 방지 설정이 미흡한 경우
-"@ | Out-File -FilePath $TMP1 -Append
-
-BAR
-
-# IIS 웹 사이트의 디렉터리 브라우징 설정을 점검합니다.
-Import-Module WebAdministration
-
-$websites = Get-Website
-foreach ($website in $websites) {
-    $directoryBrowsing = Get-WebConfigurationProperty -pspath "IIS:\Sites\$($website.name)" -filter "system.webServer/directoryBrowse" -name "enabled"
-    if ($directoryBrowsing.Value -eq $true) {
-        WARN "웹 사이트 '$($website.name)'에서 디렉터리 리스팅이 활성화되어 있습니다."
-    } else {
-        OK "웹 사이트 '$($website.name)'에서 디렉터리 리스팅이 비활성화되어 있습니다."
-    }
-}
-
-BAR
-
-# 최종 결과를 출력합니다.
-Get-Content $TMP1 | Write-Output
+echo.
+echo 스크립트 완료.
