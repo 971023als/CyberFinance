@@ -1,5 +1,5 @@
 # 결과 파일 정의
-$TMP1 = "$(SCRIPTNAME).log"
+$TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
 Remove-Item -Path $TMP1 -ErrorAction Ignore
 New-Item -Path $TMP1 -ItemType File
 
@@ -10,9 +10,6 @@ CODE [SRV-122] UMASK 설정 미흡
 [양호]: 시스템 전체 UMASK 설정이 022 또는 더 엄격한 경우
 [취약]: 시스템 전체 UMASK 설정이 022보다 덜 엄격한 경우
 "@ | Out-File -FilePath $TMP1
-
-# Windows의 경우, 파일 시스템 권한을 기반으로 'UMASK' 설정을 비슷하게 적용할 수 있음
-# 예를 들어, NTFS 권한 설정을 검사하여 기본적인 보안 구성을 확인할 수 있음
 
 # 시스템 드라이브의 기본 NTFS 권한 검사
 $systemDrive = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Select-Object -First 1

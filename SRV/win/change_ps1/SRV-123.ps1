@@ -1,5 +1,5 @@
 # 결과 파일 정의
-$TMP1 = "$(SCRIPTNAME).log"
+$TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
 Remove-Item -Path $TMP1 -ErrorAction Ignore
 New-Item -Path $TMP1 -ItemType File
 
@@ -17,9 +17,9 @@ try {
     $logonMessage = Get-GPOReport -All -ReportType Xml | Select-String -Pattern "InteractiveLogon_MessageTitleForUsersAttemptingToLogOn"
 
     if ($logonMessage -ne $null) {
-        "OK: 로그온 메시지가 설정되어 있습니다." | Out-File -FilePath $TMP1 -Append
+        "OK: 로그온 메시지가 설정되어 있습니다. 이는 최종 로그인 사용자 정보의 노출을 방지할 수 있습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        "WARN: 로그온 메시지가 설정되지 않았습니다." | Out-File -FilePath $TMP1 -Append
+        "WARN: 로그온 메시지가 설정되지 않았습니다. 최종 로그인 사용자 정보가 노출될 위험이 있습니다." | Out-File -FilePath $TMP1 -Append
     }
 } catch {
     "INFO: 그룹 정책 설정을 검사하는 동안 오류가 발생했습니다." | Out-File -FilePath $TMP1 -Append
