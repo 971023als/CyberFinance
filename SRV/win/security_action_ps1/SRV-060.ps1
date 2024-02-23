@@ -1,27 +1,26 @@
-@echo off
-setlocal
+# 로그 파일 생성 및 초기화
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-set "TMP1=%SCRIPTNAME%.log"
-> "%TMP1%"
+# 메시지 출력
+"코드 [SRV-060] 웹 서비스의 기본 계정(아이디 또는 비밀번호) 미변경" | Out-File -FilePath $TMP1 -Append
+"[양호]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨" | Out-File -FilePath $TMP1 -Append
+"[취약]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음" | Out-File -FilePath $TMP1 -Append
 
-echo 코드 [SRV-060] 웹 서비스의 기본 계정(아이디 또는 비밀번호) 미변경 >> "%TMP1%"
-echo [양호]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨 >> "%TMP1%"
-echo [취약]: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음 >> "%TMP1%"
+# 웹 서비스 설정 파일의 예시 경로
+$CONFIG_FILE = "C:\path\to\web_service\config.txt"
 
-:: 웹 서비스 설정 파일의 예시 경로 (필요에 따라 경로 조정)
-set "CONFIG_FILE=C:\path\to\web_service\config.txt"
+# 기본 계정 확인
+$pattern = "username=admin password=password"
+$match = Select-String -Path $CONFIG_FILE -Pattern $pattern
 
-:: 기본 계정 확인 (예시: 'admin' 또는 'password')
-findstr /R "username=admin password=password" "%CONFIG_FILE%" >nul
+if ($match) {
+    "경고: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음" | Out-File -FilePath $TMP1 -Append
+} else {
+    "OK: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨" | Out-File -FilePath $TMP1 -Append
+}
 
-if errorlevel 1 (
-    echo OK: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경됨 >> "%TMP1%"
-) else (
-    echo 경고: 웹 서비스의 기본 계정(아이디 또는 비밀번호)이 변경되지 않음 >> "%TMP1%"
-)
+# 결과 표시
+Get-Content -Path $TMP1 | Write-Output
 
-:: 결과 표시
-type "%TMP1%"
-
-echo.
-echo 스크립트 완료.
+Write-Host "`n스크립트 완료."

@@ -1,38 +1,28 @@
-# 결과 파일 초기화
-$TMP1 = "$(Get-Location)\SRV-057_log.txt"
-"" | Set-Content $TMP1
+# 로그 파일 생성 및 초기화
+$TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
+"" | Out-File -FilePath $TMP1
 
-Function Write-BAR {
-    "-------------------------------------------------" | Out-File -FilePath $TMP1 -Append
-}
-
-Function Write-Result {
-    Param ([string]$message)
-    $message | Out-File -FilePath $TMP1 -Append
-}
-
-Write-BAR
-
-@"
-[양호]: 웹 서비스 경로 내 파일의 접근 권한이 적절하게 설정된 경우
-[취약]: 웹 서비스 경로 내 파일의 접근 권한이 적절하게 설정되지 않은 경우
-"@ | Out-File -FilePath $TMP1 -Append
-
-Write-BAR
+# 메시지 출력
+"코드 [SRV-057] 웹 서비스 경로 내 접근 통제 미흡" | Out-File -FilePath $TMP1 -Append
+"[양호]: 웹 서비스 경로 내 파일에 대한 접근 권한이 적절하게 설정됨" | Out-File -FilePath $TMP1 -Append
+"[취약]: 웹 서비스 경로 내 파일에 대한 접근 권한이 적절하게 설정되지 않음" | Out-File -FilePath $TMP1 -Append
 
 # 웹 서비스 경로 설정
-$WEB_SERVICE_PATH = "C:\path\to\web\service" # 실제 경로에 맞게 조정하세요.
+$WEB_SERVICE_PATH = "C:\Path\To\Web\Service"
 
-# 웹 서비스 경로 내 파일 접근 권한 확인
-$incorrectPermissions = Get-ChildItem -Path $WEB_SERVICE_PATH -Recurse -File | Where-Object {
-    ($_.Mode -notmatch "d-----") -and ($_.Mode -notmatch "-----") # PowerShell에서는 파일 권한을 직접적으로 숫자로 표현하지 않으므로, Mode 속성을 검사합니다.
+# 웹 서비스 경로 내 파일의 권한 목록
+"$(Get-Date) - $WEB_SERVICE_PATH 내 파일에 대한 권한 목록:" | Out-File -FilePath $TMP1 -Append
+Get-ChildItem -Path $WEB_SERVICE_PATH -Recurse -File | ForEach-Object {
+    $file = $_.FullName
+    $acl = Get-Acl -Path $file
+    "$file 권한:" | Out-File -FilePath $TMP1 -Append
+    $acl.Access | ForEach-Object { $_ | Out-File -FilePath $TMP1 -Append }
 }
 
-if ($incorrectPermissions) {
-    Write-Result "WARN: 웹 서비스 경로 내에 부적절한 파일 권한이 있습니다."
-    $incorrectPermissions | ForEach-Object { Write-Result $_.FullName }
-} else {
-    Write-Result "OK: 웹 서비스 경로 내의 모든 파일의 권한이 적절하게 설정되어 있습니다."
-}
+# 관리자에게의 주의 사항
+"주의: 나열된 권한을 수동으로 검토하여 적절하게 설정되었는지 확인해 주세요." | Out-File -FilePath $TMP1 -Append
 
-Get-Content $TMP1 | Write-Output
+# 결과 표시
+Get-Content -Path $TMP1 | Write-Output
+
+Write-Host "`n스크립트 완료."
