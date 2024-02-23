@@ -1,17 +1,31 @@
-Import-Module WebAdministration
+# 스크립트 이름과 로그 파일 설정
+$SCRIPTNAME = $MyInvocation.MyCommand.Name.Replace(".ps1", "")
+$TMP1 = "$SCRIPTNAME.log"
 
-# IIS의 FTP 사이트 목록을 가져옵니다.
-$ftpSites = Get-ChildItem IIS:\Sites | Where-Object { $_.bindings.Protocol -eq "ftp" }
+# 로그 파일 초기화
+"" | Set-Content -Path $TMP1
 
-if ($ftpSites -ne $null -and $ftpSites.Count -gt 0) {
-    Write-Host "IIS에 구성된 FTP 사이트 목록:"
-    foreach ($site in $ftpSites) {
-        Write-Host "사이트 이름: $($site.name)"
-        Write-Host "사이트 ID: $($site.id)"
-        Write-Host "바인딩: $($site.bindings.Collection)"
-        Write-Host "상태: $($site.state)"
-        Write-Host "-------------------------"
-    }
+# 로그 파일에 헤더 및 정보 추가
+"BAR" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-171] FTP 서비스 정보 노출" | Out-File -FilePath $TMP1 -Append
+"[양호]: FTP 서버에서 버전 정보 및 기타 세부 정보가 노출되지 않는 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: FTP 서버에서 버전 정보 및 기타 세부 정보가 노출되는 경우" | Out-File -FilePath $TMP1 -Append
+"BAR" | Out-File -FilePath $TMP1 -Append
+
+# FTP 서비스 실행 상태 확인
+$serviceStatus = Get-Service -Name 'ftpsvc' -ErrorAction SilentlyContinue
+
+# 서비스 상태에 따른 메시지 출력
+if ($serviceStatus.Status -eq 'Running') {
+    "FTP 서비스가 실행 중입니다." | Out-File -FilePath $TMP1 -Append
+    "[주의] FTP 서버의 버전 정보 및 세부 정보 노출 여부를 수동으로 확인해야 합니다." | Out-File -FilePath $TMP1 -Append
 } else {
-    Write-Host "IIS에 구성된 FTP 사이트가 없습니다."
+    "FTP 서비스가 실행되지 않습니다." | Out-File -FilePath $TMP1 -Append
 }
+
+"BAR" | Out-File -FilePath $TMP1 -Append
+
+# 결과 표시
+Get-Content -Path $TMP1 | Write-Host
+
+Write-Host "`n스크립트 완료."

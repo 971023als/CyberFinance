@@ -1,16 +1,27 @@
-# SMB 공유 목록을 가져옵니다.
-$smbShares = Get-SmbShare
+# 스크립트 이름과 로그 파일 설정
+$SCRIPTNAME = $MyInvocation.MyCommand.Name.Replace(".ps1", "")
+$TMP1 = "$SCRIPTNAME.log"
 
-if ($smbShares -ne $null -and $smbShares.Count -gt 0) {
-    Write-Host "시스템에 구성된 SMB 공유 목록:"
-    foreach ($share in $smbShares) {
-        Write-Host "공유 이름: $($share.Name)"
-        Write-Host "경로: $($share.Path)"
-        Write-Host "-------------------------"
+# 로그 파일 초기화
+"" | Set-Content -Path $TMP1
+
+# 로그 파일에 헤더 및 정보 추가
+"BAR" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-172] 불필요한 시스템 자원 공유 존재" | Out-File -FilePath $TMP1 -Append
+"[양호]: 불필요한 시스템 자원이 공유되지 않는 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: 불필요한 시스템 자원이 공유되는 경우" | Out-File -FilePath $TMP1 -Append
+"BAR" | Out-File -FilePath $TMP1 -Append
+
+# Windows 공유 상태 확인
+$shares = Get-SmbShare | Where-Object { $_.Name -match '^(C|D|E)\$$' }
+
+if ($shares) {
+    foreach ($share in $shares) {
+        "WARN 불필요한 시스템 자원이 공유됩니다: $($share.Name)" | Out-File -FilePath $TMP1 -Append
     }
 } else {
-    Write-Host "시스템에 구성된 SMB 공유가 없습니다."
+    "OK 불필요한 시스템 자원이 공유되지 않습니다." | Out-File -FilePath $TMP1 -Append
 }
 
-# 추가적으로, 공유 권한을 확인하려면 다음 명령어를 사용할 수 있습니다.
-# Get-SmbShareAccess -Name "공유이름"
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Write-Output
