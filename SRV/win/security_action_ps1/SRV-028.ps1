@@ -16,16 +16,28 @@ BAR
 
 BAR
 
-# SSH 타임아웃 설정 확인
+# SSH 타임아웃 설정 확인 및 조정
 $SshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
 if (Test-Path $SshdConfigPath) {
     $ConfigContent = Get-Content $SshdConfigPath
     $ClientAliveInterval = $ConfigContent | Where-Object { $_ -match '^ClientAliveInterval' }
     $ClientAliveCountMax = $ConfigContent | Where-Object { $_ -match '^ClientAliveCountMax' }
-    if ($ClientAliveInterval -and $ClientAliveCountMax) {
-        "OK: SSH 원격 터미널 타임아웃 설정이 적절하게 구성되어 있습니다." | Out-File -FilePath $TMP1 -Append
+    
+    $ChangesNeeded = $False
+
+    if (-not $ClientAliveInterval) {
+        "ClientAliveInterval 300" | Out-File -FilePath $SshdConfigPath -Append
+        $ChangesNeeded = $True
+    }
+    if (-not $ClientAliveCountMax) {
+        "ClientAliveCountMax 3" | Out-File -FilePath $SshdConfigPath -Append
+        $ChangesNeeded = $True
+    }
+
+    if ($ChangesNeeded) {
+        "CHANGE: SSH 원격 터미널 타임아웃 설정이 업데이트 되었습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        "WARN: SSH 원격 터미널 타임아웃 설정이 미비합니다." | Out-File -FilePath $TMP1 -Append
+        "OK: SSH 원격 터미널 타임아웃 설정이 이미 적절하게 구성되어 있습니다." | Out-File -FilePath $TMP1 -Append
     }
 } else {
     "INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
@@ -33,5 +45,6 @@ if (Test-Path $SshdConfigPath) {
 
 BAR
 
-# 결과 출력
+# 결과 출력 및 로그 파일 삭제
 Get-Content $TMP1 | Write-Host
+Remove-Item $TMP1 -Force
