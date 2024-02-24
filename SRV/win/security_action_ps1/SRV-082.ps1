@@ -2,7 +2,8 @@ function BAR {
     Add-Content -Path $global:TMP1 -Value ("-" * 50)
 }
 
-$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+$SCRIPTNAME = $MyInvocation.MyCommand.Name
+$global:TMP1 = "$(Get-Location)\${SCRIPTNAME}_log.txt"
 Clear-Content -Path $global:TMP1
 
 BAR
@@ -14,25 +15,36 @@ Add-Content -Path $global:TMP1 -Value "[취약]: 시스템 주요 디렉터리�
 
 BAR
 
-# PATH 환경 변수 내에 "." 또는 "::"이 포함되어 있는지 확인
-if ($env:PATH -match "\.;" -or $env:PATH -match "::") {
-    Add-Content -Path $global:TMP1 -Value "WARN: PATH 환경 변수 내에 '.' 또는 '::'이 포함되어 있습니다."
+# PATH 환경 변수 수정
+$originalPath = $env:PATH
+$newPath = ($env:PATH -split ";" | Where-Object { $_ -ne "." -and $_ -ne "" }) -join ";"
+if ($originalPath -ne $newPath) {
+    [Environment]::SetEnvironmentVariable("PATH", $newPath, [System.EnvironmentVariableTarget]::Machine)
+    Add-Content -Path $global:TMP1 -Value "FIXED: PATH 환경 변수에서 잘못된 항목을 제거하였습니다."
 } else {
     Add-Content -Path $global:TMP1 -Value "OK: PATH 환경 변수 내에 '.' 또는 '::'이 포함되어 있지 않습니다."
 }
 
-# 사용자 홈 디렉터리 내 설정 파일의 권한 확인
+BAR
+
+# 사용자 홈 디렉터리 내 설정 파일의 권한 수정
 $userProfiles = Get-ChildItem -Path "C:\Users" -Directory
 foreach ($profile in $userProfiles) {
     $userFiles = Get-ChildItem -Path $profile.FullName -File -Include ".profile", ".bashrc", ".bash_profile", ".bash_login" -ErrorAction SilentlyContinue
     foreach ($file in $userFiles) {
         $acl = Get-Acl -Path $file.FullName
-        if ($acl.Access | Where-Object { $_.FileSystemRights -match "Write" -and $_.IdentityReference.Value -eq "Everyone" }) {
-            Add-Content -Path $global:TMP1 -Value "WARN: $($file.FullName) 파일에 Everyone 그룹에 쓰기 권한이 부여되어 있습니다."
+        $everyone = New-Object System.Security.Principal.SecurityIdentifier("S-1-1-0")
+        $aclAccess = $acl.Access | Where-Object { $_.IdentityReference -eq $everyone -and $_.FileSystemRights -match "Write" }
+        if ($aclAccess) {
+            $acl.RemoveAccessRuleAll($aclAccess)
+            Set-Acl -Path $file.FullName -AclObject $acl
+            Add-Content -Path $global:TMP1 -Value "FIXED: $($file.FullName) 파일에서 Everyone 그룹의 쓰기 권한을 제거하였습니다."
         }
     }
 }
 
+BAR
+
 Get-Content -Path $global:TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."

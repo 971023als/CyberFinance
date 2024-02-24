@@ -10,7 +10,8 @@ function WARN($message) {
     Add-Content -Path $global:TMP1 -Value "WARN: $message"
 }
 
-$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+$SCRIPTNAME = $MyInvocation.MyCommand.Name
+$global:TMP1 = "$(Get-Location)\${SCRIPTNAME}_log.txt"
 Clear-Content -Path $global:TMP1
 
 BAR
@@ -22,7 +23,7 @@ Add-Content -Path $global:TMP1 -Value "[취약]: 시스템 스타트업 스크�
 
 BAR
 
-# Windows 서비스의 실행 파일 권한 설정 확인
+# Windows 서비스의 실행 파일 권한 설정 확인 및 수정
 $services = Get-WmiObject -Class Win32_Service
 foreach ($service in $services) {
     $servicePath = $service.PathName -replace '^"(.+)"$', '$1'
@@ -32,11 +33,15 @@ foreach ($service in $services) {
         if ($owner -match 'BUILTIN\\Administrators' -or $owner -match 'NT AUTHORITY\\SYSTEM') {
             OK "서비스 $($service.Name)의 실행 파일 권한이 적절합니다. (소유자: $owner)"
         } else {
-            WARN "서비스 $($service.Name)의 실행 파일 권한이 적절하지 않습니다. (소유자: $owner)"
+            # 권한 수정
+            $newOwner = New-Object System.Security.Principal.NTAccount('BUILTIN', 'Administrators')
+            $acl.SetOwner($newOwner)
+            Set-Acl -Path $servicePath -AclObject $acl
+            WARN "서비스 $($service.Name)의 실행 파일 권한이 수정되었습니다. 새 소유자: BUILTIN\Administrators"
         }
     }
 }
 
 Get-Content -Path $global:TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."

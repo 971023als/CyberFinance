@@ -15,15 +15,17 @@ $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand
 또한, "사용자 구성\관리 템플릿\제어판\프린터"에 대한 사용자별 정책을 확인하세요.
 "@ | Out-File -FilePath $TMP1 -Append
 
-# 설정 상태 검사 (예시 코드, 실제 환경에 맞게 조정 필요)
-$printerDriverRestrictionEnabled = $true
-if ($printerDriverRestrictionEnabled) {
+# 실제 환경에 맞게 조정된 설정 상태 검사 및 조치
+$Path = "HKLM:\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint"
+$PolicyName = "RestrictDriverInstallationToAdministrators"
+$PolicyValue = Get-ItemProperty -Path $Path -Name $PolicyName -ErrorAction SilentlyContinue
+
+if ($PolicyValue.$PolicyName -eq 1) {
     "설정 검사 결과: 프린터 드라이버 설치 제한이 적절하게 적용되었습니다." | Out-File -FilePath $TMP1 -Append
 } else {
-    "설정 검사 결과: 프린터 드라이버 설치 제한이 적절하게 적용되지 않았습니다." | Out-File -FilePath $TMP1 -Append
+    New-Item -Path $Path -Force | Out-Null
+    New-ItemProperty -Path $Path -Name $PolicyName -Value 1 -PropertyType DWORD -Force | Out-Null
+    "설정 조치 결과: 프린터 드라이버 설치 제한이 적용되었습니다. 시스템을 재부팅해주세요." | Out-File -FilePath $TMP1 -Append
 }
 
-# 결과 표시
-Get-Content -Path $TMP1 | Write-Output
-
-Write-Host "`n스크립트 완료."
+#

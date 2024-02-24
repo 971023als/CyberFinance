@@ -7,10 +7,8 @@ Clear-Content -Path $TMP1
 
 BAR
 
-$CODE = "[SRV-073] 관리자 그룹에 불필요한 사용자 존재"
-
-Add-Content -Path $TMP1 -Value "[양호]: 관리자 그룹에 불필요한 사용자가 없는 경우"
-Add-Content -Path $TMP1 -Value "[취약]: 관리자 그룹에 불필요한 사용자가 존재하는 경우"
+$CODE = "[SRV-073] 관리자 그룹에 불필요한 사용자 존재 조치"
+Add-Content -Path $TMP1 -Value $CODE
 
 BAR
 
@@ -20,20 +18,21 @@ $admin_group = "Administrators"
 # 관리자 그룹의 멤버 확인
 $admin_members = Get-LocalGroupMember -Group $admin_group | Select-Object -ExpandProperty Name
 
-# 관리자 그룹에 포함되어서는 안 되는 사용자 목록 (실제 환경에 따라 수정 필요)
+# 관리자 그룹에서 제거해야 할 불필요한 사용자 목록 (실제 환경에 따라 수정 필요)
 $unauthorized_users = @("testuser", "anotherUser") # 예시 사용자 목록
 
-# 관리자 그룹 내 불필요한 사용자 확인
-$unauthorized_members = $admin_members | Where-Object { $_ -in $unauthorized_users }
-
-if ($unauthorized_members) {
-    foreach ($user in $unauthorized_members) {
-        WARN "관리자 그룹($admin_group)에 불필요한 사용자가 포함되어 있습니다: $user"
+# 관리자 그룹 내 불필요한 사용자 제거
+foreach ($user in $unauthorized_users) {
+    if ($admin_members -contains $user) {
+        Remove-LocalGroupMember -Group $admin_group -Member $user -ErrorAction SilentlyContinue
+        if ($?) {
+            OK "관리자 그룹($admin_group)에서 불필요한 사용자가 제거되었습니다: $user"
+        } else {
+            WARN "관리자 그룹($admin_group)에서 사용자를 제거하는 데 실패했습니다: $user"
+        }
     }
-} else {
-    OK "관리자 그룹($admin_group)에 불필요한 사용자가 없습니다."
 }
 
 Get-Content -Path $TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료. 관리자 그룹에서 불필요한 사용자가 제거되었습니다."
