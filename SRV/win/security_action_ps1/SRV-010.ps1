@@ -1,6 +1,6 @@
 ﻿# 결과 파일 초기화
 $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File $TMP1
+"" | Set-Content $TMP1
 
 # 메시지 구분자 함수
 Function BAR {
@@ -18,27 +18,23 @@ BAR
 
 BAR
 
-# SMTP 서비스의 메일 queue 처리 권한 설정 점검 및 조정 (예시)
-# PowerShell을 사용한 Exchange 서버의 메일 queue 권한 관리 예시
-$MailQueueAdmins = @("업무 관리자 계정1", "업무 관리자 계정2") # 실제 업무 관리자 계정으로 대체
+# 메일 queue 처리 권한 설정 조정
+$MailQueueAdmins = @("AdminAccount1", "AdminAccount2") # 업무 관리자 계정으로 대체해야 함
 
-# 메일 queue 처리 권한 부여
+# 업무 관리자에게 메일 queue 처리 권한 부여 (가상의 cmdlet 예시)
 foreach ($admin in $MailQueueAdmins) {
-    # Exchange PowerShell cmdlet을 사용해 권한 부여 (가상의 cmdlet 사용 예시)
-    # Set-MailQueuePermissions -User $admin -Permissions "Manage"
-    "메일 queue 처리 권한이 [$admin]에게 부여되었습니다." | Out-File -FilePath $TMP1 -Append
+    # 실제 환경에 맞는 cmdlet 또는 관리 도구를 사용하여 권한 부여
+    "메일 queue 처리 권한이 [$admin]에게 부여되었습니다. (실제 적용 필요)" | Out-File -FilePath $TMP1 -Append
 }
 
-# 일반 사용자의 메일 queue 처리 권한 제거 (실제 cmdlet과 다를 수 있음)
-$GeneralUsers = @("일반 사용자 계정1", "일반 사용자 계정2") # 실제 일반 사용자 계정으로 대체
+# 일반 사용자의 메일 queue 처리 권한 제거 (가상의 cmdlet 예시)
+$GeneralUsers = @("UserAccount1", "UserAccount2") # 일반 사용자 계정으로 대체해야 함
 foreach ($user in $GeneralUsers) {
-    # Exchange PowerShell cmdlet을 사용해 권한 제거 (가상의 cmdlet 사용 예시)
-    # Remove-MailQueuePermissions -User $user
-    "[$user]의 메일 queue 처리 권한이 제거되었습니다." | Out-File -FilePath $TMP1 -Append
+    # 실제 환경에 맞는 cmdlet 또는 관리 도구를 사용하여 권한 제거
+    "[$user]의 메일 queue 처리 권한이 제거되었습니다. (실제 적용 필요)" | Out-File -FilePath $TMP1 -Append
 }
 
 BAR
 
 # 결과 출력
-Get-Content $TMP1
-Write-Host `n
+Get-Content $TMP1 | Write-Output

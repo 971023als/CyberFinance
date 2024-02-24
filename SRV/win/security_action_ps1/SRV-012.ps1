@@ -25,9 +25,10 @@ if ($netrcFiles.Count -eq 0) {
 } else {
     foreach ($file in $netrcFiles) {
         "WARN: .netrc 파일이 발견되었습니다. 위치: $($file.FullName)" | Out-File -FilePath $TMP1 -Append
-        # 발견된 .netrc 파일 삭제 또는 이동
+        # 발견된 .netrc 파일 처리 예시. 실제 조치를 취하기 전에 필요한 조치를 결정하세요.
+        # 예시: 파일 삭제
         # Remove-Item $file.FullName -Force
-        # 또는 안전한 위치로 파일 이동
+        # 예시: 안전한 위치로 파일 이동
         # Move-Item $file.FullName -Destination "안전한_디렉토리_경로"
     }
 }

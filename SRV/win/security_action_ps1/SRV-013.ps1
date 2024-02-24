@@ -55,4 +55,3 @@ if (-not $ftpUserExists) {
 BAR
 
 Get-Content $TMP1 | Write-Output
-Write-Host

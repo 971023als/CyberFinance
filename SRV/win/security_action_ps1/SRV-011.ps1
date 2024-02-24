@@ -17,21 +17,24 @@ BAR
 
 BAR
 
-# FTP 사용자 제한 설정 확인 (IIS 기반)
-$FTPUsersFile = "C:\Windows\System32\inetsrv\config\applicationHost.config" # 예시 경로
+# FTP 사용자 제한 설정 변경 (IIS 기반)
+try {
+    $FTPUsersFile = "C:\Windows\System32\inetsrv\config\applicationHost.config" # 실제 경로
 
-if (Test-Path $FTPUsersFile) {
-    $content = Get-Content $FTPUsersFile -Raw
-    if ($content -match 'system\.applicationHost\/sites\/site\/ftpServer\/security\/authorization\[(@accessType=\'Allow\' and @users=\'administrators\')\]') {
-        "WARN: FTP 서비스에서 관리자 계정의 접근이 제한되지 않습니다." | Out-File -FilePath $TMP1 -Append
-    } else {
-        "OK: FTP 서비스에서 관리자 계정의 접근이 제한됩니다." | Out-File -FilePath $TMP1 -Append
-    }
-} else {
-    "WARN: FTP 사용자 제한 설정 파일($FTPUsersFile)이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
+    # applicationHost.config 파일 백업
+    $backupFile = "$FTPUsersFile.bak"
+    Copy-Item $FTPUsersFile $backupFile -Force
+
+    # 관리자 계정 접근 제한 설정 추가
+    $newRule = '<add accessType="Deny" users="Administrator" permissions="Read, Write" />'
+    $configPath = '/system.applicationHost/sites/site[@name="Default Web Site"]/ftpServer/security/authorization'
+    Add-WebConfigurationProperty -Filter $configPath -Name "." -Value $newRule -PSPath "IIS:\"
+
+    "FTP 서비스에서 관리자 계정의 접근이 성공적으로 제한되었습니다." | Out-File -FilePath $TMP1 -Append
+} catch {
+    "FTP 서비스 관리자 계정 접근 제한 설정 중 오류가 발생했습니다: $_" | Out-File -FilePath $TMP1 -Append
 }
 
 BAR
 
-Get-Content $TMP1
-Write-Host `n
+Get-Content $TMP1 | Write-Output
