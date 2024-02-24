@@ -1,37 +1,26 @@
-@echo off
-setlocal
+# 로그 파일 경로 설정 및 초기화
+$TMP1 = "$env:SCRIPTNAME.log"
+"" | Out-File -FilePath $TMP1
 
-set TMP1=%SCRIPTNAME%.log
-type NUL > %TMP1%
+# 로그 파일에 내용 추가
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-138] 백업 및 복구 권한 설정 미흡" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: 백업 및 복구 권한이 적절히 설정된 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: 백업 및 복구 권한이 적절히 설정되지 않은 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-echo ---------------------------------------- >> %TMP1%
-echo CODE [SRV-138] 백업 및 복구 권한 설정 미흡 >> %TMP1%
-echo ---------------------------------------- >> %TMP1%
+# 백업 디렉토리 경로 설정
+$backupDir = "C:\Backup"
 
-echo [양호]: 백업 및 복구 권한이 적절히 설정된 경우 >> %TMP1%
-echo [취약]: 백업 및 복구 권한이 적절히 설정되지 않은 경우 >> %TMP1%
+# 디렉토리 존재 여부 확인 및 권한 분석
+if (Test-Path -Path $backupDir) {
+    $acl = Get-Acl -Path $backupDir
+    $acl.Access | Out-File -FilePath $TMP1 -Append
+    "권한 분석 결과는 $TMP1 파일을 참조하세요." | Out-File -FilePath $TMP1 -Append
+} else {
+    "INFO: $backupDir 디렉토리가 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
+}
 
-echo ---------------------------------------- >> %TMP1%
-
-:: 백업 디렉토리 권한 확인
-set "backupDir=C:\Backup"
-
-:: 디렉토리 존재 여부 확인
-if not exist "%backupDir%" (
-    echo INFO: %backupDir% 디렉토리가 존재하지 않습니다. >> %TMP1%
-    goto CheckDone
-)
-
-:: 권한 확인
-icacls "%backupDir%" >> %TMP1%
-
-:: 추가적인 권한 분석 및 판단 로직은 필요에 따라 구현
-echo 권한 분석 결과는 %TMP1% 파일을 참조하세요. >> %TMP1%
-
-:CheckDone
-type %TMP1%
-
-echo.
-echo.
-
-endlocal
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Out-Host

@@ -1,33 +1,24 @@
-@echo off
-setlocal
+# 로그 파일 경로 및 초기화
+$TMP1 = "$env:SCRIPTNAME.log"
+"" | Out-File -FilePath $TMP1
 
-set TMP1=%SCRIPTNAME%.log
-type NUL > %TMP1%
+# 로그 파일에 내용 추가
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-134] 스택 영역 실행 방지 미설정" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: 스택 영역 실행 방지가 활성화된 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: 스택 영역 실행 방지가 비활성화된 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-echo ---------------------------------------- >> %TMP1%
-echo CODE [SRV-134] 스택 영역 실행 방지 미설정 >> %TMP1%
-echo ---------------------------------------- >> %TMP1%
+# DEP 및 ASLR 설정 확인
+$depStatus = Get-ProcessMitigation -System | Select-Object -ExpandProperty Dep
+$aslrStatus = Get-ProcessMitigation -System | Select-Object -ExpandProperty Aslr
 
-echo [양호]: 스택 영역 실행 방지가 활성화된 경우 >> %TMP1%
-echo [취약]: 스택 영역 실행 방지가 비활성화된 경우 >> %TMP1%
+if ($depStatus.Enable -eq 'ON' -and $aslrStatus.ForceRelocateImages -eq 'ON') {
+    'OK: 스택 영역 실행 방지가 활성화되어 있습니다.' | Out-File -FilePath $TMP1 -Append
+} else {
+    'WARN: 스택 영역 실행 방지가 비활성화되어 있습니다.' | Out-File -FilePath $TMP1 -Append
+}
 
-echo ---------------------------------------- >> %TMP1%
-
-:: PowerShell을 사용하여 DEP 및 ASLR 설정 확인
-powershell -Command "& {
-    $depStatus = Get-ProcessMitigation -System | Select-Object -ExpandProperty Dep
-    $aslrStatus = Get-ProcessMitigation -System | Select-Object -ExpandProperty Aslr
-
-    if ($depStatus.Enable -eq 'ON' -and $aslrStatus.ForceRelocateImages -eq 'ON') {
-        echo 'OK: 스택 영역 실행 방지가 활성화되어 있습니다.' >> '%TMP1%'
-    } else {
-        echo 'WARN: 스택 영역 실행 방지가 비활성화되어 있습니다.' >> '%TMP1%'
-    }
-}" >> %TMP1%
-
-type %TMP1%
-
-echo.
-echo.
-
-endlocal
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Out-Host

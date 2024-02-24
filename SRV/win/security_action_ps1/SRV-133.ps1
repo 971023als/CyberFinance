@@ -1,32 +1,23 @@
-@echo off
-setlocal
+# 로그 파일 경로 및 초기화
+$TMP1 = "$env:SCRIPTNAME.log"
+"" | Out-File -FilePath $TMP1
 
-set TMP1=%SCRIPTNAME%.log
-type NUL > %TMP1%
+# 로그 파일에 내용 추가
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"CODE [SRV-133] Cron 서비스 사용 계정 제한 미비" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
+"[양호]: Cron 서비스 사용이 특정 계정으로 제한되어 있는 경우" | Out-File -FilePath $TMP1 -Append
+"[취약]: Cron 서비스 사용이 제한되지 않은 경우" | Out-File -FilePath $TMP1 -Append
+"----------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-echo ---------------------------------------- >> %TMP1%
-echo CODE [SRV-133] Cron 서비스 사용 계정 제한 미비 >> %TMP1%
-echo ---------------------------------------- >> %TMP1%
+# 작업 스케줄러의 작업과 실행 계정 확인
+$scheduledTasks = Get-ScheduledTask | Where-Object { $_.State -eq 'Ready' }
+foreach ($task in $scheduledTasks) {
+    $taskName = $task.TaskName
+    $taskPath = $task.TaskPath
+    $principal = $task.Principal.UserId
+    "$taskPath$taskName 실행 계정: $principal" | Out-File -FilePath $TMP1 -Append
+}
 
-echo [양호]: Cron 서비스 사용이 특정 계정으로 제한되어 있는 경우 >> %TMP1%
-echo [취약]: Cron 서비스 사용이 제한되지 않은 경우 >> %TMP1%
-
-echo ---------------------------------------- >> %TMP1%
-
-:: PowerShell을 사용하여 작업 스케줄러의 작업과 실행 계정 확인
-powershell -Command "& {
-    $scheduledTasks = Get-ScheduledTask | Where-Object { $_.State -eq 'Ready' }
-    foreach ($task in $scheduledTasks) {
-        $taskName = $task.TaskName
-        $taskPath = $task.TaskPath
-        $principal = $task.Principal.UserId
-        echo ""$taskPath$taskName 실행 계정: $principal"" >> '%TMP1%'
-    }
-}" >> %TMP1%
-
-type %TMP1%
-
-echo.
-echo.
-
-endlocal
+# 결과 파일 출력
+Get-Content -Path $TMP1 | Out-Host
