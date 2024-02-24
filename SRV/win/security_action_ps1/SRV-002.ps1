@@ -16,22 +16,24 @@ $service = Get-Service -Name SNMP -ErrorAction SilentlyContinue
 if ($service -eq $null -or $service.Status -ne 'Running') {
     "SNMP 서비스가 실행 중이지 않습니다." | Out-File -FilePath $TMP1 -Append
 } else {
-    # SNMP 설정 확인
     $snmpRegPathSet = 'HKLM:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities'
     $snmpCommunitiesSet = Get-ItemProperty -Path $snmpRegPathSet -ErrorAction SilentlyContinue
     if ($snmpCommunitiesSet -eq $null) {
         "SNMP Set Community 스트링 설정을 찾을 수 없습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        $isVulnerableSet = $false
         foreach ($community in $snmpCommunitiesSet.PSObject.Properties) {
-            if ($community.Value -eq 4) { # 여기서 4는 쓰기 권한을 가리키는 값입니다. 실제 환경에 따라 조정이 필요할 수 있습니다.
-                "취약: SNMP Set Community 스트링($($community.Name))이 기본값 또는 예측 가능한 값으로 설정되어 있습니다." | Out-File -FilePath $TMP1 -Append
-                $isVulnerableSet = $true
-                break
+            # 쓰기 권한을 가진 Community 스트링 확인
+            if ($community.Value -eq 4) {
+                # 복잡하고 예측 불가능한 새 Community 스트링 생성
+                $newComplexString = "ComplexSet$(Get-Random -Maximum 99999999)"
+                # 새 Community 스트링 설정
+                Set-ItemProperty -Path $snmpRegPathSet -Name $newComplexString -Value 4
+                # 기존 Community 스트링 제거
+                Remove-ItemProperty -Path $snmpRegPathSet -Name $community.Name
+
+                "변경됨: SNMP Set Community 스트링을 '$newComplexString'로 변경하여 보안을 강화했습니다." | Out-File -FilePath $TMP1 -Append
+                break # 첫 번째 취약한 설정을 변경한 후 중단
             }
-        }
-        if (-not $isVulnerableSet) {
-            "양호: SNMP Set Community 스트링이 기본값 또는 예측 가능한 값으로 설정되지 않았습니다." | Out-File -FilePath $TMP1 -Append
         }
     }
 }
