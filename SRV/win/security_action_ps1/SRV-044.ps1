@@ -12,21 +12,26 @@ $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand
 "@ | Out-File -FilePath $TMP1 -Append
 "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 
-# IIS 웹 사이트 설정 검사
+# IIS 웹 사이트 설정 검사 및 수정
 Import-Module WebAdministration
 Get-Website | ForEach-Object {
     $siteName = $_.Name
-    $requestFiltering = Get-WebConfigurationProperty -pspath "IIS:\Sites\$siteName" -filter "system.webServer/security/requestFiltering/requestLimits" -name "maxAllowedContentLength"
+    $path = "IIS:\Sites\$siteName"
+    $maxAllowedContentLength = 31457280 # 30 MB in bytes
     
-    $maxSizeMB = $requestFiltering.Value / 1024 / 1024 # 바이트에서 MB로 변환
-    if ($maxSizeMB -lt 30) { # 예시 임계값 30MB
-        "OK: $siteName 사이트는 파일 업로드를 $maxSizeMB MB로 제한합니다." | Out-File -FilePath $TMP1 -Append
+    # 현재 설정 조회
+    $currentSetting = Get-WebConfigurationProperty -pspath $path -filter "system.webServer/security/requestFiltering/requestLimits" -name "maxAllowedContentLength"
+    
+    if ($currentSetting.Value -ne $maxAllowedContentLength) {
+        # 설정 변경
+        Set-WebConfigurationProperty -pspath $path -filter "system.webServer/security/requestFiltering/requestLimits" -name "maxAllowedContentLength" -value $maxAllowedContentLength
+        "CHANGE: $siteName 사이트의 파일 업로드 크기 제한을 30MB로 설정했습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        "WARN: $siteName 사이트는 파일 업로드 제한이 높음 ($maxSizeMB MB) 또는 설정되지 않음." | Out-File -FilePath $TMP1 -Append
+        "OK: $siteName 사이트는 이미 파일 업로드를 30MB로 제한합니다." | Out-File -FilePath $TMP1 -Append
     }
 }
 
 # 결과 출력
 Get-Content -Path $TMP1 | Write-Host
 
-Write-Host "`n스크립트 완료."
+Write-Host "`n스크립트 완료. 설정이 업데이트되었습니다."
