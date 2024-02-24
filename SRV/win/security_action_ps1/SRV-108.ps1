@@ -2,7 +2,8 @@ function BAR {
     Add-Content -Path $global:TMP1 -Value ("-" * 50)
 }
 
-$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+$SCRIPTNAME = $MyInvocation.MyCommand.Name
+$global:TMP1 = "$(Get-Location)\${SCRIPTNAME}_log.txt"
 Clear-Content -Path $global:TMP1
 
 BAR
@@ -14,29 +15,29 @@ Add-Content -Path $global:TMP1 -Value "[취약]: 로그 파일의 접근 통제 
 
 BAR
 
-# Windows 이벤트 로그 설정 확인
-$eventLogNames = @("Application", "Security", "System")
-$incorrectSettings = @()
+# 로그 파일의 접근 권한 설정 확인 및 조정
+$eventLogPaths = @("C:\Windows\System32\winevt\Logs\Application.evtx", "C:\Windows\System32\winevt\Logs\Security.evtx", "C:\Windows\System32\winevt\Logs\System.evtx")
+$desiredPermission = "BUILTIN\Administrators"
 
-foreach ($logName in $eventLogNames) {
-    $log = Get-WinEvent -LogName $logName -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($null -eq $log) {
-        $incorrectSettings += "로그($logName)가 존재하지 않습니다."
-        continue
-    }
-
-    # 예시: 여기에서는 단순히 로그의 존재만 확인합니다.
-    # 실제 사용 시에는 로그의 크기, 오버라이트 정책, 접근 권한 등을 검사할 수 있습니다.
-}
-
-if ($incorrectSettings.Count -eq 0) {
-    Add-Content -Path $global:TMP1 -Value "OK: 모든 중요 로그 파일의 접근 통제 및 관리가 적절하게 설정되어 있습니다."
-} else {
-    foreach ($setting in $incorrectSettings) {
-        Add-Content -Path $global:TMP1 -Value "WARN: $setting"
+foreach ($logPath in $eventLogPaths) {
+    if (Test-Path $logPath) {
+        $acl = Get-Acl $logPath
+        $adminPermissions = $acl.Access | Where-Object { $_.IdentityReference.Value -eq $desiredPermission -and $_.FileSystemRights -match "FullControl" }
+        
+        if ($null -eq $adminPermissions) {
+            # 권한 설정이 적절하지 않은 경우, 수정
+            $permission = New-Object System.Security.AccessControl.FileSystemAccessRule($desiredPermission, "FullControl", "Allow")
+            $acl.SetAccessRule($permission)
+            Set-Acl -Path $logPath -AclObject $acl
+            Add-Content -Path $global:TMP1 -Value "UPDATED: $logPath 로그 파일의 접근 권한이 적절하게 조정되었습니다."
+        } else {
+            Add-Content -Path $global:TMP1 -Value "OK: $logPath 로그 파일의 접근 권한이 이미 적절합니다."
+        }
+    } else {
+        Add-Content -Path $global:TMP1 -Value "WARN: 로그 파일($logPath)이 존재하지 않습니다."
     }
 }
 
 Get-Content -Path $global:TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."

@@ -2,7 +2,8 @@ function BAR {
     Add-Content -Path $global:TMP1 -Value ("-" * 50)
 }
 
-$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+$SCRIPTNAME = $MyInvocation.MyCommand.Name
+$global:TMP1 = "$(Get-Location)\${SCRIPTNAME}_log.txt"
 Clear-Content -Path $global:TMP1
 
 BAR
@@ -14,22 +15,19 @@ Add-Content -Path $global:TMP1 -Value "[취약]: LAN Manager 인증 수준이 �
 
 BAR
 
-# LAN Manager 인증 수준 확인
+# LAN Manager 인증 수준 확인 및 조정
 $path = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
 $name = "LmCompatibilityLevel"
+$desiredLevel = 5 # 'LM 및 NTLM 응답 거부(NTLMv2 세션 보안만 사용)' 설정
 $lmCompLevel = Get-ItemProperty -Path $path -Name $name -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $name
 
-# LAN Manager 인증 수준 평가
-switch ($lmCompLevel) {
-    0 { Add-Content -Path $global:TMP1 -Value "WARN: LAN Manager 인증 수준이 'LM 및 NTLM 응답 보내기(보안성이 낮음)'로 설정되어 있습니다." }
-    1 { Add-Content -Path $global:TMP1 -Value "WARN: LAN Manager 인증 수준이 'LM 응답 보내기'로 설정되어 있습니다." }
-    2 { Add-Content -Path $global:TMP1 -Value "OK: LAN Manager 인증 수준이 'NTLM 응답만 보내기'로 설정되어 있습니다." }
-    3 { Add-Content -Path $global:TMP1 -Value "OK: LAN Manager 인증 수준이 'NTLMv2 응답만 보내기\refuse LM'로 설정되어 있습니다." }
-    4 { Add-Content -Path $global:TMP1 -Value "OK: LAN Manager 인증 수준이 'NTLMv2 응답만 보내기\refuse LM 및 NTLM'로 설정되어 있습니다." }
-    5 { Add-Content -Path $global:TMP1 -Value "OK: LAN Manager 인증 수준이 'LM 및 NTLM 응답 거부(NTLMv2 세션 보안만 사용)'로 설정되어 있습니다." }
-    Default { Add-Content -Path $global:TMP1 -Value "INFO: LAN Manager 인증 수준이 설정되지 않았거나 알 수 없는 값입니다." }
+if ($lmCompLevel -lt $desiredLevel) {
+    Set-ItemProperty -Path $path -Name $name -Value $desiredLevel
+    Add-Content -Path $global:TMP1 -Value "UPDATED: LAN Manager 인증 수준이 안전한 설정($desiredLevel)으로 변경되었습니다."
+} else {
+    Add-Content -Path $global:TMP1 -Value "OK: LAN Manager 인증 수준이 이미 안전한 설정($lmCompLevel)으로 되어 있습니다."
 }
 
 Get-Content -Path $global:TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."

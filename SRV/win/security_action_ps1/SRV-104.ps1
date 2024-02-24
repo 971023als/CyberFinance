@@ -2,7 +2,8 @@ function BAR {
     Add-Content -Path $global:TMP1 -Value ("-" * 50)
 }
 
-$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+$SCRIPTNAME = $MyInvocation.MyCommand.Name
+$global:TMP1 = "$(Get-Location)\${SCRIPTNAME}_log.txt"
 Clear-Content -Path $global:TMP1
 
 BAR
@@ -14,24 +15,15 @@ Add-Content -Path $global:TMP1 -Value "[취약]: 보안 채널 데이터의 디�
 
 BAR
 
-# SMB 서버 서명 설정 확인
-$serverSigning = Get-ItemPropertyValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name "RequireSecuritySignature" -ErrorAction SilentlyContinue
+# SMB 서버 및 클라이언트 서명 설정 활성화
+$smbServerPath = "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters"
+$smbClientPath = "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters"
 
-# SMB 클라이언트 서명 설정 확인
-$clientSigning = Get-ItemPropertyValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" -Name "RequireSecuritySignature" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path $smbServerPath -Name "RequireSecuritySignature" -Value 1
+Set-ItemProperty -Path $smbClientPath -Name "RequireSecuritySignature" -Value 1
 
-# 결과 평가 및 출력
-if ($serverSigning -eq 1 -and $clientSigning -eq 1) {
-    Add-Content -Path $global:TMP1 -Value "OK: SMB 서버 및 클라이언트의 디지털 서명 기능이 모두 활성화되어 있습니다."
-} else {
-    if ($serverSigning -ne 1) {
-        Add-Content -Path $global:TMP1 -Value "WARN: SMB 서버의 디지털 서명 기능이 비활성화되어 있습니다."
-    }
-    if ($clientSigning -ne 1) {
-        Add-Content -Path $global:TMP1 -Value "WARN: SMB 클라이언트의 디지털 서명 기능이 비활성화되어 있습니다."
-    }
-}
+Add-Content -Path $global:TMP1 -Value "UPDATED: SMB 서버 및 클라이언트의 디지털 서명 기능이 활성화되었습니다."
 
 Get-Content -Path $global:TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."

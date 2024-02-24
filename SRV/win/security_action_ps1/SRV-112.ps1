@@ -2,7 +2,8 @@ function BAR {
     Add-Content -Path $global:TMP1 -Value ("-" * 50)
 }
 
-$global:TMP1 = "$(Get-Location)\$(SCRIPTNAME)_log.txt"
+$SCRIPTNAME = $MyInvocation.MyCommand.Name
+$global:TMP1 = "$(Get-Location)\${SCRIPTNAME}_log.txt"
 Clear-Content -Path $global:TMP1
 
 BAR
@@ -14,16 +15,21 @@ Add-Content -Path $global:TMP1 -Value "[취약]: Cron 서비스 로깅이 적절
 
 BAR
 
-# 작업 스케줄러 로그 존재 여부 확인
-$eventLog = Get-WinEvent -LogName "Microsoft-Windows-TaskScheduler/Operational" -ErrorAction SilentlyContinue | Select-Object -First 1
+# 작업 스케줄러 로그 존재 여부 및 활성화 상태 확인
+$logName = "Microsoft-Windows-TaskScheduler/Operational"
+$eventLogStatus = wevtutil get-log $logName
 
-if ($null -eq $eventLog) {
-    Add-Content -Path $global:TMP1 -Value "WARN: 작업 스케줄러의 작업 실행 로그가 존재하지 않습니다."
+if ($eventLogStatus -match "enabled: false") {
+    # 로그가 비활성화된 경우, 활성화
+    wevtutil set-log $logName /enabled:true
+    Add-Content -Path $global:TMP1 -Value "UPDATED: $logName 로그가 활성화되었습니다."
+} elseif ($eventLogStatus -match "enabled: true") {
+    Add-Content -Path $global:TMP1 -Value "OK: $logName 로그가 이미 활성화되어 있으며 적절하게 기록되고 있습니다."
 } else {
-    Add-Content -Path $global:TMP1 -Value "OK: 작업 스케줄러의 작업 실행 로그가 적절하게 기록되고 있습니다."
+    Add-Content -Path $global:TMP1 -Value "WARN: $logName 로그의 상태를 확인할 수 없습니다."
 }
 
 # 결과 파일 출력
 Get-Content -Path $global:TMP1 | Out-Host
 
-Write-Host "`n"
+Write-Host "`n스크립트 완료."
