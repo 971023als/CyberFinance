@@ -49,7 +49,6 @@ foreach ($share in $SmbShares) {
 }
 
 # Windows에서 NFS 공유 점검 (옵션)
-# "Services for NFS" 기능이 설치되어 있는 경우에만 적용됩니다.
 If (Get-WindowsFeature FS-NFS-Service).InstallState -eq "Installed" {
     INFO "NFS 서비스가 설치되어 있습니다. NFS 공유 설정을 수동으로 점검하세요."
 } else {
@@ -59,4 +58,3 @@ If (Get-WindowsFeature FS-NFS-Service).InstallState -eq "Installed" {
 BAR
 
 Get-Content $TMP1 | Write-Output
-Write-Host

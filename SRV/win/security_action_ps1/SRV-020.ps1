@@ -41,15 +41,14 @@ BAR
 $shares = Get-SmbShare -ErrorAction SilentlyContinue | Get-SmbShareAccess
 
 foreach ($share in $shares) {
-    $everyoneAccess = $share | Where-Object { $_.AccountName -eq 'Everyone' }
+    $everyoneAccess = $share | Where-Object { $_.AccountName -eq 'Everyone' -and $_.AccessRight -eq 'Full' }
     if ($everyoneAccess) {
-        WARN "SMB/CIFS 서비스에서 'Everyone' 공유 접근 통제가 발견됨: $($share.Name)"
+        WARN "SMB/CIFS 서비스에서 'Everyone' 그룹에 대한 전체 접근 통제가 설정된 공유가 발견됨: $($share.Name)"
     } else {
-        OK "SMB/CIFS 서비스에서 공유 접근 통제가 적절함: $($share.Name)"
+        OK "SMB/CIFS 서비스에서 공유 접근 통제가 적절하게 설정됨: $($share.Name)"
     }
 }
 
 BAR
 
 Get-Content $TMP1 | Write-Output
-Write-Host

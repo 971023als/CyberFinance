@@ -21,6 +21,11 @@ Function OK {
     "OK: $message" | Out-File -FilePath $TMP1 -Append
 }
 
+Function INFO {
+    Param ([string]$message)
+    "INFO: $message" | Out-File -FilePath $TMP1 -Append
+}
+
 BAR
 
 CODE "[SRV-021] FTP 서비스 접근 제어 설정 미비"
@@ -35,7 +40,7 @@ BAR
 # IIS FTP 서비스 접근 제어 설정 점검
 $ftpSites = Get-WebSite | Where-Object { $_.bindings.Collection -match "ftp" }
 
-if ($ftpSites -eq $null) {
+if ($ftpSites.Count -eq 0) {
     INFO "FTP 서비스가 설치되지 않았거나 활성화되지 않았습니다." | Out-File -FilePath $TMP1 -Append
 } else {
     foreach ($site in $ftpSites) {
@@ -52,4 +57,3 @@ if ($ftpSites -eq $null) {
 BAR
 
 Get-Content $TMP1 | Write-Output
-Write-Host

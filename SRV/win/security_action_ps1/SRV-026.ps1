@@ -1,6 +1,6 @@
 ﻿# 임시 로그 파일 생성
 $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+"" | Set-Content -FilePath $TMP1
 
 # 메시지 구분자
 function BAR {
@@ -24,7 +24,7 @@ if (Test-Path $SshdConfigPath) {
     if ($PermitRootLogin -match 'no') {
         "OK: SSH를 통한 Administrator 계정의 원격 접속이 제한되어 있습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        "WARN: SSH를 통한 Administrator 계정의 원격 접속 제한 설정이 미흡합니다." | Out-File -FilePath $TMP1 -Append
+        "WARN: SSH를 통한 Administrator 계정의 원격 접속 제한 설정이 미흡합니다. PermitRootLogin 설정을 'no'로 변경하세요." | Out-File -FilePath $TMP1 -Append
     }
 } else {
     "INFO: OpenSSH 구성 파일(sshd_config)이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append

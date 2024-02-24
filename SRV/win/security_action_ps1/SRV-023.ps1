@@ -1,6 +1,6 @@
 ﻿# 임시 로그 파일 생성
 $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+"" | Set-Content -FilePath $TMP1
 
 # 메시지 구분자 함수
 function BAR {
@@ -22,8 +22,8 @@ $ConfigExists = Test-Path $SshConfigFile
 if (-not $ConfigExists) {
     "WARN: SSH 구성 파일이 존재하지 않습니다." | Out-File -FilePath $TMP1 -Append
 } else {
+    $ConfigContent = Get-Content $SshConfigFile
     foreach ($setting in $EncryptionSettings) {
-        $ConfigContent = Get-Content $SshConfigFile
         $SettingConfigured = $ConfigContent | Where-Object { $_ -match "^$setting" }
         if ($SettingConfigured) {
             "OK: $SshConfigFile 파일에서 $setting 설정이 적절하게 구성되어 있습니다." | Out-File -FilePath $TMP1 -Append

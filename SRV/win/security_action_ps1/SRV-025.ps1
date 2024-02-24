@@ -1,6 +1,6 @@
 ﻿# 임시 로그 파일 생성
 $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+"" | Set-Content -FilePath $TMP1
 
 # 메시지 구분자
 function BAR {
@@ -16,20 +16,29 @@ BAR
 
 BAR
 
-# SSH 보안 설정 확인
+# hosts.equiv 및 .rhosts 파일 점검 (Windows 환경에서는 일반적으로 적용되지 않으나, 가정용 스크립트)
+$HostsEquivPath = "C:\hosts.equiv"
+$RhostsPath = "C:\.rhosts"
+$FilesToCheck = @($HostsEquivPath, $RhostsPath)
+foreach ($file in $FilesToCheck) {
+    if (Test-Path $file) {
+        Add-Content $TMP1 "WARN: 취약한 파일 설정 존재: $file"
+    } else {
+        Add-Content $TMP1 "OK: 취약한 파일($file)이 존재하지 않습니다."
+    }
+}
+
+BAR
+
+# SSH 보안 설정 확인 (가정된 경로와 설정)
 $SshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
 if (Test-Path $SshdConfigPath) {
     $ConfigContent = Get-Content $SshdConfigPath
     $SecureSettings = @('PermitEmptyPasswords no', 'PasswordAuthentication yes')
-    $InsecureSettingsFound = $false
     foreach ($setting in $SecureSettings) {
         if (-not ($ConfigContent -contains $setting)) {
             Add-Content $TMP1 "WARN: SSH 설정에서 보안이 미흡한 설정 발견: $setting"
-            $InsecureSettingsFound = $true
         }
-    }
-    if (-not $InsecureSettingsFound) {
-        Add-Content $TMP1 'OK: SSH 서비스의 보안 설정이 적절하게 구성되어 있습니다.'
     }
 } else {
     Add-Content $TMP1 'INFO: SSH 구성 파일(sshd_config)이 존재하지 않습니다.'

@@ -1,6 +1,6 @@
 ﻿# 임시 로그 파일 생성
 $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).log"
-"" | Out-File -FilePath $TMP1
+"" | Set-Content -FilePath $TMP1
 
 # 메시지 구분자
 function BAR {
