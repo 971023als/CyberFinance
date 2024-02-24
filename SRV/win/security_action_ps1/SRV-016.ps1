@@ -48,4 +48,3 @@ foreach ($service in $rpcServices) {
 BAR
 
 Get-Content $TMP1 | Write-Output
-Write-Host

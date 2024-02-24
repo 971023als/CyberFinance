@@ -33,12 +33,14 @@ CODE "[SRV-015] 불필요한 NFS 서비스 실행"
 BAR
 
 # NFS 서비스 관련 데몬의 실행 여부 확인
-$NfsDaemonNames = "nfsd", "rpc.statd", "statd", "rpc.lockd", "lockd"
+$NfsDaemonNames = @("nfsd", "rpc.statd", "statd", "rpc.lockd", "lockd")
 $NfsDaemons = Get-Service | Where-Object { $NfsDaemonNames -contains $_.Name }
 
-if ($NfsDaemons -and $NfsDaemons.Status -eq "Running") {
+if ($NfsDaemons) {
     foreach ($daemon in $NfsDaemons) {
-        WARN "$($daemon.Name) 데몬이 실행 중입니다."
+        if ($daemon.Status -eq "Running") {
+            WARN "$($daemon.Name) 데몬이 실행 중입니다. 비활성화를 고려하세요."
+        }
     }
 } else {
     OK "불필요한 NFS 서비스 관련 데몬이 비활성화 되어 있습니다."
@@ -47,4 +49,3 @@ if ($NfsDaemons -and $NfsDaemons.Status -eq "Running") {
 BAR
 
 Get-Content $TMP1 | Write-Output
-Write-Host
