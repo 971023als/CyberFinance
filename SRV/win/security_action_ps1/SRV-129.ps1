@@ -19,6 +19,7 @@ if ($AntivirusStatus) {
     "OK: 설치된 백신 프로그램: $installedAntivirus" | Out-File -FilePath $TMP1 -Append
 } else {
     "WARN: 설치된 백신 프로그램이 없습니다." | Out-File -FilePath $TMP1 -Append
+    "ACTION: 안전한 컴퓨터 사용을 위해, Microsoft Defender를 활성화하거나, 신뢰할 수 있는 백신 프로그램을 설치하세요." | Out-File -FilePath $TMP1 -Append
 }
 
 # 결과 파일 출력

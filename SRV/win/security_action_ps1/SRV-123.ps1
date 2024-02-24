@@ -11,18 +11,20 @@ CODE [SRV-123] 최종 로그인 사용자 계정 노출
 [취약]: 최종 로그인 사용자 정보가 노출되는 경우
 "@ | Out-File -FilePath $TMP1
 
-# Windows에서는 로그온 메시지를 그룹 정책을 통해 설정합니다.
-# 이 스크립트는 로그온 메시지 설정을 검사합니다.
+# 로그온 화면에서 마지막으로 로그인한 사용자 이름 숨기기 설정 검사 및 조정
 try {
-    $logonMessage = Get-GPOReport -All -ReportType Xml | Select-String -Pattern "InteractiveLogon_MessageTitleForUsersAttemptingToLogOn"
+    $policyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+    $policyName = "DontDisplayLastUserName"
+    $policyValue = Get-ItemPropertyValue -Path $policyPath -Name $policyName -ErrorAction SilentlyContinue
 
-    if ($logonMessage -ne $null) {
-        "OK: 로그온 메시지가 설정되어 있습니다. 이는 최종 로그인 사용자 정보의 노출을 방지할 수 있습니다." | Out-File -FilePath $TMP1 -Append
+    if ($policyValue -eq 1) {
+        "OK: 로그온 화면에서 최종 로그인 사용자 이름이 숨겨져 있습니다." | Out-File -FilePath $TMP1 -Append
     } else {
-        "WARN: 로그온 메시지가 설정되지 않았습니다. 최종 로그인 사용자 정보가 노출될 위험이 있습니다." | Out-File -FilePath $TMP1 -Append
+        Set-ItemProperty -Path $policyPath -Name $policyName -Value 1
+        "UPDATED: 로그온 화면에서 최종 로그인 사용자 이름을 숨기도록 설정되었습니다." | Out-File -FilePath $TMP1 -Append
     }
 } catch {
-    "INFO: 그룹 정책 설정을 검사하는 동안 오류가 발생했습니다." | Out-File -FilePath $TMP1 -Append
+    "ERROR: 로그온 화면 설정을 조정하는 동안 오류가 발생했습니다." | Out-File -FilePath $TMP1 -Append
 }
 
 # 결과 파일 출력
