@@ -13,15 +13,24 @@ CODE [SRV-008] SMTP 서비스의 DoS 방지 기능 미설정
 ------------------------------------------------
 "@ | Out-File -FilePath $TMP1 -Append
 
-# DoS 방지 기능 설정 확인 (Exchange 서버의 DoS 방지 설정 점검을 예로 사용)
-# 실제 DoS 방지 설정 검사 로직은 환경에 따라 달라질 수 있으며, 여기서는 설정이 적용되었다고 가정
-$DoSSettingsApplied = $True
+# DoS 방지 설정이 필요한 경우, 아래 명령을 활용하여 설정을 적용할 수 있음
+# 이 예제에서는 실제 설정 명령이 없으므로, 설정을 적용하는 방법을 가이드함
 
-if ($DoSSettingsApplied) {
-    "SMTP 서비스에 DoS 방지 설정이 적용되었습니다." | Out-File -FilePath $TMP1 -Append
-} else {
-    "SMTP 서비스에 DoS 방지 설정이 적용되지 않았습니다." | Out-File -FilePath $TMP1 -Append
-}
+# Exchange 서버에서 DoS 방지 설정 적용 예시
+# 실제 환경에서는 해당 설정을 적용하기 전에 Exchange 관리 셸을 사용하는 것이 필요
+@"
+DoS 방지 설정을 적용하려면, Exchange 관리 셸에서 다음과 같은 명령을 실행하세요:
+
+1. 연결 제한 설정:
+   Set-ReceiveConnector "ConnectorName" -MaxInboundConnectionPercentagePerSource 2 -MaxInboundConnectionPerSource 20
+
+2. 메시지 처리 속도 제한:
+   Set-TransportConfig -MaxReceiveSize 10MB -MaxSendSize 10MB
+
+이러한 설정은 예시이며, 실제 환경에 맞게 조정해야 합니다. 설정 적용 후, 시스템의 성능과 보안 상태를 모니터링하세요.
+"@
+
+"SMTP 서비스에 DoS 방지 설정을 적용하는 방법을 안내하였습니다." | Out-File -FilePath $TMP1 -Append
 
 "------------------------------------------------" | Out-File -FilePath $TMP1 -Append
 
