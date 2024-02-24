@@ -20,11 +20,13 @@ BAR
 # 취약한 서비스 목록
 $services = @('Telnet', 'RemoteRegistry')
 
-# 서비스 상태 확인
+# 서비스 상태 확인 및 비활성화
 foreach ($service in $services) {
     $serviceStatus = Get-Service -Name $service -ErrorAction SilentlyContinue
     if ($serviceStatus -and $serviceStatus.Status -eq 'Running') {
-        "WARN: 취약한 서비스 '$service'가 활성화되어 있습니다." | Out-File -FilePath $TMP1 -Append
+        Stop-Service -Name $service -Force
+        Set-Service -Name $service -StartupType Disabled
+        "CHANGE: 취약한 서비스 '$service'가 비활성화되었습니다." | Out-File -FilePath $TMP1 -Append
     } else {
         "OK: 서비스 '$service'가 비활성화되어 있거나, 시스템에 설치되지 않았습니다." | Out-File -FilePath $TMP1 -Append
     }
@@ -32,5 +34,6 @@ foreach ($service in $services) {
 
 BAR
 
-# 결과 출력
+# 결과 출력 및 로그 파일 삭제
 Get-Content -Path $TMP1 | Write-Host
+Remove-Item $TMP1 -Force

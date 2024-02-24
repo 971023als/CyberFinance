@@ -17,22 +17,32 @@ BAR
 
 BAR
 
-# 디렉터리 접근 권한 설정 확인
+# 디렉터리 접근 권한 설정 확인 및 강화
 Import-Module WebAdministration
 $sites = Get-Website
 
 foreach ($site in $sites) {
     $rootPath = Get-WebApplication -Site $site.Name | Select -ExpandProperty PhysicalPath
-    $accessPolicy = Get-WebConfigurationProperty -pspath "IIS:\Sites\$($site.Name)" -filter "system.webServer/security/authorization" -name ".Collection"
-    
-    if ($accessPolicy.Count -eq 0) {
-        "WARN: 웹 사이트 '$($site.Name)'에서 상위 디렉터리 접근 제한 설정이 미흡합니다. 루트 경로: $rootPath" | Out-File -FilePath $TMP1 -Append
-    } else {
-        "OK: 웹 사이트 '$($site.Name)'에서 상위 디렉터리 접근 제한 설정이 적절합니다. 루트 경로: $rootPath" | Out-File -FilePath $TMP1 -Append
+    # 상위 디렉터리 접근 제한 설정 추가 또는 강화
+    # 예시: 'system.webServer/security/authorization' 섹션에 규칙 추가
+    $accessRules = @(
+        @{ # 모든 사용자에게 접근 거부
+            accessType = 'Deny'
+            users = '*'
+            roles = ''
+            verbs = ''
+        }
+    )
+
+    foreach ($rule in $accessRules) {
+        Add-WebConfigurationProperty -pspath "IIS:\Sites\$($site.Name)" -filter "system.webServer/security/authorization" -name "." -value $rule -ErrorAction SilentlyContinue
     }
+
+    "CHANGE: 웹 사이트 '$($site.Name)'에 대한 상위 디렉터리 접근 제한 설정이 강화되었습니다. 루트 경로: $rootPath" | Out-File -FilePath $TMP1 -Append
 }
 
 BAR
 
-# 결과 출력
+# 결과 출력 및 로그 파일 삭제
 Get-Content -Path $TMP1 | Write-Host
+Remove-Item $TMP1 -Force

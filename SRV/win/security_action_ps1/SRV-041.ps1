@@ -17,20 +17,22 @@ BAR
 
 BAR
 
-# CGI 스크립트 실행 설정 확인
+# CGI 스크립트 실행 설정 확인 및 제거
 Import-Module WebAdministration
 $cgiSettings = Get-WebConfiguration -Filter '/system.webServer/handlers' -PSPath 'IIS:\'
 $cgiHandlers = $cgiSettings.Collection | Where-Object { $_.path -eq '*.cgi' -or $_.path -eq '*.pl' }
 
 if ($cgiHandlers) {
     foreach ($handler in $cgiHandlers) {
-        "WARN: CGI 스크립트 ($($handler.path)) 실행이 허용되어 있습니다." | Out-File -FilePath $TMP1 -Append
+        Remove-WebConfigurationProperty -Filter '/system.webServer/handlers' -PSPath 'IIS:\' -Name '.' -AtElement @{path=$handler.path}
+        "CHANGE: CGI 스크립트 ($($handler.path)) 실행이 제한되었습니다." | Out-File -FilePath $TMP1 -Append
     }
 } else {
-    "OK: CGI 스크립트 실행이 적절하게 제한되어 있습니다." | Out-File -FilePath $TMP1 -Append
+    "OK: CGI 스크립트 실행이 이미 적절하게 제한되어 있습니다." | Out-File -FilePath $TMP1 -Append
 }
 
 BAR
 
-# 결과 출력
+# 결과 출력 및 로그 파일 삭제
 Get-Content -Path $TMP1 | Write-Host
+Remove-Item $TMP1 -Force
