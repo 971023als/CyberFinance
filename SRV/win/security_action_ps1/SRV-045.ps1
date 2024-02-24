@@ -7,8 +7,8 @@ $TMP1 = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand
 "[양호]: 웹 서비스 프로세스가 과도한 권한으로 실행되지 않음" | Out-File -FilePath $TMP1 -Append
 "[취약]: 웹 서비스 프로세스가 과도한 권한으로 실행됨" | Out-File -FilePath $TMP1 -Append
 
-# 웹 서비스의 서비스 이름 지정 (예: Apache2.4, IIS의 경우 W3SVC)
-$SERVICE_NAME = "Apache2.4"
+# 웹 서비스의 서비스 이름 지정 (예: IIS의 경우 W3SVC)
+$SERVICE_NAME = "IIS"
 
 # 서비스가 어떤 계정 아래에서 실행되고 있는지 확인
 $serviceDetails = Get-WmiObject -Class Win32_Service -Filter "Name = '$SERVICE_NAME'"
