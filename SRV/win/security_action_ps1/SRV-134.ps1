@@ -17,7 +17,8 @@ $aslrStatus = Get-ProcessMitigation -System | Select-Object -ExpandProperty Aslr
 if ($depStatus.Enable -eq 'ON' -and $aslrStatus.ForceRelocateImages -eq 'ON') {
     'OK: 스택 영역 실행 방지가 활성화되어 있습니다.' | Out-File -FilePath $TMP1 -Append
 } else {
-    'WARN: 스택 영역 실행 방지가 비활성화되어 있습니다.' | Out-File -FilePath $TMP1 -Append
+    'WARN: 스택 영역 실행 방지가 비활성화되어 있습니다. 관리자 권한으로 시스템 설정을 확인하고 DEP 및 ASLR을 활성화하세요.' | Out-File -FilePath $TMP1 -Append
+    'ACTION REQUIRED: 시스템 속성 -> 고급 시스템 설정 -> 성능 설정 -> 데이터 실행 방지에서 DEP 설정을 조정할 수 있습니다. ASLR 설정은 보안 정책을 통해 조정 가능합니다.' | Out-File -FilePath $TMP1 -Append
 }
 
 # 결과 파일 출력
