@@ -16,13 +16,27 @@ EOF
 
 BAR
 
-# MySQL 명령 실행
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+echo "지원하는 데이터베이스: MySQL, PostgreSQL"
+read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
 
-# 로그인 실패 횟수 제한 설정 확인
-# 이 설정은 MySQL 기본 기능으로는 제공되지 않으므로, 보안 플러그인 또는 외부 도구의 설정을 검사해야 할 수 있음
-# 예시 코드로, 실제로는 해당 환경에 맞게 수정 필요
-FAILURE_LIMIT_SETTING=$($MYSQL_CMD "SHOW VARIABLES LIKE 'login_failure_limit'")
+case $DB_TYPE in
+    MySQL|mysql)
+        read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
+        read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
+        echo
+        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+        # MySQL에 대한 로그인 실패 횟수 제한 설정 확인 로직
+        FAILURE_LIMIT_SETTING=$($MYSQL_CMD "SHOW VARIABLES LIKE 'login_failure_limit'")
+        ;;
+    PostgreSQL|postgresql)
+        # PostgreSQL에 대한 로그인 실패 횟수 제한 설정 확인 로직
+        # PostgreSQL 처리 로직은 여기에 구현
+        ;;
+    *)
+        echo "지원하지 않는 데이터베이스 유형입니다."
+        exit 1
+        ;;
+esac
 
 if [ -z "$FAILURE_LIMIT_SETTING" ]; then
     WARN "로그인 실패 횟수에 따른 접속 제한이 설정되어 있지 않습니다."
