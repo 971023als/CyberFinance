@@ -16,8 +16,24 @@ EOF
 
 BAR
 
-# Audit log directory
-audit_log_dir="/var/log/audit"
+echo "지원하는 데이터베이스: MySQL, PostgreSQL, Oracle"
+read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
+
+case $DB_TYPE in
+    MySQL|mysql)
+        audit_log_dir="/var/log/mysql/audit"
+        ;;
+    PostgreSQL|postgresql)
+        audit_log_dir="/var/log/postgresql/audit"
+        ;;
+    Oracle|oracle)
+        audit_log_dir="/u01/app/oracle/admin/orcl/adump"
+        ;;
+    *)
+        echo "지원하지 않는 데이터베이스 유형입니다."
+        exit 1
+        ;;
+esac
 
 # Check if audit logs are being collected
 if [ "$(find $audit_log_dir -type f -name '*.log' | wc -l)" -gt 0 ]; then
