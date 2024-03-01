@@ -1,57 +1,61 @@
-#!/bin/bash
+# Define helper functions
+function Write-Bar {
+    Write-Output "============================================"
+}
 
-. function.sh
+function Write-Code {
+    param($code)
+    Write-Output "CODE [$code]"
+}
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+function Warn {
+    param($message)
+    Write-Output "WARNING: $message"
+}
 
-BAR
+function OK {
+    param($message)
+    Write-Output "OK: $message"
+}
 
-CODE [DBM-013] 원격 접속에 대한 접근 제어 미흡
+# Script start
+Write-Bar
+Write-Code "DBM-013] 원격 접속에 대한 접근 제어 미흡"
 
-cat << EOF >> $result
-[양호]: 원격 접속 제어가 적절히 설정되어 있는 경우
-[취약]: 원격 접속 제어가 미흡한 경우
-EOF
+# Prompt for database type
+$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL. 사용 중인 데이터베이스 유형을 입력하세요"
 
-BAR
+if ($DB_TYPE -eq "MySQL" -or $DB_TYPE -eq "mysql") {
+    $MYSQL_USER = Read-Host "Enter MySQL username"
+    $MYSQL_PASS = Read-Host "Enter MySQL password" -AsSecureString
+    $MYSQL_PASS = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($MYSQL_PASS))
 
-echo "지원하는 데이터베이스: MySQL, PostgreSQL"
-read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
+    # MySQL command to check remote access users
+    $Query = "SELECT host, user FROM mysql.user WHERE host NOT IN ('localhost', '127.0.0.1', '::1');"
+    $results = Invoke-MySqlQuery -Query $Query -Username $MYSQL_USER -Password $MYSQL_PASS
+    foreach ($row in $results) {
+        if ($row.user -ne $null) {
+            Warn "원격 호스트($($row.host))에서 접근 가능한 사용자가 있습니다: $($row.user)"
+        }
+    }
+} elseif ($DB_TYPE -eq "PostgreSQL" -or $DB_TYPE -eq "postgresql") {
+    $PG_HBA = Read-Host "Enter path to pg_hba.conf"
+    if (Test-Path $PG_HBA) {
+        $content = Get-Content $PG_HBA
+        if ($content -match "host") {
+            Warn "pg_hba.conf 파일에 원격 호스트 접근을 허용하는 설정이 있습니다."
+        } else {
+            OK "pg_hba.conf 파일이 원격 접속을 제한하고 있습니다."
+        }
+    } else {
+        Warn "pg_hba.conf 파일을 찾을 수 없습니다."
+    }
+} else {
+    Write-Output "Unsupported database type."
+    exit
+}
 
-case $DB_TYPE in
-    MySQL|mysql)
-        read -p "Enter MySQL username: " MYSQL_USER
-        read -sp "Enter MySQL password: " MYSQL_PASS
-        echo
-        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -e"
-        $MYSQL_CMD "SELECT host, user FROM mysql.user WHERE host NOT IN ('localhost', '127.0.0.1', '::1');" | while read host user; do
-          if [ ! -z "$user" ]; then
-            WARN "원격 호스트($host)에서 접근 가능한 사용자가 있습니다: $user"
-          fi
-        done
-        ;;
-    PostgreSQL|postgresql)
-        read -p "Enter path to pg_hba.conf: " PG_HBA
-        if [ -f "$PG_HBA" ] && grep -q "host" $PG_HBA; then
-          WARN "pg_hba.conf 파일에 원격 호스트 접근을 허용하는 설정이 있습니다."
-        else
-          OK "pg_hba.conf 파일이 원격 접속을 제한하고 있습니다."
-        fi
-        ;;
-    *)
-        echo "Unsupported database type."
-        exit 1
-        ;;
-esac
+# PowerShell does not have a direct equivalent of iptables. Network level access controls need to be checked differently, perhaps via Windows Firewall or by inspecting network security group rules in cloud environments.
+# This part would need adaptation based on the specific environment and is not directly translatable from iptables.
 
-# Check network level access controls, such as iptables or firewalls
-if sudo iptables -L -n | grep -q 'ACCEPT'; then
-  WARN "iptables에 원격 접속을 허용하는 규칙이 있습니다."
-else
-  OK "iptables이 원격 접속을 제한하고 있습니다."
-fi
-
-cat $result
-
-echo ; echo
+Write-Bar
