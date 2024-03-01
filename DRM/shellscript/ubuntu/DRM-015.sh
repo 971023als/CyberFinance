@@ -16,19 +16,32 @@ EOF
 
 BAR
 
-# Prompt for database user information
+echo "지원하는 데이터베이스: MySQL, Oracle"
+read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
+
 read -p "Enter database user name: " DB_USER
 read -sp "Enter database password: " DB_PASS
 echo
 
-# Database command execution
-DB_CMD="your_db_command_utility" # Replace with actual command utility like sqlplus, mysql etc.
+case $DB_TYPE in
+    MySQL|mysql)
+        DB_CMD="mysql"
+        CHECK_QUERY="SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE GRANTEE = 'PUBLIC';"
+        ;;
+    Oracle|oracle)
+        DB_CMD="sqlplus -s /nolog"
+        CHECK_QUERY="conn $DB_USER/$DB_PASS\nSET HEADING OFF;\nSET FEEDBACK OFF;\nSELECT PRIVILEGE FROM dba_sys_privs WHERE GRANTEE = 'PUBLIC';\nEXIT;"
+        ;;
+    *)
+        echo "Unsupported database type."
+        exit 1
+        ;;
+esac
 
 echo "Checking for unnecessary privileges granted to PUBLIC role..."
 
 # Check for unnecessary PUBLIC role privileges
-# Replace with the actual query that lists privileges for the PUBLIC role in your database
-UNNECESSARY_PRIVILEGES=$($DB_CMD -u "$DB_USER" -p"$DB_PASS" -e "CHECK QUERY TO LIST PRIVILEGES FOR PUBLIC ROLE;")
+UNNECESSARY_PRIVILEGES=$(echo -e "$CHECK_QUERY" | $DB_CMD)
 
 # Check if unnecessary privileges are granted
 if [ -z "$UNNECESSARY_PRIVILEGES" ]; then
