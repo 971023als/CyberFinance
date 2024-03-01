@@ -1,52 +1,32 @@
-#!/bin/bash
+# Define function to prompt for secure password
+function Read-SecurePassword {
+    $securePassword = Read-Host "Enter the database administrator password" -AsSecureString
+    return [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword))
+}
 
-. function.sh
+# Prompt for database information
+$dbType = Read-Host "Supported databases: MySQL, PostgreSQL. Enter the type of your database"
+$dbUser = Read-Host "Enter the database administrator username"
+$dbPass = Read-SecurePassword
 
-TMP1=$(mktemp)
-> "$TMP1"
+# Define and execute database command based on the database type
+if ($dbType -eq "MySQL") {
+    $query = "SELECT User, Host, Db, Select_priv, Insert_priv, Update_priv FROM mysql.db;"
+    $command = "mysql -u $dbUser -p$dbPass -e `"$query`""
+    Invoke-Expression $command
+}
+elseif ($dbType -eq "PostgreSQL") {
+    $query = "SELECT rolname, rolselectpriv, rolinsertpriv, rolupdatepriv FROM pg_roles JOIN pg_database ON (rolname = datname);"
+    $command = "psql -U $dbUser -c `"$query`""
+    Invoke-Expression $command
+}
+else {
+    Write-Host "Unsupported database type."
+    exit
+}
 
-BAR
+# Note: Direct execution of database commands in PowerShell using Invoke-Expression with concatenated strings is a security risk similar to SQL injection.
+# It's recommended to use parameterized queries or stored procedures to mitigate this risk.
 
-CODE [DBM-020] 사용자별 계정 분리 미흡
-
-cat << EOF >> "$result"
-[양호]: 사용자별 계정 분리가 올바르게 설정된 경우
-[취약]: 사용자별 계정 분리가 충분하지 않은 경우
-EOF
-
-BAR
-
-echo "지원하는 데이터베이스: MySQL, PostgreSQL"
-read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
-
-read -p "데이터베이스 관리자 사용자 이름을 입력하세요: " DB_USER
-read -sp "데이터베이스 관리자 비밀번호를 입력하세요: " DB_PASS
-echo
-
-case $DB_TYPE in
-    MySQL|mysql)
-        DB_CMD="mysql -u $DB_USER -p$DB_PASS -Bse"
-        QUERY="SELECT User, Host, Db, Select_priv, Insert_priv, Update_priv FROM mysql.db;"
-        ;;
-    PostgreSQL|postgresql)
-        DB_CMD="psql -U $DB_USER -c"
-        QUERY="SELECT rolname, rolselectpriv, rolinsertpriv, rolupdatepriv FROM pg_roles JOIN pg_database ON (rolname = datname);"
-        # PostgreSQL의 실제 권한 확인 쿼리는 상황에 따라 다를 수 있습니다.
-        ;;
-    *)
-        echo "Unsupported database type."
-        exit 1
-        ;;
-esac
-
-USER_PRIVILEGES=$(echo "$QUERY" | $DB_CMD)
-
-# 사용자 권한 검사 로직 (MySQL과 PostgreSQL에 따라 다를 수 있음)
-echo "$USER_PRIVILEGES" | while read USER PRIVILEGES; do
-    # 사용자별 권한 검사 로직 구현
-    echo "사용자 $USER 권한 검사 결과: $PRIVILEGES"
-done
-
-cat "$result"
-
-echo ; echo
+# The above example demonstrates how to execute database-specific commands in PowerShell.
+# The actual execution and results parsing will require adjustments based on your database setup and security policies.

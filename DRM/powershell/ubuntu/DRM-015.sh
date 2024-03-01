@@ -1,55 +1,62 @@
-#!/bin/bash
+# Define helper functions
+function Invoke-MySqlQuery {
+    param (
+        [string]$query,
+        [string]$dbUser,
+        [string]$dbPass,
+        [string]$dbName
+    )
+    # This is a placeholder for MySQL query execution. You might need a MySQL .NET connector or another method to execute the query.
+    # Example:
+    # $ConnectionString = "server=localhost;port=3306;uid=$dbUser;pwd=$dbPass;database=$dbName;"
+    # $Connection = New-Object MySql.Data.MySqlClient.MySqlConnection
+    # $Connection.ConnectionString = $ConnectionString
+    # $Command = New-Object MySql.Data.MySqlClient.MySqlCommand($query, $Connection)
+    # $DataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter($Command)
+    # $DataSet = New-Object System.Data.DataSet
+    # $DataAdapter.Fill($DataSet, "data")
+    # $DataSet.Tables["data"]
+    Write-Output "This function needs implementation based on the environment."
+}
 
-. function.sh
+function Check-PublicRolePrivileges {
+    param (
+        [string]$DBType,
+        [string]$DBUser,
+        [string]$DBPass,
+        [string]$DBName = $null
+    )
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
+    if ($DBType -eq "MySQL") {
+        $Query = "SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE GRANTEE = 'PUBLIC';"
+        $Privileges = Invoke-MySqlQuery -query $Query -dbUser $DBUser -dbPass $DBPass -dbName $DBName
+        # Implement result check
+    } elseif ($DBType -eq "Oracle") {
+        $ConnectCmd = "CONNECT $DBUser/$DBPass"
+        $Query = @"
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT PRIVILEGE FROM dba_sys_privs WHERE GRANTEE = 'PUBLIC';
+EXIT;
+"@
+        $Privileges = Start-Process -FilePath "sqlplus" -ArgumentList "-s /nolog" -InputObject $ConnectCmd, $Query -NoNewWindow -Wait -PassThru
+        # Implement result check
+    } else {
+        Write-Host "Unsupported database type."
+        return
+    }
 
-BAR
+    if (-not $Privileges) {
+        Write-Host "OK: No unnecessary privileges granted to PUBLIC role."
+    } else {
+        Write-Host "WARNING: The following unnecessary privileges are granted to PUBLIC role: $Privileges"
+    }
+}
 
-CODE [DBM-015] Public Role에 불필요한 권한 존재
+# Main script starts here
+$DBType = Read-Host "Enter the type of your database (MySQL/Oracle)"
+$DBUser = Read-Host "Enter database user name"
+$DBPass = Read-Host "Enter database password" -AsSecureString
+$DBPass = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($DBPass))
 
-cat << EOF >> $result
-[양호]: Public Role에 불필요한 권한이 부여되지 않은 경우
-[취약]: Public Role에 불필요한 권한이 부여된 경우
-EOF
-
-BAR
-
-echo "지원하는 데이터베이스: MySQL, Oracle"
-read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
-
-read -p "Enter database user name: " DB_USER
-read -sp "Enter database password: " DB_PASS
-echo
-
-case $DB_TYPE in
-    MySQL|mysql)
-        DB_CMD="mysql"
-        CHECK_QUERY="SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE GRANTEE = 'PUBLIC';"
-        ;;
-    Oracle|oracle)
-        DB_CMD="sqlplus -s /nolog"
-        CHECK_QUERY="conn $DB_USER/$DB_PASS\nSET HEADING OFF;\nSET FEEDBACK OFF;\nSELECT PRIVILEGE FROM dba_sys_privs WHERE GRANTEE = 'PUBLIC';\nEXIT;"
-        ;;
-    *)
-        echo "Unsupported database type."
-        exit 1
-        ;;
-esac
-
-echo "Checking for unnecessary privileges granted to PUBLIC role..."
-
-# Check for unnecessary PUBLIC role privileges
-UNNECESSARY_PRIVILEGES=$(echo -e "$CHECK_QUERY" | $DB_CMD)
-
-# Check if unnecessary privileges are granted
-if [ -z "$UNNECESSARY_PRIVILEGES" ]; then
-    OK "No unnecessary privileges granted to PUBLIC role."
-else
-    WARN "The following unnecessary privileges are granted to PUBLIC role: $UNNECESSARY_PRIVILEGES"
-fi
-
-cat $result
-
-echo ; echo
+Check-PublicRolePrivileges -DBType $DBType -DBUser $DBUser -DBPass $DBPass

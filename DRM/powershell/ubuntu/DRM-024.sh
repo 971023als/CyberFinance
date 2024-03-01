@@ -1,59 +1,52 @@
-#!/bin/bash
+# Function to execute SQL query and return results
+function Invoke-SqlQuery {
+    param (
+        [string]$DBType,
+        [string]$DBUser,
+        [string]$DBPass,
+        [string]$Query
+    )
+    switch ($DBType) {
+        "1" { # MySQL
+            $ConnectionString = "server=localhost;user=$DBUser;password=$DBPass;database=mysql;"
+            $Query = "SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE IS_GRANTABLE = 'YES';"
+            $MySQLCommand = "mysql -u $DBUser -p$DBPass -Bse `"$Query`""
+            return Invoke-Expression $MySQLCommand
+        }
+        "2" { # PostgreSQL
+            $ConnectionString = "Host=localhost;Username=$DBUser;Password=$DBPass;Database=postgres;"
+            $Query = "SELECT grantee, privilege_type FROM information_schema.role_usage_grants WHERE is_grantable = 'YES';"
+            $PGSQLCommand = "psql -U $DBUser -c `"$Query`""
+            return Invoke-Expression $PGSQLCommand
+        }
+        "3" { # Oracle
+            Write-Host "Oracle support not implemented in this script."
+            return $null
+        }
+        Default {
+            Write-Host "Unsupported database type."
+            return $null
+        }
+    }
+}
 
-. function.sh
+# Prompt user for database type
+Write-Host "Supported Databases: 1. MySQL 2. PostgreSQL 3. Oracle"
+$DBType = Read-Host "Enter the number for your database type"
+$DBUser = Read-Host "Enter database username"
+$DBPass = Read-Host -AsSecureString "Enter database password" # Note: Handling passwords as secure string for demonstration, conversion needed for actual use
+$DBPass = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($DBPass))
 
-TMP1=$(mktemp)
-> "$TMP1"
+# Placeholder query, actual query will be set in the function based on DB type
+$Query = ""
 
-BAR
-CODE [DBM-024] 불필요하게 'WITH GRANT OPTION' 옵션이 설정된 권한 확인
-
-cat << EOF >> "$result"
-[양호]: 'WITH GRANT OPTION'이 불필요하게 설정되지 않은 경우
-[취약]: 'WITH GRANT OPTION'이 불필요하게 설정된 권한이 있는 경우
-EOF
-
-BAR
-
-echo "지원하는 데이터베이스: 1. MySQL 2. PostgreSQL 3. Oracle"
-read -p "사용 중인 데이터베이스 유형을 선택하세요 (1-3): " DB_TYPE
-
-read -p "데이터베이스 사용자 이름을 입력하세요: " DB_USER
-read -sp "데이터베이스 비밀번호를 입력하세요: " DB_PASS
-echo
-
-case $DB_TYPE in
-    1)
-        # MySQL command
-        DB_CMD="mysql -u $DB_USER -p$DB_PASS -Bse"
-        QUERY="SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE IS_GRANTABLE = 'YES';"
-        ;;
-    2)
-        # PostgreSQL command (PostgreSQL does not directly use WITH GRANT OPTION in the same way, this is a placeholder example)
-        DB_CMD="psql -U $DB_USER -c"
-        QUERY="SELECT grantee, privilege_type FROM information_schema.role_usage_grants WHERE is_grantable = 'YES';"
-        ;;
-    3)
-        # Oracle command (Placeholder, as Oracle's system for privileges might require different handling)
-        echo "Oracle support not implemented in this script."
-        exit 1
-        ;;
-    *)
-        echo "Unsupported database type."
-        exit 1
-        ;;
-esac
-
-# Check for unnecessary WITH GRANT OPTION privileges
-GRANT_OPTION_PRIVILEGES=$(echo "$QUERY" | $DB_CMD)
+# Execute query and check privileges
+$GrantOptionPrivileges = Invoke-SqlQuery -DBType $DBType -DBUser $DBUser -DBPass $DBPass -Query $Query
 
 # Check if any unnecessary privileges are found
-if [ -n "$GRANT_OPTION_PRIVILEGES" ]; then
-    WARN "The following privileges are granted with 'WITH GRANT OPTION' unnecessarily: $GRANT_OPTION_PRIVILEGES"
-else
-    OK "No unnecessary privileges are granted with 'WITH GRANT OPTION'."
-fi
-
-cat "$result"
-
-echo ; echo
+if ($null -ne $GrantOptionPrivileges -and $GrantOptionPrivileges.Count -gt 0) {
+    Write-Warning "The following privileges are granted with 'WITH GRANT OPTION' unnecessarily:"
+    $GrantOptionPrivileges
+} else {
+    Write-Host "No unnecessary privileges are granted with 'WITH GRANT OPTION'."
+}
