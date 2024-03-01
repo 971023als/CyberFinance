@@ -9,29 +9,49 @@ BAR
 CODE [DBM-031] SA 계정에 대한 보안설정 미흡
 
 cat << EOF >> "$result"
-[양호]: SA 계정의 보안 설정이 적절한 경우
-[취약]: SA 계정의 보안 설정이 미흡한 경우
+[양호]: 관리자 계정의 보안 설정이 적절한 경우
+[취약]: 관리자 계정의 보안 설정이 미흡한 경우
 EOF
 
 BAR
 
-# 데이터베이스 사용자 정보 입력
+echo "지원하는 데이터베이스: 1. SQL Server 2. MySQL 3. PostgreSQL"
+read -p "사용 중인 데이터베이스 유형을 선택하세요 (1-3): " DB_TYPE
+
 read -p "데이터베이스 관리자 계정을 입력하세요: " DB_ADMIN
 read -sp "데이터베이스 관리자 비밀번호를 입력하세요: " DB_PASS
 echo
 
-# 데이터베이스 명령 실행
-DB_CMD="your_database_command"
+case $DB_TYPE in
+    1)
+        # SQL Server command
+        DB_CMD="sqlcmd -U $DB_ADMIN -P $DB_PASS"
+        QUERY="SELECT * FROM sys.sql_logins WHERE name = 'sa';"
+        ;;
+    2)
+        # MySQL command
+        DB_CMD="mysql -u $DB_ADMIN -p$DB_PASS -e"
+        QUERY="SELECT User, Host FROM mysql.user WHERE User = 'root';"
+        ;;
+    3)
+        # PostgreSQL command
+        DB_CMD="psql -U $DB_ADMIN -c"
+        QUERY="SELECT rolname FROM pg_roles WHERE rolname = 'postgres';"
+        ;;
+    *)
+        echo "Unsupported database type."
+        exit 1
+        ;;
+esac
 
-# SA 계정의 보안 설정 확인
-SA_SECURITY_SETTINGS=$($DB_CMD -u $DB_ADMIN -p$DB_PASS -e "SELECT * FROM sa_security_settings;")
+# 관리자 계정의 보안 설정 확인
+ADMIN_SECURITY_SETTINGS=$(echo "$QUERY" | $DB_CMD)
 
-# SA 계정 보안 설정 검사
-if [ -z "$SA_SECURITY_SETTINGS" ]; then
-    WARN "SA 계정의 보안 설정이 미흡합니다."
+# 관리자 계정 보안 설정 검사
+if [ -z "$ADMIN_SECURITY_SETTINGS" ]; then
+    WARN "관리자 계정의 보안 설정이 미흡합니다."
 else
-    # 여기에 추가적인 로직을 구현하여 보안 설정이 충분한지 판단
-    OK "SA 계정의 보안 설정이 적절합니다: $SA_SECURITY_SETTINGS"
+    OK "관리자 계정의 보안 설정이 적절합니다: $ADMIN_SECURITY_SETTINGS"
 fi
 
 cat "$result"

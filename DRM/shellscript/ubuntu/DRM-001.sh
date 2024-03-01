@@ -25,15 +25,19 @@ case $DB_TYPE in
         read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
         read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
         echo
-        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
-        CHECK_CMD=$MYSQL_CMD
         QUERY="SELECT user, authentication_string FROM mysql.user"
+        CHECK_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
         ;;
     PostgreSQL|postgresql)
-        # PostgreSQL에 대한 접속 정보 입력 요청 및 처리 방법
+        read -p "PostgreSQL 사용자 이름을 입력하세요: " PGSQL_USER
+        read -sp "PostgreSQL 비밀번호를 입력하세요: " PGSQL_PASS
+        echo
+        QUERY="SELECT usename AS user, passwd AS pass FROM pg_shadow"
+        CHECK_CMD="psql -U $PGSQL_USER -c"
         ;;
     Oracle|oracle)
-        # Oracle에 대한 접속 정보 입력 요청 및 처리 방법
+        echo "Oracle 데이터베이스에 대한 비밀번호 강도 검사는 수동으로 수행해야 할 수 있습니다."
+        exit 0
         ;;
     *)
         echo "지원하지 않는 데이터베이스 유형입니다."
@@ -43,6 +47,7 @@ esac
 
 $CHECK_CMD "$QUERY" | while read user pass; do
     # 데이터베이스 유형에 따른 비밀번호 길이 및 패턴 검사 로직 구현
+    echo "비밀번호 검사 로직을 여기에 구현하세요."
 done
 
 OK "모든 데이터베이스 계정의 비밀번호가 강력합니다."

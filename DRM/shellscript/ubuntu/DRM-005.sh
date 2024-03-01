@@ -16,7 +16,7 @@ EOF
 
 BAR
 
-echo "지원하는 데이터베이스: MySQL, PostgreSQL"
+echo "지원하는 데이터베이스: MySQL, PostgreSQL, Oracle"
 read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
 
 case $DB_TYPE in
@@ -25,29 +25,34 @@ case $DB_TYPE in
         read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
         echo
         MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+        QUERY="SELECT COUNT(*) FROM your_table WHERE your_field IS NOT NULL AND your_field != AES_DECRYPT(AES_ENCRYPT(your_field, 'your_key'), 'your_key')"
         ;;
     PostgreSQL|postgresql)
-        # PostgreSQL에 대한 접속 정보 입력 요청 및 처리 방법
-        # 이 부분은 PostgreSQL 접속 방법에 맞게 수정해야 합니다.
+        # PostgreSQL에 대한 암호화 확인 로직을 여기에 구현
+        ;;
+    Oracle|oracle)
+        # Oracle에 대한 암호화 확인 로직을 여기에 구현
         ;;
     *)
-        echo "지원하지 않는 데이터베이스 유형입니다."
+        echo "Unsupported database type."
         exit 1
         ;;
 esac
 
-# 암호화 확인 로직
-# 여기에서는 MySQL을 위한 예시입니다. PostgreSQL 등 다른 데이터베이스의 경우, 해당 데이터베이스의 암호화 함수를 사용해야 합니다.
-if [ "$DB_TYPE" = "MySQL" ] || [ "$DB_TYPE" = "mysql" ]; then
-    ENCRYPTED_COUNT=$($MYSQL_CMD "SELECT COUNT(*) FROM your_table WHERE your_field IS NOT NULL AND your_field != AES_DECRYPT(AES_ENCRYPT(your_field, 'your_key'), 'your_key')")
+# 암호화 확인 로직 실행
+if [ "$DB_TYPE" == "MySQL" ]; then
+    ENCRYPTED_COUNT=$($MYSQL_CMD "$QUERY")
     if [ "$ENCRYPTED_COUNT" -gt 0 ]; then
         WARN "미암호화된 중요 데이터가 존재합니다."
     else
         OK "모든 중요 데이터가 암호화되어 있습니다."
     fi
-elif [ "$DB_TYPE" = "PostgreSQL" ] || [ "$DB_TYPE" = "postgresql" ]; then
-    # PostgreSQL의 암호화 확인 로직 구현
-    # PostgreSQL은 다른 암호화 함수를 사용할 수 있으며, 해당 로직은 PostgreSQL의 문법에 맞게 수정해야 합니다.
+elif [ "$DB_TYPE" == "PostgreSQL" ]; then
+    # PostgreSQL 암호화 확인 로직 실행
+    echo "PostgreSQL 암호화 확인 로직을 구현하세요."
+elif [ "$DB_TYPE" == "Oracle" ]; then
+    # Oracle 암호화 확인 로직 실행
+    echo "Oracle 암호화 확인 로직을 구현하세요."
 fi
 
 cat $result

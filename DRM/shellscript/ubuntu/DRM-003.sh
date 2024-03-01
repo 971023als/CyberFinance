@@ -24,13 +24,15 @@ case $DB_TYPE in
         read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
         read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
         echo
-        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
-        CHECK_CMD=$MYSQL_CMD
-        QUERY="SELECT user FROM mysql.user"
+        QUERY="SELECT User FROM mysql.user"
+        CHECK_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse \"$QUERY\""
         ;;
     PostgreSQL|postgresql)
-        # PostgreSQL에 대한 접속 정보 입력 요청 및 처리 방법
-        # 이 부분은 PostgreSQL 접속 방법에 맞게 수정해야 합니다.
+        read -p "PostgreSQL 사용자 이름을 입력하세요: " PGSQL_USER
+        read -sp "PostgreSQL 비밀번호를 입력하세요: " PGSQL_PASS
+        echo
+        QUERY="SELECT usename FROM pg_shadow"
+        CHECK_CMD="PGPASSWORD=$PGSQL_PASS psql -U $PGSQL_USER -c \"$QUERY\""
         ;;
     *)
         echo "지원하지 않는 데이터베이스 유형입니다."
@@ -39,11 +41,12 @@ case $DB_TYPE in
 esac
 
 echo "모든 사용자 계정:"
-$CHECK_CMD "$QUERY"
+eval $CHECK_CMD
 
 # 업무상 불필요한 계정 판단 로직 구현
-# 이 부분은 선택된 데이터베이스 유형에 맞게 적절한 쿼리를 실행해야 합니다.
-# 예제에서는 MySQL의 마지막 로그인 날짜를 기준으로 판단합니다. PostgreSQL이나 다른 데이터베이스의 경우, 해당 로직을 데이터베이스의 쿼리 언어와 기능에 맞게 수정해야 합니다.
+# 주의: 여기에 구현된 코드는 모든 사용자 계정을 나열하는 예시입니다.
+# 실제로 업무상 불필요한 계정을 판단하기 위해서는 추가 로직이 필요합니다.
+# 예를 들어, 특정 조건(예: 최근 로그인 시간, 사용되지 않는 계정 등)에 따라 불필요한 계정을 식별할 수 있습니다.
 
 OK "업무상 불필요한 데이터베이스 계정이 존재하지 않습니다."
 

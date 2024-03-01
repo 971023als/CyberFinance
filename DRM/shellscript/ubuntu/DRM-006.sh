@@ -25,12 +25,16 @@ case $DB_TYPE in
         read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
         echo
         MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
-        # MySQL에 대한 로그인 실패 횟수 제한 설정 확인 로직
-        FAILURE_LIMIT_SETTING=$($MYSQL_CMD "SHOW VARIABLES LIKE 'login_failure_limit'")
+        FAILURE_LIMIT_SETTING=$($MYSQL_CMD "SHOW VARIABLES LIKE 'login_failure_limit';")
         ;;
     PostgreSQL|postgresql)
-        # PostgreSQL에 대한 로그인 실패 횟수 제한 설정 확인 로직
-        # PostgreSQL 처리 로직은 여기에 구현
+        read -p "PostgreSQL 사용자 이름을 입력하세요: " PGSQL_USER
+        read -sp "PostgreSQL 비밀번호를 입력하세요: " PGSQL_PASS
+        echo
+        # PostgreSQL은 기본적으로 로그인 실패 제한 설정을 데이터베이스 엔진 레벨에서 지원하지 않음
+        echo "PostgreSQL은 기본적으로 로그인 실패 횟수에 따른 접속 제한을 지원하지 않습니다."
+        echo "pg_hba.conf 파일을 통해 접근 제어를 설정하거나, 외부 보안 도구를 사용해야 합니다."
+        FAILURE_LIMIT_SETTING="N/A"
         ;;
     *)
         echo "지원하지 않는 데이터베이스 유형입니다."
@@ -38,10 +42,15 @@ case $DB_TYPE in
         ;;
 esac
 
-if [ -z "$FAILURE_LIMIT_SETTING" ]; then
-    WARN "로그인 실패 횟수에 따른 접속 제한이 설정되어 있지 않습니다."
-else
-    OK "로그인 실패 횟수에 따른 접속 제한이 설정되어 있습니다."
+if [ "$DB_TYPE" == "MySQL" ]; then
+    if [ -z "$FAILURE_LIMIT_SETTING" ]; then
+        WARN "로그인 실패 횟수에 따른 접속 제한이 설정되어 있지 않습니다."
+    else
+        OK "로그인 실패 횟수에 따른 접속 제한이 설정되어 있습니다."
+    fi
+elif [ "$DB_TYPE" == "PostgreSQL" ]; then
+    # PostgreSQL에 대한 추가 조치 안내
+    WARN "PostgreSQL 사용 시 로그인 실패 횟수 제한을 위한 외부 조치가 필요합니다."
 fi
 
 cat $result
