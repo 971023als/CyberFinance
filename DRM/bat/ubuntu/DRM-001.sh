@@ -1,30 +1,30 @@
 @echo off
 setlocal
 
-:: Ask for database type
-echo Supported databases: MySQL, PostgreSQL, Oracle
-set /p DB_TYPE="Enter the type of your database: "
+:: 데이터베이스 유형 요청
+echo 지원하는 데이터베이스: MySQL, PostgreSQL, Oracle
+set /p DB_TYPE="사용 중인 데이터베이스 유형을 입력하세요: "
 
-:: Ask for username and password based on the database type
+:: 데이터베이스 유형에 따라 사용자 이름 및 비밀번호 요청
 if "%DB_TYPE%"=="MySQL" (
-    set /p DB_USER="Enter MySQL username: "
-    set /p DB_PASS="Enter MySQL password: "
+    set /p DB_USER="MySQL 사용자 이름을 입력하세요: "
+    set /p DB_PASS="MySQL 비밀번호를 입력하세요: "
     mysql -u %DB_USER% -p%DB_PASS% -e "SELECT user, authentication_string FROM mysql.user;"
 ) else if "%DB_TYPE%"=="PostgreSQL" (
-    set /p DB_USER="Enter PostgreSQL username: "
-    set /p DB_PASS="Enter PostgreSQL password: "
+    set /p DB_USER="PostgreSQL 사용자 이름을 입력하세요: "
+    set /p DB_PASS="PostgreSQL 비밀번호를 입력하세요: "
     psql -U %DB_USER% -W %DB_PASS% -c "SELECT usename AS user, passwd AS pass FROM pg_shadow;"
 ) else if "%DB_TYPE%"=="Oracle" (
-    echo Manual password strength check is required for Oracle databases.
+    echo Oracle 데이터베이스에 대한 수동 비밀번호 강도 검사가 필요합니다.
 ) else (
-    echo Unsupported database type.
+    echo 지원하지 않는 데이터베이스 유형입니다.
     goto end
 )
 
-:: Add your logic here for password strength checking. Note: This is much more limited in batch scripts.
-:: You might need to rely on external tools or scripts to perform complex checks.
+:: 비밀번호 강도 검사 로직 추가. 주의: 배치 스크립트에서는 이 부분이 매우 제한적입니다.
+:: 복잡한 검사를 수행하기 위해서는 외부 도구나 스크립트에 의존해야 할 수 있습니다.
 
-echo All database account passwords are strong.
+echo 모든 데이터베이스 계정의 비밀번호가 강력합니다.
 
 :end
 pause

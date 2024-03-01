@@ -1,55 +1,37 @@
-# Define helper functions
-function Write-Bar {
-    Write-Host "============================================"
-}
+@echo off
+echo ============================================
+echo CODE [DBM-011] 감사 로그 수집 및 백업 미흡
+echo ============================================
 
-function Write-Code {
-    param($code)
-    Write-Host "CODE [$code]"
-}
+set /p DB_TYPE="지원하는 데이터베이스: MySQL, PostgreSQL, Oracle. 사용 중인 데이터베이스 유형을 입력하세요: "
 
-function Warn {
-    param($message)
-    Write-Host "WARNING: $message"
-}
+if "%DB_TYPE%"=="MySQL" (
+    set AUDIT_LOG_DIR=C:\ProgramData\MySQL\MySQL Server*\Data\*.log
+) else if "%DB_TYPE%"=="PostgreSQL" (
+    set AUDIT_LOG_DIR=C:\Program Files\PostgreSQL*\data\log\*.log
+) else if "%DB_TYPE%"=="Oracle" (
+    set AUDIT_LOG_DIR=C:\app\*\oradata\*\*.log
+) else (
+    echo Unsupported database type.
+    goto end
+)
 
-function OK {
-    param($message)
-    Write-Host "OK: $message"
-}
+echo Checking if audit logs are being collected...
+if exist "%AUDIT_LOG_DIR%" (
+    echo OK: 감사 로그가 정기적으로 수집되고 있습니다.
+) else (
+    echo WARNING: 감사 로그가 수집되지 않고 있습니다.
+)
 
-# Start of the script
-Write-Bar
-Write-Code "DBM-011] 감사 로그 수집 및 백업 미흡"
+set BACKUP_DIR=C:\Backups\Audit
 
-# User input for database type
-$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL, Oracle. 사용 중인 데이터베이스 유형을 입력하세요"
+echo Checking for recent backup files...
+forfiles /P "%BACKUP_DIR%" /M *.bak /D -30 >nul 2>&1
+if errorlevel 1 (
+    echo WARNING: 감사 로그 백업이 30일 이상 되지 않았습니다.
+) else (
+    echo OK: 감사 로그가 최근 30일 이내에 백업되었습니다.
+)
 
-# Setting audit log directory based on database type
-$audit_log_dir = switch ($DB_TYPE) {
-    "MySQL" { "C:\ProgramData\MySQL\MySQL Server*\Data\*.log" } # Example path, adjust as necessary
-    "PostgreSQL" { "C:\Program Files\PostgreSQL*\data\log\*.log" } # Example path, adjust as necessary
-    "Oracle" { "C:\app\*\oradata\*\*.log" } # Example path, adjust as necessary
-    default { Write-Host "지원하지 않는 데이터베이스 유형입니다."; exit }
-}
-
-# Check if audit logs are being collected
-$auditLogsExist = Test-Path $audit_log_dir
-if ($auditLogsExist) {
-    OK "감사 로그가 정기적으로 수집되고 있습니다."
-} else {
-    Warn "감사 로그가 수집되지 않고 있습니다."
-}
-
-# Backup directory
-$backup_dir = "C:\Backups\Audit" # Adjust as necessary
-
-# Check for recent backup files
-$recentBackupExists = Get-ChildItem $backup_dir -Filter "*.bak" | Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-30) }
-if ($recentBackupExists) {
-    OK "감사 로그가 최근 30일 이내에 백업되었습니다."
-} else {
-    Warn "감사 로그 백업이 30일 이상 되지 않았습니다."
-}
-
-Write-Bar
+:end
+echo ============================================

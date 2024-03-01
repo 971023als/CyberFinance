@@ -1,34 +1,27 @@
-# Define a list of necessary ODBC data sources and OLE-DB drivers
-$necessarySources = @("necessary_source_1", "necessary_source_2") # Update this list according to your requirements
+@echo off
+setlocal
 
-# Get a list of ODBC data sources
-$odbcSources = & odbcconf.exe /q | Select-String "DSN=" | ForEach-Object { $_.ToString().Split("=")[1].Trim() }
+:: 필요한 ODBC 데이터 소스 정의
+set necessarySources=필요한_소스_1 필요한_소스_2
 
-# Check for unnecessary ODBC data sources
-Write-Host "Checking for unnecessary ODBC data sources..."
-foreach ($source in $odbcSources) {
-    if ($necessarySources -notcontains $source) {
-        Write-Host "Unnecessary ODBC data source found: $source"
-    }
-}
+:: 모든 ODBC 데이터 소스 나열
+for /f "tokens=2 delims==" %%i in ('odbcconf /q ^| find "DSN="') do (
+    call :checkSource %%i
+)
 
-# Get a list of OLE-DB drivers (Example uses COM object, adjust as necessary for your environment)
-try {
-    $oleDbProviders = New-Object System.Data.OleDb.OleDbEnumerator
-    $data = $oleDbProviders.GetElements()
-    $oleDbDrivers = $data | Select-Object SOURCES_NAME | ForEach-Object { $_.SOURCES_NAME }
-} catch {
-    Write-Host "Error enumerating OLE-DB drivers."
-    $oleDbDrivers = @()
-}
+:: 배치 스크립트는 PowerShell처럼 직접 OLE-DB 제공자를 나열할 수 없으므로 이 부분은 생략됩니다.
+:: 필요한 OLE-DB 드라이버의 수동 목록을 유지하고 다른 수단으로 존재 여부를 확인하는 것을 고려하세요.
 
-# Check for unnecessary OLE-DB drivers
-Write-Host "Checking for unnecessary OLE-DB drivers..."
-foreach ($driver in $oleDbDrivers) {
-    if ($necessarySources -notcontains $driver) {
-        Write-Host "Unnecessary OLE-DB driver found: $driver"
-    }
-}
+goto :eof
 
-# Note: This script assumes you have a predefined list of necessary data sources and drivers.
-# Adjust the script as necessary to fit your environment's needs.
+:checkSource
+set source=%1
+set found=0
+for %%s in (%necessarySources%) do (
+    if "%%s"=="%source%" set found=1
+)
+
+if %found%==0 (
+    echo 불필요한 ODBC 데이터 소스 발견: %source%
+)
+goto :eof

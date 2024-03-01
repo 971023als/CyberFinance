@@ -1,62 +1,29 @@
-# PowerShell script for checking unnecessary system table access permissions
+@echo off
+setlocal EnableDelayedExpansion
 
-# Placeholder for result accumulation
-$result = @()
+echo 지원하는 데이터베이스:
+echo 1. MySQL
+echo 2. PostgreSQL
+set /p DBType="데이터베이스 유형에 해당하는 번호를 입력하세요: "
 
-# Define a function to output results
-function Add-Result {
-    param (
-        [string]$message
-    )
-    $global:result += $message
-}
+set /p DBUser="데이터베이스 사용자 이름을 입력하세요: "
+set /p DBPass="데이터베이스 비밀번호를 입력하세요: "
 
-# Ask user for database type
-Write-Host "Supported databases: 1. MySQL 2. PostgreSQL"
-$dbType = Read-Host "Enter the number corresponding to your database type"
+if "%DBType%"=="1" (
+    echo MySQL이 선택되었습니다.
+    echo 다음 쿼리를 MySQL 환경에서 수동으로 실행하세요:
+    echo SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA IN ('mysql', 'information_schema', 'performance_schema');
+    echo 불필요한 시스템 테이블 접근 권한이 있는지 확인하세요.
+) else if "%DBType%"=="2" (
+    echo PostgreSQL이 선택되었습니다.
+    echo 다음 쿼리를 PostgreSQL 환경에서 수동으로 실행하세요:
+    echo SELECT grantee, table_schema, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'pg_catalog';
+    echo 불필요한 시스템 테이블 접근 권한이 있는지 확인하세요.
+) else (
+    echo 지원되지 않는 데이터베이스 유형입니다.
+)
 
-# Ask user for database credentials
-$dbUser = Read-Host "Enter the database username"
-$dbPass = Read-Host "Enter the database password" -AsSecureString
-$dbPassPlain = [System.Net.NetworkCredential]::new("", $dbPass).Password
+echo 출력된 결과를 검토하여 불필요한 권한이 있을 경우 적절한 조치를 취하세요.
 
-# Check for unnecessary system table access permissions based on the selected database type
-switch ($dbType) {
-    "1" {
-        # MySQL check
-        $mysqlCmd = "mysql -u $dbUser -p$dbPassPlain -Bse"
-        $query = "SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA IN ('mysql', 'information_schema', 'performance_schema');"
-        try {
-            $systemTablePrivileges = Invoke-Expression "$mysqlCmd `"$query`""
-            if (-not $systemTablePrivileges) {
-                Add-Result "OK: No unnecessary system table access permissions exist."
-            } else {
-                Add-Result "WARN: The following users have unnecessary system table access permissions: `n$systemTablePrivileges"
-            }
-        } catch {
-            Add-Result "Error: Could not execute MySQL command."
-        }
-    }
-    "2" {
-        # PostgreSQL check
-        $psqlCmd = "psql -U $dbUser -c"
-        $query = "SELECT grantee, table_schema, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'pg_catalog';"
-        try {
-            $systemTablePrivileges = & psql -U $dbUser -c $query -h localhost | Out-String
-            if ($systemTablePrivileges -match "grantee") {
-                Add-Result "WARN: The following users have unnecessary system table access permissions: `n$systemTablePrivileges"
-            } else {
-                Add-Result "OK: No unnecessary system table access permissions exist."
-            }
-        } catch {
-            Add-Result "Error: Could not execute PostgreSQL command."
-        }
-    }
-    default {
-        Add-Result "Unsupported database type."
-    }
-}
-
-# Output the result
-$result | ForEach-Object { Write-Host $_ }
-
+:end
+endlocal

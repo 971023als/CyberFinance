@@ -1,46 +1,42 @@
-# Function to execute a remote command via SSH (placeholder, adjust accordingly)
-function Invoke-SSHCommand {
-    param (
-        [string]$Server,
-        [string]$Username,
-        [string]$Password, # Consider using SecureString and a more secure method in production
-        [string]$Command
-    )
-    # Placeholder for SSH command execution
-    # You would replace this with your actual SSH execution code, e.g., using Posh-SSH or similar
-    Write-Host "Executing SSH Command on $Server"
-}
+@echo off
+setlocal
 
-# Main script
-Write-Host "Supported Databases: 1. MySQL 2. PostgreSQL 3. Oracle"
-$DBType = Read-Host "Enter the number for your database type"
+echo Supported Databases: 
+echo 1. MySQL 
+echo 2. PostgreSQL 
+echo 3. Oracle
+echo.
 
-# Setting the database service account based on DB type
-$DatabaseServiceAccount = switch ($DBType) {
-    "1" { "mysql" }
-    "2" { "postgres" }
-    "3" { "oracle" }
-    default {
-        Write-Host "Unsupported database type."
-        exit
-    }
-}
+set /p DBType="Enter the number for your database type: "
 
-$ExpectedUmask = "027"
+if "%DBType%"=="1" (
+    set DatabaseServiceAccount=mysql
+) else if "%DBType%"=="2" (
+    set DatabaseServiceAccount=postgres
+) else if "%DBType%"=="3" (
+    set DatabaseServiceAccount=oracle
+) else (
+    echo Unsupported database type.
+    goto end
+)
 
-# Assuming remote Linux/Unix environment for simplicity
-$Server = Read-Host "Enter the server address"
-$Username = Read-Host "Enter your SSH username"
-$Password = Read-Host "Enter your SSH password" # Consider using SecureString in production
+set ExpectedUmask=027
 
-# Command to check umask value
-$Command = "su - $DatabaseServiceAccount -c umask"
+set /p Server="Enter the server address: "
+set /p Username="Enter your SSH username: "
+set /p Password="Enter your SSH password: "
 
-# Execute the remote command
-$UmaskValue = Invoke-SSHCommand -Server $Server -Username $Username -Password $Password -Command $Command
+rem Assuming plink.exe for SSH. Adjust the command as necessary.
+plink -ssh %Username%@%Server% -pw %Password% "su - %DatabaseServiceAccount% -c umask" > umask.txt
 
-if ($UmaskValue -eq $ExpectedUmask) {
-    Write-Host "Database service account ($DatabaseServiceAccount) has the correct umask value ($ExpectedUmask)."
-} else {
-    Write-Host "Database service account ($DatabaseServiceAccount)'s umask value ($UmaskValue) does not meet the expected ($ExpectedUmask)."
-}
+set /p UmaskValue=<umask.txt
+del umask.txt
+
+if "%UmaskValue%"=="%ExpectedUmask%" (
+    echo Database service account (%DatabaseServiceAccount%) has the correct umask value (%ExpectedUmask%).
+) else (
+    echo Database service account (%DatabaseServiceAccount%)'s umask value (%UmaskValue%) does not meet the expected (%ExpectedUmask%).
+)
+
+:end
+pause

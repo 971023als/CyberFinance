@@ -1,35 +1,31 @@
-# Define the list of critical files for MySQL, Oracle, and PostgreSQL
-# Adjust the paths according to your environment
-$filesToCheck = @{
-    "1" = "C:\ProgramData\MySQL\MySQL Server X.X\my.ini" # Update X.X with your MySQL version
-    "2" = "C:\app\oracle\product\11.2.0\dbhome_1\network\admin\listener.ora"
-    "3" = "C:\Program Files\PostgreSQL\X.X\data\postgresql.conf" # Update X.X with your PostgreSQL version
-}
+@echo off
+setlocal
 
-# Prompt user for database choice
-Write-Host "Supported Databases: 1. MySQL 2. Oracle 3. PostgreSQL"
-$DB_CHOICE = Read-Host "Enter the number of your database"
+echo 지원하는 데이터베이스: 
+echo 1. MySQL 
+echo 2. Oracle 
+echo 3. PostgreSQL
+echo.
+set /p DB_CHOICE="데이터베이스 번호를 입력하세요: "
 
-if (-not $filesToCheck.ContainsKey($DB_CHOICE)) {
-    Write-Host "Invalid selection."
-    exit
-}
+if "%DB_CHOICE%"=="1" (
+    set FILE_TO_CHECK=C:\ProgramData\MySQL\MySQL Server X.X\my.ini
+) else if "%DB_CHOICE%"=="2" (
+    set FILE_TO_CHECK=C:\app\oracle\product\11.2.0\dbhome_1\network\admin\listener.ora
+) else if "%DB_CHOICE%"=="3" (
+    set FILE_TO_CHECK=C:\Program Files\PostgreSQL\X.X\data\postgresql.conf
+) else (
+    echo 선택이 잘못되었습니다.
+    goto end
+)
 
-# Get the file to check based on user choice
-$fileToCheck = $filesToCheck[$DB_CHOICE]
+if exist "%FILE_TO_CHECK%" (
+    echo 파일 %FILE_TO_CHECK%이(가) 존재합니다.
+    echo 권한을 표시합니다:
+    icacls "%FILE_TO_CHECK%"
+) else (
+    echo 파일 %FILE_TO_CHECK%이(가) 존재하지 않습니다.
+)
 
-# Check if file exists
-if (Test-Path $fileToCheck) {
-    # Get file ACL
-    $fileACL = Get-Acl $fileToCheck
-    $ownerPermissions = $fileACL.Access | Where-Object { $_.FileSystemRights -match "FullControl|Modify|ReadAndExecute|Read|Write" -and $_.IdentityReference -eq $fileACL.Owner }
-
-    # Check if permissions are more permissive than "Read and Write" for the owner only
-    if ($ownerPermissions -ne $null -and $ownerPermissions.Count -gt 1) {
-        Write-Host "File $fileToCheck has insecure permissions: $($ownerPermissions.FileSystemRights)"
-    } else {
-        Write-Host "File $fileToCheck has secure permissions."
-    }
-} else {
-    Write-Host "File $fileToCheck does not exist"
-}
+:end
+pause
