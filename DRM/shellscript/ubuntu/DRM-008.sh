@@ -22,22 +22,43 @@ EOF
 # 로그 끝 구분선
 BAR
 
-# MySQL 사용자 정보 입력 (이 부분은 사용자에게서 직접 입력받아야 함)
-MYSQL_USER="root"
-MYSQL_PASS="yourpassword"
+echo "지원하는 데이터베이스: MySQL, PostgreSQL"
+read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
 
-# MySQL 명령 실행 변수 설정
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+case $DB_TYPE in
+    MySQL|mysql)
+        read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
+        read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
+        echo
+        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+        QUERY="SELECT user, password_last_changed FROM mysql.user;"
+        ;;
+    PostgreSQL|postgresql)
+        # PostgreSQL에 대한 접속 정보 입력 요청 및 처리 방법
+        read -p "PostgreSQL 사용자 이름을 입력하세요: " PGSQL_USER
+        read -sp "PostgreSQL 비밀번호를 입력하세요: " PGSQL_PASS
+        echo
+        PGSQL_CMD="psql -U $PGSQL_USER -c"
+        QUERY="SELECT usename as user, rolpassword as password_last_changed FROM pg_shadow;"
+        ;;
+    *)
+        echo "지원하지 않는 데이터베이스 유형입니다."
+        exit 1
+        ;;
+esac
 
 # 주기적인 비밀번호 변경 정책 설정 확인
-PASSWORD_CHANGE_POLICY=$($MYSQL_CMD "SELECT user, password_last_changed FROM mysql.user;")
+if [[ $DB_TYPE == "MySQL" || $DB_TYPE == "mysql" ]]; then
+    PASSWORD_CHANGE_POLICY=$($MYSQL_CMD "$QUERY")
+elif [[ $DB_TYPE == "PostgreSQL" || $DB_TYPE == "postgresql" ]]; then
+    PASSWORD_CHANGE_POLICY=$($PGSQL_CMD "$QUERY")
+fi
 
 # 비밀번호 변경 정책 확인
 if [ -z "$PASSWORD_CHANGE_POLICY" ]; then
     WARN "주기적인 비밀번호 변경 정책이 설정되어 있지 않습니다."
 else
-    # 이 부분에서 주기적인 변경 정책에 따라 결과를 필터링합니다.
-    # 예시로는 마지막 변경일로부터 X일이 지난 계정을 찾습니다.
+    # 주기적인 변경 정책에 따라 결과를 필터링합니다.
     MAX_DAYS=90 # 여기서 X일을 정의합니다.
     CURRENT_DATE=$(date +%F)
     while read user last_changed; do
