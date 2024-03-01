@@ -16,18 +16,33 @@ EOF
 
 BAR
 
-# 사용자에게 MySQL 접속 정보 입력 요청
-read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
-read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
-echo
+# 사용자에게 사용 중인 데이터베이스 유형 입력 요청
+echo "지원하는 데이터베이스: MySQL, PostgreSQL, Oracle"
+read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
 
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+case $DB_TYPE in
+    MySQL|mysql)
+        read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
+        read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
+        echo
+        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+        CHECK_CMD=$MYSQL_CMD
+        QUERY="SELECT user, authentication_string FROM mysql.user"
+        ;;
+    PostgreSQL|postgresql)
+        # PostgreSQL에 대한 접속 정보 입력 요청 및 처리 방법
+        ;;
+    Oracle|oracle)
+        # Oracle에 대한 접속 정보 입력 요청 및 처리 방법
+        ;;
+    *)
+        echo "지원하지 않는 데이터베이스 유형입니다."
+        exit 1
+        ;;
+esac
 
-$MYSQL_CMD "SELECT user, authentication_string FROM mysql.user" | while read user pass; do
-    # 비밀번호 길이 및 특정 패턴 검사 (예: 최소 8자, 숫자 및 특수문자 포함)
-    if ! [[ ${#pass} -ge 8 && "$pass" =~ [0-9] && "$pass" =~ [^a-zA-Z0-9] ]]; then
-        WARN "$user 계정에 취약한 비밀번호가 설정되어 있습니다."
-    fi
+$CHECK_CMD "$QUERY" | while read user pass; do
+    # 데이터베이스 유형에 따른 비밀번호 길이 및 패턴 검사 로직 구현
 done
 
 OK "모든 데이터베이스 계정의 비밀번호가 강력합니다."

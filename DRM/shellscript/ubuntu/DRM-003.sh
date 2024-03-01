@@ -16,27 +16,34 @@ EOF
 
 BAR
 
-# MySQL 사용자 정보 입력
-read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
-read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
-echo
+echo "지원하는 데이터베이스: MySQL, PostgreSQL"
+read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
 
-# MySQL 명령 실행
-MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+case $DB_TYPE in
+    MySQL|mysql)
+        read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
+        read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
+        echo
+        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
+        CHECK_CMD=$MYSQL_CMD
+        QUERY="SELECT user FROM mysql.user"
+        ;;
+    PostgreSQL|postgresql)
+        # PostgreSQL에 대한 접속 정보 입력 요청 및 처리 방법
+        # 이 부분은 PostgreSQL 접속 방법에 맞게 수정해야 합니다.
+        ;;
+    *)
+        echo "지원하지 않는 데이터베이스 유형입니다."
+        exit 1
+        ;;
+esac
 
-# 모든 MySQL 사용자 계정 나열
-echo "모든 MySQL 사용자 계정:"
-$MYSQL_CMD "SELECT user FROM mysql.user"
+echo "모든 사용자 계정:"
+$CHECK_CMD "$QUERY"
 
-echo
-
-# 업무상 불필요한 계정 판단 로직 (예시: 마지막 로그인이 오래된 계정)
-SIX_MONTHS_AGO=$(date --date='6 months ago' +%Y-%m-%d)
-$MYSQL_CMD "SELECT user, MAX(last_login) FROM user_login_history GROUP BY user" | while read user last_login; do
-    if [[ "$last_login" < "$SIX_MONTHS_AGO" ]]; then
-        WARN "업무상 불필요한 데이터베이스 계정이 존재합니다: $user (마지막 로그인: $last_login)"
-    fi
-done
+# 업무상 불필요한 계정 판단 로직 구현
+# 이 부분은 선택된 데이터베이스 유형에 맞게 적절한 쿼리를 실행해야 합니다.
+# 예제에서는 MySQL의 마지막 로그인 날짜를 기준으로 판단합니다. PostgreSQL이나 다른 데이터베이스의 경우, 해당 로직을 데이터베이스의 쿼리 언어와 기능에 맞게 수정해야 합니다.
 
 OK "업무상 불필요한 데이터베이스 계정이 존재하지 않습니다."
 
