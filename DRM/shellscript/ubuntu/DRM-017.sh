@@ -16,16 +16,27 @@ EOF
 
 BAR
 
-# 데이터베이스 사용자 정보 입력받기
+echo "지원하는 데이터베이스: MySQL, PostgreSQL"
+read -p "Enter the type of your database (MySQL/PostgreSQL): " DB_TYPE
+
 read -p "Enter the database username: " DB_USER
 read -sp "Enter the database password: " DB_PASS
 echo
 
-# MySQL 명령 실행
-MYSQL_CMD="mysql -u $DB_USER -p$DB_PASS -Bse"
-
-# 시스템 테이블 권한 확인
-SYSTEM_TABLE_PRIVILEGES=$($MYSQL_CMD "SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA = 'mysql' OR TABLE_SCHEMA = 'information_schema' OR TABLE_SCHEMA = 'performance_schema';")
+case $DB_TYPE in
+    MySQL|mysql)
+        MYSQL_CMD="mysql -u $DB_USER -p$DB_PASS -Bse"
+        SYSTEM_TABLE_PRIVILEGES=$($MYSQL_CMD "SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA IN ('mysql', 'information_schema', 'performance_schema');")
+        ;;
+    PostgreSQL|postgresql)
+        PSQL_CMD="psql -U $DB_USER -c"
+        SYSTEM_TABLE_PRIVILEGES=$(PGPASSWORD=$DB_PASS $PSQL_CMD "SELECT grantee, table_schema, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'pg_catalog';")
+        ;;
+    *)
+        echo "Unsupported database type."
+        exit 1
+        ;;
+esac
 
 if [ -z "$SYSTEM_TABLE_PRIVILEGES" ]; then
     OK "업무상 불필요한 시스템 테이블 접근 권한이 존재하지 않습니다."
