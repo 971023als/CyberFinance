@@ -1,53 +1,51 @@
-#!/bin/bash
+# Prompt user for database type
+Write-Host "Supported Databases: 1. MySQL 2. PostgreSQL 3. Oracle"
+$DBType = Read-Host "Enter the number for your database type"
 
-. function.sh
+# Variables for database credentials
+$DBUser = Read-Host "Enter database username"
+$DBPass = Read-Host -AsSecureString "Enter database password" # Secure password handling
 
-TMP1=$(mktemp)
-> "$TMP1"
+# Convert SecureString password back to plain text for this example
+$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($DBPass)
+$DBPassPlainText = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
-BAR
-CODE [DBM-025] 서비스 지원이 종료된(EoS) 데이터베이스 사용 확인
+function Check-DatabaseVersion {
+    param (
+        [string]$DBType,
+        [string]$DBUser,
+        [string]$DBPassPlainText
+    )
+    
+    switch ($DBType) {
+        "1" { # MySQL
+            $VersionQuery = "SELECT VERSION();"
+            $Version = mysql -u $DBUser -p$DBPassPlainText -e $VersionQuery | Where-Object {$_ -notmatch "VERSION"}
+            # Example check
+            if ($Version -like "5.6.*") {
+                Write-Warning "MySQL version $Version is End-of-Support."
+            } else {
+                Write-Host "Current MySQL version $Version is supported."
+            }
+        }
+        "2" { # PostgreSQL
+            $VersionQuery = "SELECT version();"
+            $Version = psql -U $DBUser -c $VersionQuery | Where-Object {$_ -match "PostgreSQL"} | ForEach-Object {$_ -split " "} | Select-Object -Index 1
+            # Example check
+            if ($Version -like "9.4.*") {
+                Write-Warning "PostgreSQL version $Version is End-of-Support."
+            } else {
+                Write-Host "Current PostgreSQL version $Version is supported."
+            }
+        }
+        "3" { # Oracle
+            Write-Host "Oracle database version check needs to be implemented based on specific environment."
+        }
+        Default {
+            Write-Host "Unsupported database type."
+        }
+    }
+}
 
-cat << EOF >> "$result"
-[양호]: 현재 사용 중인 데이터베이스 버전이 지원되는 경우
-[취약]: 현재 사용 중인 데이터베이스 버전이 서비스 지원 종료(EoS) 상태인 경우
-EOF
-
-BAR
-
-echo "지원하는 데이터베이스: 1. MySQL 2. PostgreSQL 3. Oracle"
-read -p "사용 중인 데이터베이스 유형을 선택하세요 (1-3): " DB_TYPE
-
-case $DB_TYPE in
-    1)
-        read -p "Enter MySQL root username: " MYSQL_USER
-        read -sp "Enter MySQL root password: " MYSQL_PASS
-        echo
-        MYSQL_VERSION=$(mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" -e "SELECT VERSION();" | grep -v 'VERSION')
-        if [[ "$MYSQL_VERSION" == "5.6.40" ]]; then
-            WARN "MySQL 버전 $MYSQL_VERSION 는 서비스 지원이 종료된 버전입니다."
-        else
-            OK "현재 MySQL 버전은 지원되는 버전입니다."
-        fi
-        ;;
-    2)
-        read -p "Enter PostgreSQL username: " PGSQL_USER
-        read -sp "Enter PostgreSQL password: " PGSQL_PASS
-        echo
-        PGSQL_VERSION=$(psql -U "$PGSQL_USER" -c "SELECT version();" | grep PostgreSQL | awk '{print $3}')
-        # Replace this with actual check against known EoS versions for PostgreSQL
-        echo "PostgreSQL 버전 확인: $PGSQL_VERSION"
-        ;;
-    3)
-        echo "Oracle 데이터베이스 버전 확인 로직을 여기에 구현합니다."
-        # Implement Oracle version check here
-        ;;
-    *)
-        echo "Unsupported database type."
-        exit 1
-        ;;
-esac
-
-cat "$result"
-
-echo ; echo
+# Invoke the version check function
+Check-DatabaseVersion -DBType $DBType -DBUser $DBUser -DBPassPlainText $DBPassPlainText
