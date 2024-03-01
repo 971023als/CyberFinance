@@ -1,64 +1,64 @@
-#!/bin/bash
+# Define a function to display headers
+function Write-Bar {
+    Write-Host "=================================================="
+}
 
-. function.sh
+# Define a function to display code
+function Write-Code {
+    param($code)
+    Write-Host "CODE [$code]"
+}
 
-TMP1=$(mktemp /tmp/$(basename $0).XXXXXX)
+# Define a function to warn about settings
+function Warn {
+    param($message)
+    Write-Host "WARNING: $message"
+}
 
-BAR
+# Define a function to confirm settings
+function OK {
+    param($message)
+    Write-Host "OK: $message"
+}
 
-CODE [DBM-009] 사용되지 않는 세션 종료 미흡
+Write-Bar
+Write-Code "DBM-009] 사용되지 않는 세션 종료 미흡"
 
-cat << EOF >> $result
-[양호]: 사용되지 않는 데이터베이스 세션의 종료 시간이 적절히 설정되어 있는 경우
-[취약]: 사용되지 않는 데이터베이스 세션의 종료 시간이 설정되어 있지 않은 경우
-EOF
+# Prompt for database type
+$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL. 사용 중인 데이터베이스 유형을 입력하세요"
 
-BAR
+# Execute based on database type
+switch ($DB_TYPE) {
+    "MySQL" {
+        $MYSQL_USER = Read-Host "Enter MySQL username"
+        $MYSQL_PASS = Read-Host "Enter MySQL password" -AsSecureString
+        $MYSQL_PASS = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($MYSQL_PASS))
+        $QUERY = "SHOW VARIABLES LIKE 'wait_timeout';"
+        $SESSION_TIMEOUT = & mysql.exe -u $MYSQL_USER -p$MYSQL_PASS -Bse $QUERY
+    }
+    "PostgreSQL" {
+        $PGSQL_USER = Read-Host "Enter PostgreSQL username"
+        $PGSQL_PASS = Read-Host "Enter PostgreSQL password" -AsSecureString
+        $PGSQL_PASS = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($PGSQL_PASS))
+        $QUERY = "SHOW idle_in_transaction_session_timeout;"
+        $SESSION_TIMEOUT = & psql.exe -U $PGSQL_USER -c $QUERY
+    }
+    default {
+        Write-Host "Unsupported database type."
+        exit
+    }
+}
 
-echo "지원하는 데이터베이스: MySQL, PostgreSQL"
-read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
-
-case $DB_TYPE in
-    MySQL|mysql)
-        read -p "Enter MySQL username: " MYSQL_USER
-        read -sp "Enter MySQL password: " MYSQL_PASS
-        echo
-        MYSQL_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse"
-        QUERY="SHOW VARIABLES LIKE 'wait_timeout';"
-        ;;
-    PostgreSQL|postgresql)
-        read -p "Enter PostgreSQL username: " PGSQL_USER
-        read -sp "Enter PostgreSQL password: " PGSQL_PASS
-        echo
-        PGSQL_CMD="psql -U $PGSQL_USER -c"
-        QUERY="SHOW idle_in_transaction_session_timeout;"
-        ;;
-    *)
-        echo "Unsupported database type."
-        rm $TMP1
-        exit 1
-        ;;
-esac
-
-if [[ $DB_TYPE == "MySQL" || $DB_TYPE == "mysql" ]]; then
-    SESSION_TIMEOUT=$($MYSQL_CMD "$QUERY")
-elif [[ $DB_TYPE == "PostgreSQL" || $DB_TYPE == "postgresql" ]]; then
-    SESSION_TIMEOUT=$($PGSQL_CMD "$QUERY")
-fi
-
-if [[ -z "$SESSION_TIMEOUT" ]]; then
-    WARN "세션 종료 시간이 설정되어 있지 않습니다."
-else
-    TIMEOUT_VALUE=$(echo $SESSION_TIMEOUT | awk '{print $2}')
-    if [[ "$TIMEOUT_VALUE" -le 300 ]]; then
+# Check and display session timeout settings
+if ([string]::IsNullOrWhiteSpace($SESSION_TIMEOUT)) {
+    Warn "세션 종료 시간이 설정되어 있지 않습니다."
+} else {
+    $TIMEOUT_VALUE = $SESSION_TIMEOUT.Split('=')[1].Trim()
+    if ($TIMEOUT_VALUE -le 300) {
         OK "세션 종료 시간이 적절히 설정되어 있습니다: $TIMEOUT_VALUE seconds."
-    else
-        WARN "세션 종료 시간이 너무 길게 설정되어 있습니다: $TIMEOUT_VALUE seconds."
-    fi
-fi
+    } else {
+        Warn "세션 종료 시간이 너무 길게 설정되어 있습니다: $TIMEOUT_VALUE seconds."
+    }
+}
 
-cat $result
-
-rm $TMP1
-
-echo
+Write-Bar

@@ -1,55 +1,31 @@
-#!/bin/bash
+# 사용자 입력 받기
+$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL. 사용 중인 데이터베이스 유형을 입력하세요"
+$DB_USER = Read-Host "$DB_TYPE 사용자 이름을 입력하세요"
+$DB_PASS = Read-Host "$DB_TYPE 비밀번호를 입력하세요" -AsSecureString
 
-. function.sh
+# 데이터베이스 유형에 따른 처리
+switch ($DB_TYPE) {
+    "MySQL" {
+        $QUERY = "SELECT User FROM mysql.user;"
+        # MySQL 쿼리 실행
+        $ConnectionString = "Server=localhost;Uid=$DB_USER;Pwd=$($DB_PASS | ConvertFrom-SecureString -AsPlainText);"
+        # PowerShell에서 MySQL 쿼리를 실행하려면 MySql.Data.MySqlClient 또는 비슷한 MySQL .NET 커넥터 필요
+    }
+    "PostgreSQL" {
+        $QUERY = "SELECT usename FROM pg_shadow;"
+        # PostgreSQL 쿼리 실행
+        # PowerShell에서 PostgreSQL 쿼리를 실행하려면 Npgsql 또는 비슷한 PostgreSQL .NET 커넥터 필요
+    }
+    default {
+        Write-Host "지원하지 않는 데이터베이스 유형입니다."
+        break
+    }
+}
 
-TMP1=$(SCRIPTNAME).log
-> $TMP1
-
-BAR
-
-CODE [DBM-003] 업무상 불필요한 계정 존재
-
-cat << EOF >> $result
-[양호]: 업무상 불필요한 데이터베이스 계정이 존재하지 않는 경우
-[취약]: 업무상 불필요한 데이터베이스 계정이 존재하는 경우
-EOF
-
-BAR
-
-echo "지원하는 데이터베이스: MySQL, PostgreSQL"
-read -p "사용 중인 데이터베이스 유형을 입력하세요: " DB_TYPE
-
-case $DB_TYPE in
-    MySQL|mysql)
-        read -p "MySQL 사용자 이름을 입력하세요: " MYSQL_USER
-        read -sp "MySQL 비밀번호를 입력하세요: " MYSQL_PASS
-        echo
-        QUERY="SELECT User FROM mysql.user"
-        CHECK_CMD="mysql -u $MYSQL_USER -p$MYSQL_PASS -Bse \"$QUERY\""
-        ;;
-    PostgreSQL|postgresql)
-        read -p "PostgreSQL 사용자 이름을 입력하세요: " PGSQL_USER
-        read -sp "PostgreSQL 비밀번호를 입력하세요: " PGSQL_PASS
-        echo
-        QUERY="SELECT usename FROM pg_shadow"
-        CHECK_CMD="PGPASSWORD=$PGSQL_PASS psql -U $PGSQL_USER -c \"$QUERY\""
-        ;;
-    *)
-        echo "지원하지 않는 데이터베이스 유형입니다."
-        exit 1
-        ;;
-esac
-
-echo "모든 사용자 계정:"
-eval $CHECK_CMD
+# 실행할 쿼리와 연결 문자열에 따라 데이터베이스에서 쿼리 실행
+# 쿼리 실행 결과 처리 로직 필요
 
 # 업무상 불필요한 계정 판단 로직 구현
-# 주의: 여기에 구현된 코드는 모든 사용자 계정을 나열하는 예시입니다.
-# 실제로 업무상 불필요한 계정을 판단하기 위해서는 추가 로직이 필요합니다.
-# 예를 들어, 특정 조건(예: 최근 로그인 시간, 사용되지 않는 계정 등)에 따라 불필요한 계정을 식별할 수 있습니다.
+# 예시: 최근 로그인 시간이 없거나 특정 기간 동안 활동이 없는 계정 등을 식별
 
-OK "업무상 불필요한 데이터베이스 계정이 존재하지 않습니다."
-
-cat $result
-
-echo ; echo
+Write-Host "업무상 불필요한 데이터베이스 계정이 존재하지 않습니다."

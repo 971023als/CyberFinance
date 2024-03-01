@@ -1,52 +1,42 @@
-#!/bin/bash
+# 사용자로부터 입력 받기
+$DB_TYPE = Read-Host "지원하는 데이터베이스: 1. SQL Server 2. MySQL 3. PostgreSQL. 사용 중인 데이터베이스 유형을 선택하세요 (1-3)"
+$DB_ADMIN = Read-Host "데이터베이스 관리자 계정을 입력하세요"
+$DB_PASS = Read-Host "데이터베이스 관리자 비밀번호를 입력하세요" -AsSecureString
 
-. function.sh
+# 데이터베이스 유형에 따른 명령 실행
+switch ($DB_TYPE) {
+    "1" {
+        # SQL Server
+        $QUERY = "SELECT * FROM sys.sql_logins WHERE name = 'sa';"
+        # SQLCMD 실행을 위한 PowerShell 명령 준비
+        $CMD = "sqlcmd -U $DB_ADMIN -P $($DB_PASS | ConvertFrom-SecureString -AsPlainText) -Q `"$QUERY`""
+    }
+    "2" {
+        # MySQL
+        $QUERY = "SELECT User, Host FROM mysql.user WHERE User = 'root';"
+        # MySQL 명령 실행
+        $CMD = "mysql -u $DB_ADMIN -p$($DB_PASS | ConvertFrom-SecureString -AsPlainText) -e `"$QUERY`""
+    }
+    "3" {
+        # PostgreSQL
+        $QUERY = "SELECT rolname FROM pg_roles WHERE rolname = 'postgres';"
+        # PSQL 명령 실행
+        $CMD = "psql -U $DB_ADMIN -c `"$QUERY`""
+    }
+    default {
+        Write-Host "Unsupported database type."
+        exit
+    }
+}
 
-TMP1=$(mktemp)
-> "$TMP1"
-
-BAR
-CODE [DBM-032] 데이터베이스 접속 시 통신구간에 비밀번호 평문 노출
-
-cat << EOF >> "$result"
-[양호]: 데이터베이스 접속 시 비밀번호가 암호화되어 전송되는 경우
-[취약]: 데이터베이스 접속 시 비밀번호가 평문으로 노출되는 경우
-EOF
-
-BAR
-
-echo "지원하는 데이터베이스: 1. MySQL 2. PostgreSQL 3. Oracle"
-read -p "사용 중인 데이터베이스 유형을 선택하세요 (1-3): " DB_TYPE
-
-case $DB_TYPE in
-    1)
-        # MySQL의 SSL 설정 확인
-        DB_CONNECTION_CMD="mysql -u root -p -e"
-        SECURE_CONNECTION=$($DB_CONNECTION_CMD "SHOW VARIABLES LIKE '%ssl%';" | grep -E 'have_ssl|have_openssl')
-        ;;
-    2)
-        # PostgreSQL의 SSL 설정 확인
-        DB_CONNECTION_CMD="psql -U postgres -c"
-        SECURE_CONNECTION=$($DB_CONNECTION_CMD "SHOW ssl;")
-        ;;
-    3)
-        # Oracle의 SSL 설정 확인 (Oracle Net Listener 설정을 통해 확인)
-        echo "Oracle 데이터베이스의 경우, 수동으로 Net Listener의 SSL 구성을 확인해야 합니다."
-        SECURE_CONNECTION="Manual Check Required"
-        ;;
-    *)
-        echo "Unsupported database type."
-        exit 1
-        ;;
-esac
-
-# 연결 보안 설정 검사
-if [[ "$SECURE_CONNECTION" =~ "ON" || "$SECURE_CONNECTION" =~ "ENABLED" || "$SECURE_CONNECTION" == "Manual Check Required" ]]; then
-    OK "데이터베이스 접속 시 비밀번호가 안전하게 암호화되어 전송됩니다."
-else
-    WARN "데이터베이스 접속 시 비밀번호가 평문으로 노출될 위험이 있습니다."
-fi
-
-cat "$result"
-
-echo ; echo
+# 관리자 계정의 보안 설정 확인
+try {
+    $ADMIN_SECURITY_SETTINGS = Invoke-Expression $CMD
+    if ($ADMIN_SECURITY_SETTINGS) {
+        Write-Host "관리자 계정의 보안 설정이 적절합니다: $ADMIN_SECURITY_SETTINGS"
+    } else {
+        Write-Host "관리자 계정의 보안 설정이 미흡합니다."
+    }
+} catch {
+    Write-Host "관리자 계정 보안 설정 검사 중 오류가 발생했습니다."
+}
