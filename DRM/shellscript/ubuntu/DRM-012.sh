@@ -2,7 +2,7 @@
 
 . function.sh
 
-TMP1=`SCRIPTNAME`.log
+TMP1=$(SCRIPTNAME).log
 > $TMP1
 
 BAR
@@ -16,8 +16,8 @@ EOF
 
 BAR
 
-# Listener configuration file
-listener_ora="/path/to/your/listener.ora"
+# 사용자에게 Listener configuration file 위치 입력 요청
+read -p "Listener configuration file (listener.ora)의 경로를 입력하세요: " listener_ora
 
 # Check if the listener.ora file exists
 if [ -f "$listener_ora" ]; then
