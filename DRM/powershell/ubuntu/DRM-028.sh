@@ -1,15 +1,15 @@
-# PowerShell Script to Check Unnecessary Database Objects Including SQL Server
+# PowerShell 스크립트로 SQL Server를 포함한 불필요한 데이터베이스 오브젝트 확인
 
-# Ask user for database type
-$DBType = Read-Host "Enter the number for your database type (1. MySQL, 2. PostgreSQL, 3. Oracle, 4. SQL Server)"
-$DBUser = Read-Host "Enter database username"
-$DBPass = Read-Host "Enter database password" -AsSecureString
+# 사용자로부터 데이터베이스 유형 입력 받기
+$DBType = Read-Host "데이터베이스 유형 번호를 입력하세요 (1. MySQL, 2. PostgreSQL, 3. Oracle, 4. SQL Server)"
+$DBUser = Read-Host "데이터베이스 사용자 이름을 입력하세요"
+$DBPass = Read-Host "데이터베이스 비밀번호를 입력하세요" -AsSecureString
 
-# Convert password to PSCredential for SQL Server
+# SQL Server용으로 비밀번호를 PSCredential로 변환
 $SecurePassword = ConvertTo-SecureString $DBPass -AsPlainText -Force
 $Credential = New-Object System.Management.Automation.PSCredential ($DBUser, $SecurePassword)
 
-# Function to check unnecessary database objects
+# 불필요한 데이터베이스 오브젝트를 확인하는 함수
 function Check-UnnecessaryDBObjects {
     param (
         [string]$Query,
@@ -18,18 +18,18 @@ function Check-UnnecessaryDBObjects {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    # Placeholder connection string, adjust according to your environment
+    # 환경에 맞게 조정할 자리 표시자 연결 문자열
     $ConnectionString = ""
 
     switch ($DBType) {
         "1" { # MySQL
-            # MySQL specific connection and query execution logic
+            # MySQL에 특화된 연결 및 쿼리 실행 로직
         }
         "2" { # PostgreSQL
-            # PostgreSQL specific connection and query execution logic
+            # PostgreSQL에 특화된 연결 및 쿼리 실행 로직
         }
         "3" { # Oracle
-            # Oracle specific connection and query execution logic
+            # Oracle에 특화된 연결 및 쿼리 실행 로직
         }
         "4" { # SQL Server
             $ConnectionString = "Data Source=localhost;Initial Catalog=YourDatabaseName;User ID=$DBUser;Password=$($Credential.GetNetworkCredential().password);"
@@ -41,13 +41,13 @@ function Check-UnnecessaryDBObjects {
                 $Connection.Open()
                 $Reader = $Command.ExecuteReader()
                 while ($Reader.Read()) {
-                    $ObjectName = $Reader.GetString(0) # Assuming the object name is in the first column
-                    Write-Host "Found object: $ObjectName"
-                    # Add your logic here to determine if the object is unnecessary
+                    $ObjectName = $Reader.GetString(0) # 오브젝트 이름이 첫 번째 열에 있다고 가정
+                    Write-Host "발견된 오브젝트: $ObjectName"
+                    # 여기에 오브젝트가 불필요한지 결정하는 로직을 추가하세요
                 }
             }
             catch {
-                Write-Host "Error connecting to SQL Server: $_"
+                Write-Host "SQL Server에 연결하는 도중 오류 발생: $_"
             }
             finally {
                 $Connection.Close()
@@ -56,13 +56,13 @@ function Check-UnnecessaryDBObjects {
     }
 }
 
-# Define your query to list database objects here. Adjust the query based on the database type.
+# 데이터베이스 오브젝트를 나열하는 쿼리를 여기에 정의하세요. 데이터베이스 유형에 맞게 쿼리를 조정하세요.
 $Query = switch ($DBType) {
-    "1" { "SHOW TABLES;" } # Example query for MySQL
-    "2" { "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';" } # Example query for PostgreSQL
-    "3" { "SELECT table_name FROM user_tables;" } # Example query for Oracle
-    "4" { "SELECT name FROM sys.objects WHERE type in ('U', 'V');" } # Example query for SQL Server to list tables and views
+    "1" { "SHOW TABLES;" } # MySQL 예제 쿼리
+    "2" { "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';" } # PostgreSQL 예제 쿼리
+    "3" { "SELECT table_name FROM user_tables;" } # Oracle 예제 쿼리
+    "4" { "SELECT name FROM sys.objects WHERE type in ('U', 'V');" } # SQL Server의 테이블과 뷰를 나열하는 예제 쿼리
 }
 
-# Call the function
+# 함수 호출
 Check-UnnecessaryDBObjects -Query $Query -DBType $DBType -DBUser $DBUser -Credential $Credential

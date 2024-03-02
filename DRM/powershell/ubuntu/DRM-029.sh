@@ -1,10 +1,10 @@
-# Define database credentials
-$DBType = Read-Host "Enter your database type (1. MySQL, 2. PostgreSQL, 3. Oracle, 4. SQL Server)"
-$DBUser = Read-Host "Enter database username"
-$DBPass = Read-Host "Enter database password" -AsSecureString
-$DBHost = "localhost" # Update as needed
+# 데이터베이스 자격증명 정의
+$DBType = Read-Host "데이터베이스 유형을 입력하세요 (1. MySQL, 2. PostgreSQL, 3. Oracle, 4. SQL Server)"
+$DBUser = Read-Host "데이터베이스 사용자 이름을 입력하세요"
+$DBPass = Read-Host "데이터베이스 비밀번호를 입력하세요" -AsSecureString
+$DBHost = "localhost" # 필요에 따라 업데이트하세요
 
-# Convert SecureString password to plain text
+# SecureString 비밀번호를 일반 텍스트로 변환
 $Ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($DBPass)
 $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($Ptr)
 
@@ -18,13 +18,13 @@ function Check-ResourceLimits {
 
     switch ($DBType) {
         "1" { # MySQL
-            # MySQL specific connection and query execution logic
+            # MySQL에 특화된 연결 및 쿼리 실행 로직
         }
         "2" { # PostgreSQL
-            # PostgreSQL specific connection and query execution logic
+            # PostgreSQL에 특화된 연결 및 쿼리 실행 로직
         }
         "3" { # Oracle
-            # Oracle specific connection and query execution logic
+            # Oracle에 특화된 연결 및 쿼리 실행 로직
         }
         "4" { # SQL Server
             $ConnectionString = "Data Source=$DBHost;Initial Catalog=master;User ID=$DBUser;Password=$DBPass;"
@@ -35,20 +35,20 @@ function Check-ResourceLimits {
                 $Command = $Connection.CreateCommand()
                 $Command.CommandText = $Query
                 $Result = $Command.ExecuteScalar()
-                Write-Host "SQL Server maximum degree of parallelism is set to: $Result"
+                Write-Host "SQL Server의 최대 병렬 처리 정도는 다음과 같이 설정됩니다: $Result"
             }
             Catch {
-                Write-Host "Error in SQL Server query execution: $_"
+                Write-Host "SQL Server 쿼리 실행 중 오류 발생: $_"
             }
             Finally {
                 $Connection.Close()
             }
         }
         default {
-            Write-Host "Unsupported database type."
+            Write-Host "지원되지 않는 데이터베이스 유형입니다."
         }
     }
 }
 
-# Calling the function to check resource limits
+# 자원 제한을 확인하기 위해 함수 호출
 Check-ResourceLimits -DBType $DBType -DBUser $DBUser -DBPass $PlainPassword -DBHost $DBHost
