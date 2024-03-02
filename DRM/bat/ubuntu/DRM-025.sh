@@ -12,6 +12,7 @@ echo 지원하는 데이터베이스:
 echo 1. MySQL 
 echo 2. PostgreSQL 
 echo 3. Oracle
+echo 4. MSSQL
 echo.
 
 set /p DBType="데이터베이스 유형 번호를 입력하세요: "
@@ -37,6 +38,14 @@ if "%DBType%"=="1" (
 ) else if "%DBType%"=="3" (
     echo Oracle 데이터베이스 버전 확인은 SQL*Plus 또는 Oracle SQL Developer를 사용하여 수동으로 확인하세요.
     echo 예: SELECT * FROM v$version;
+) else if "%DBType%"=="4" (
+    echo MSSQL 버전 확인 중...
+    sqlcmd -U %DBUser% -P %DBPass% -Q "SELECT @@VERSION;" > temp.txt
+    for /f "delims=" %%i in ('type temp.txt') do set MSSQL_VERSION=%%i
+    del temp.txt
+    echo 현재 MSSQL 버전: !MSSQL_VERSION!
+    REM MSSQL EoS 버전에 대한 실제 확인 로직 추가 필요
+    echo MSSQL EoS 버전 리스트와 비교하세요.
 ) else (
     echo 지원되지 않는 데이터베이스 유형입니다.
 )
