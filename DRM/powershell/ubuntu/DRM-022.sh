@@ -1,13 +1,14 @@
-# Define the list of critical files for MySQL, Oracle, and PostgreSQL
+# Define the list of critical files for MySQL, Oracle, PostgreSQL, and SQL Server
 # Adjust the paths according to your environment
 $filesToCheck = @{
     "1" = "C:\ProgramData\MySQL\MySQL Server X.X\my.ini" # Update X.X with your MySQL version
     "2" = "C:\app\oracle\product\11.2.0\dbhome_1\network\admin\listener.ora"
     "3" = "C:\Program Files\PostgreSQL\X.X\data\postgresql.conf" # Update X.X with your PostgreSQL version
+    "4" = "C:\Program Files\Microsoft SQL Server\MSSQLXX.MSSQLSERVER\MSSQL\Binn\sqlservr.ini" # Update XX with your SQL Server version
 }
 
 # Prompt user for database choice
-Write-Host "Supported Databases: 1. MySQL 2. Oracle 3. PostgreSQL"
+Write-Host "Supported Databases: 1. MySQL 2. Oracle 3. PostgreSQL 4. SQL Server"
 $DB_CHOICE = Read-Host "Enter the number of your database"
 
 if (-not $filesToCheck.ContainsKey($DB_CHOICE)) {
