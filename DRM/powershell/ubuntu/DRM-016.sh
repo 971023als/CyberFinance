@@ -1,27 +1,27 @@
-# Function to check for security patches
+# 보안 패치 확인 기능
 function Check-SecurityPatches {
     param (
         [string]$version,
         [string]$dbType
     )
 
-    Write-Host "Checking for security patches and recommendations for $dbType version $version..."
+    Write-Host "$dbType 버전 $version에 대한 보안 패치 및 권장 사항을 확인 중입니다..."
     
-    # Placeholder for actual logic to check for security patches. 
-    # This could involve querying a CVE database, checking vendor security pages, etc.
-    # For demonstration purposes, we're assuming that the database is patched.
+    # 실제 보안 패치 확인 로직에 대한 자리 표시자입니다.
+    # CVE 데이터베이스 조회, 벤더 보안 페이지 확인 등이 포함될 수 있습니다.
+    # 시연 목적으로 데이터베이스가 패치되었다고 가정합니다.
     $patched = $true
 
     if ($patched) {
-        Write-Host "$dbType version $version has applied security patches."
+        Write-Host "$dbType 버전 $version은 보안 패치가 적용되었습니다."
     } else {
-        Write-Host "$dbType version $version is missing security patches."
+        Write-Host "$dbType 버전 $version은 보안 패치가 누락되었습니다."
     }
 }
 
-# Main script
-Write-Host "Supported databases: MySQL, PostgreSQL, Oracle, MSSQL"
-$dbType = Read-Host "Enter the type of your database"
+# 메인 스크립트
+Write-Host "지원되는 데이터베이스: MySQL, PostgreSQL, Oracle, MSSQL"
+$dbType = Read-Host "데이터베이스 유형을 입력하세요"
 
 switch ($dbType) {
     "MySQL" {
@@ -31,22 +31,22 @@ switch ($dbType) {
         $version = (psql -V).Split(' ')[2]
     }
     "Oracle" {
-        # Assuming sqlplus -v outputs the version in a similar format
-        $version = (sqlplus -v).Split(' ')[3] # Adjust index as needed based on actual output
+        # sqlplus -v가 버전을 유사한 형식으로 출력한다고 가정
+        $version = (sqlplus -v).Split(' ')[3] # 실제 출력에 따라 인덱스 조정 필요
     }
     "MSSQL" {
-        # Example using sqlcmd to get the version. Adjust as necessary for your environment.
+        # 환경에 맞게 조정이 필요한 예제로 sqlcmd를 사용하여 버전을 가져옵니다.
         $versionInfo = sqlcmd -Q "SELECT @@VERSION" -h -1
         $version = $versionInfo -match 'Microsoft SQL Server (\d+)' | Out-Null
         $version = $matches[1]
     }
     default {
-        Write-Host "Unsupported database type."
+        Write-Host "지원되지 않는 데이터베이스 유형입니다."
         exit
     }
 }
 
-Write-Host "Current $dbType version: $version"
+Write-Host "현재 $dbType 버전: $version"
 
-# Call the function to check for security patches
+# 보안 패치 확인 함수 호출
 Check-SecurityPatches -version $version -dbType $dbType

@@ -1,4 +1,4 @@
-# Define helper functions
+# 도움말 함수 정의
 function Write-OutputWithBar {
     Write-Output "==========================================="
 }
@@ -11,39 +11,39 @@ function Check-MSSQLSecuritySettings {
     Import-Module SqlServer
 
     try {
-        # Check for Mixed Mode Authentication (Windows + SQL Server authentication)
+        # 혼합 모드 인증 (Windows + SQL Server 인증) 확인
         $queryAuthenticationMode = "SELECT SERVERPROPERTY('IsMixedModeAuthentication')"
         $mixedModeAuthentication = Invoke-Sqlcmd -ServerInstance $SqlServer -Credential $SqlCredential -Query $queryAuthenticationMode
 
         if ($mixedModeAuthentication.Column1 -eq 1) {
-            Write-Output "WARNING: Mixed Mode Authentication (Windows and SQL Server) is enabled."
+            Write-Output "경고: 혼합 모드 인증(Windows 및 SQL Server)이 활성화되어 있습니다."
         } else {
-            Write-Output "OK: Only Windows Authentication mode is enabled."
+            Write-Output "양호: Windows 인증 모드만 활성화되어 있습니다."
         }
 
-        # Placeholder for checking secure connections
-        # For real-world scenarios, you would check SQL Server's configuration for using SSL for encrypted connections
-        # Example: "SELECT * FROM sys.dm_exec_connections WHERE encrypt_option = 'TRUE'"
-        # This is a placeholder and should be replaced with actual checks as needed
-        $secureConnectionCheck = $true # Placeholder value
+        # 보안 연결 확인 자리 표시자
+        # 실제 상황에서는 SQL Server가 암호화된 연결에 SSL을 사용하는지 설정을 확인해야 합니다.
+        # 예시: "SELECT * FROM sys.dm_exec_connections WHERE encrypt_option = 'TRUE'"
+        # 이 부분은 실제 확인이 필요한 경우 대체해야 하는 자리 표시자입니다.
+        $secureConnectionCheck = $true # 자리 표시자 값
 
         if ($secureConnectionCheck) {
-            Write-Output "OK: Secure connections are enabled."
+            Write-Output "양호: 보안 연결이 활성화되어 있습니다."
         } else {
-            Write-Output "WARNING: Secure connections are not enforced."
+            Write-Output "경고: 보안 연결이 강제되지 않습니다."
         }
     }
     catch {
-        Write-Output "Error checking MSSQL security settings: $_"
+        Write-Output "MSSQL 보안 설정 확인 중 오류 발생: $_"
     }
 }
 
 Write-OutputWithBar
-Write-Output "Checking MSSQL Security Settings"
+Write-Output "MSSQL 보안 설정 확인 중"
 
-# Prompt for SQL Server connection details
-$SqlServer = Read-Host "Enter SQL Server instance (e.g., ServerName\\InstanceName)"
-$SqlCredential = Get-Credential -Message "Enter SQL Server admin credentials"
+# SQL Server 연결 세부 정보 입력 요청
+$SqlServer = Read-Host "SQL Server 인스턴스 입력 (예: ServerName\\InstanceName)"
+$SqlCredential = Get-Credential -Message "SQL Server 관리자 자격 증명 입력"
 
 Check-MSSQLSecuritySettings -SqlServer $SqlServer -SqlCredential $SqlCredential
 

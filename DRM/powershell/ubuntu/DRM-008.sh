@@ -1,39 +1,39 @@
-# Start log
+# 로그 시작
 Write-Host "===================="
 Write-Host "CODE [DBM-008] 주기적인 비밀번호 변경 미흡"
 
-# Prompt for database type, username, and password
-$DB_TYPE = Read-Host "Supported databases: MySQL, PostgreSQL, MSSQL. Enter the type of database you are using"
-$DB_USER = Read-Host "$DB_TYPE user name"
-$DB_PASS = Read-Host "$DB_TYPE password" -AsSecureString
+# 데이터베이스 유형, 사용자 이름, 비밀번호 입력 받기
+$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL, MSSQL. 사용 중인 데이터베이스 유형을 입력하세요"
+$DB_USER = Read-Host "$DB_TYPE 사용자 이름"
+$DB_PASS = Read-Host "$DB_TYPE 비밀번호" -AsSecureString
 
-# Check periodic password change policy settings
+# 주기적인 비밀번호 변경 정책 설정 확인
 switch ($DB_TYPE) {
     "MySQL" {
-        # Existing MySQL logic
+        # MySQL에 대한 기존 로직
     }
     "PostgreSQL" {
-        # Existing PostgreSQL logic
+        # PostgreSQL에 대한 기존 로직
     }
     "MSSQL" {
-        # Convert SecureString password to plaintext for Invoke-Sqlcmd
+        # SecureString 비밀번호를 일반 텍스트로 변환
         $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($DB_PASS)
         $PlainTextPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
-        # Define the query to check the password last change date in MSSQL
+        # MSSQL에서 비밀번호 마지막 변경 날짜 확인을 위한 쿼리 정의
         $Query = @"
 SELECT name, modify_date FROM sys.sql_logins
 "@
-        # Execute the query and process the results
+        # 쿼리 실행 및 결과 처리
         $PASSWORD_CHANGE_POLICY = Invoke-Sqlcmd -Query $Query -Username $DB_USER -Password $PlainTextPass
     }
     default {
-        Write-Host "Unsupported database type."
+        Write-Host "지원되지 않는 데이터베이스 유형입니다."
         exit
     }
 }
 
-# Check password change policy
+# 비밀번호 변경 정책 확인
 if (-not $PASSWORD_CHANGE_POLICY) {
     Write-Host "주기적인 비밀번호 변경 정책이 설정되어 있지 않습니다."
 } else {
@@ -45,10 +45,10 @@ if (-not $PASSWORD_CHANGE_POLICY) {
         $last_changed_date = $row.modify_date
 
         if ($last_changed_date -lt $CURRENT_DATE.AddDays(-$MAX_DAYS)) {
-            Write-Host "주기적으로 비밀번호가 변경되지 않은 계정이 존재합니다: $user (마지막 변경: $last_changed_date)"
+            Write-Host "주기적으로 비밀번호가 변경되지 않은 계정이 있습니다: $user (마지막 변경: $last_changed_date)"
         }
     }
 }
 
-# End log
+# 로그 종료
 Write-Host "===================="
