@@ -5,17 +5,25 @@ echo ============================================
 echo CODE [DBM-011] 감사 로그 수집 및 백업 미흡
 echo ============================================
 
-set /p DB_TYPE="지원하는 데이터베이스: MySQL, PostgreSQL, Oracle. 사용 중인 데이터베이스 유형을 입력하세요: "
+echo 지원하는 데이터베이스: 
+echo 1. MySQL
+echo 2. PostgreSQL
+echo 3. Oracle
+echo 4. MSSQL
+set /p DB_TYPE="데이터베이스 유형을 입력하세요: "
 
-if "%DB_TYPE%"=="MySQL" (
+if "%DB_TYPE%"=="1" (
     set AUDIT_LOG_DIR=C:\ProgramData\MySQL\MySQL Server*\Data\*.log
     echo Checking MySQL audit logs...
-) else if "%DB_TYPE%"=="PostgreSQL" (
+) else if "%DB_TYPE%"=="2" (
     set AUDIT_LOG_DIR=C:\Program Files\PostgreSQL*\data\log\*.log
     echo Checking PostgreSQL audit logs...
-) else if "%DB_TYPE%"=="Oracle" (
+) else if "%DB_TYPE%"=="3" (
     set AUDIT_LOG_DIR=C:\app\*\oradata\*\*.log
     echo Checking Oracle audit logs...
+) else if "%DB_TYPE%"=="4" (
+    set AUDIT_LOG_DIR=C:\Program Files\Microsoft SQL Server\MSSQL*\MSSQL\Log\*.sqlaudit
+    echo Checking MSSQL audit logs...
 ) else (
     echo Unsupported database type.
     goto end
