@@ -1,11 +1,16 @@
 @echo off
 setlocal
 
-:: 데이터베이스 유형 요청
+echo ============================================
+echo CODE [DBM-001] 취약하게 설정된 비밀번호 존재
+echo ============================================
+echo [양호]: 모든 데이터베이스 계정의 비밀번호가 강력한 경우
+echo [취약]: 하나 이상의 데이터베이스 계정에 취약한 비밀번호가 설정된 경우
+echo ============================================
+
 echo 지원하는 데이터베이스: MySQL, PostgreSQL, Oracle
 set /p DB_TYPE="사용 중인 데이터베이스 유형을 입력하세요: "
 
-:: 데이터베이스 유형에 따라 사용자 이름 및 비밀번호 요청
 if "%DB_TYPE%"=="MySQL" (
     set /p DB_USER="MySQL 사용자 이름을 입력하세요: "
     set /p DB_PASS="MySQL 비밀번호를 입력하세요: "
@@ -16,6 +21,7 @@ if "%DB_TYPE%"=="MySQL" (
     psql -U %DB_USER% -W %DB_PASS% -c "SELECT usename AS user, passwd AS pass FROM pg_shadow;"
 ) else if "%DB_TYPE%"=="Oracle" (
     echo Oracle 데이터베이스에 대한 수동 비밀번호 강도 검사가 필요합니다.
+    goto end
 ) else (
     echo 지원하지 않는 데이터베이스 유형입니다.
     goto end

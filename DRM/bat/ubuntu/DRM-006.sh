@@ -1,27 +1,34 @@
 @echo off
 setlocal
 
-echo 지원하는 데이터베이스: 1. MySQL
-set /p DB_CHOICE="사용 중인 데이터베이스 유형 번호를 입력하세요: "
+echo ============================================
+echo CODE [DBM-006] 로그인 실패 횟수에 따른 접속 제한 설정 미흡
+echo ============================================
+echo [양호]: 로그인 실패 횟수에 따른 접속 제한이 설정되어 있는 경우
+echo [취약]: 로그인 실패 횟수에 따른 접속 제한이 설정되어 있지 않은 경우
+echo ============================================
 
-if "%DB_CHOICE%"=="1" (
+echo 지원하는 데이터베이스: MySQL
+set /p DB_TYPE="사용 중인 데이터베이스 유형을 입력하세요: "
+
+if "%DB_TYPE%"=="MySQL" (
     set /p MYSQL_USER="MySQL 사용자 이름을 입력하세요: "
     set /p MYSQL_PASS="MySQL 비밀번호를 입력하세요: "
-
-    echo MySQL에서 로그인 실패 횟수 제한을 확인합니다...
-    mysql -u%MYSQL_USER% -p%MYSQL_PASS% -e "SHOW VARIABLES LIKE 'login_failure_limit';" > tmp_result.txt
+    echo 로그인 실패 횟수에 따른 접속 제한 설정을 확인 중...
+    mysql -u %MYSQL_USER% -p%MYSQL_PASS% -e "SHOW VARIABLES LIKE 'login_failure_limit';" > tmp_result.txt
 
     findstr "login_failure_limit" tmp_result.txt > nul
     if errorlevel 1 (
-        echo 경고: 로그인 실패 횟수 제한이 설정되어 있지 않습니다.
+        echo [취약]: 로그인 실패 횟수에 따른 접속 제한이 설정되어 있지 않습니다.
     ) else (
-        echo 양호: 로그인 실패 횟수 제한이 설정되어 있습니다.
+        echo [양호]: 로그인 실패 횟수에 따른 접속 제한이 설정되어 있습니다.
     )
 
     del tmp_result.txt
 ) else (
-    echo 지원하지 않는 데이터베이스 유형입니다.
+    echo PostgreSQL에 대해서는 기본적으로 로그인 실패 횟수에 따른 접속 제한 설정을 지원하지 않습니다.
+    echo pg_hba.conf 파일을 통해 접근 제어를 설정하거나 외부 보안 도구를 사용해야 합니다.
 )
 
-endlocal
+:end
 pause
