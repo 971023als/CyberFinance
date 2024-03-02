@@ -12,6 +12,7 @@ echo 지원하는 데이터베이스:
 echo 1. MySQL 
 echo 2. PostgreSQL 
 echo 3. Oracle
+echo 4. MSSQL
 echo.
 
 set /p DBType="데이터베이스 유형 번호를 입력하세요: "
@@ -25,9 +26,12 @@ if "!DBType!"=="1" (
     echo PostgreSQL에서 'WITH GRANT OPTION'으로 부여된 불필요한 권한을 확인 중...
     psql -U !DBUser! -w -c "SELECT grantee, privilege_type FROM information_schema.role_usage_grants WHERE is_grantable = 'YES';"
 ) else if "!DBType!"=="3" (
-    echo Oracle 데이터베이스에서 'WITH GRANT OPTION'으로 부여된 권한을 확인하기 위해, 다음 SQL 쿼리를 실행하세요:
+    echo Oracle에서 'WITH GRANT OPTION'으로 부여된 권한을 확인 중...
     echo SELECT grantee, privilege FROM dba_sys_privs WHERE admin_option = 'YES';
-    echo 이 쿼리는 SQL*Plus 또는 Oracle SQL Developer에서 실행할 수 있습니다.
+) else if "!DBType!"=="4" (
+    echo MSSQL에서 'WITH GRANT OPTION'으로 부여된 불필요한 권한을 확인 중...
+    echo 주의: 이 스크립트는 MSSQL의 sqlcmd 유틸리티를 사용합니다. MSSQL 서버에 연결하는 데 필요한 옵션을 적절히 조정하세요.
+    sqlcmd -S 서버명 -U !DBUser! -P !DBPass! -Q "SELECT dp.name AS Grantee, perm.permission_name, perm.state_desc FROM sys.database_permissions AS perm INNER JOIN sys.database_principals AS dp ON perm.grantee_principal_id = dp.principal_id WHERE perm.state = 'W';"
 ) else (
     echo 지원하지 않는 데이터베이스 유형입니다.
     goto end

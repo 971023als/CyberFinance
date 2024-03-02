@@ -12,6 +12,7 @@ echo 지원하는 데이터베이스:
 echo 1. MySQL
 echo 2. Oracle
 echo 3. PostgreSQL
+echo 4. MSSQL
 echo.
 
 set /p DB_CHOICE="데이터베이스 번호를 입력하세요: "
@@ -22,6 +23,10 @@ if "%DB_CHOICE%"=="1" (
     set "FILES_TO_CHECK=C:\app\oracle\product\11.2.0\dbhome_1\network\admin\listener.ora"
 ) else if "%DB_CHOICE%"=="3" (
     set "FILES_TO_CHECK=C:\Program Files\PostgreSQL\X.X\data\postgresql.conf"
+) else if "%DB_CHOICE%"=="4" (
+    :: For MSSQL, specify a common configuration directory or file. Adjust as necessary for your environment.
+    set "FILES_TO_CHECK=C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\DATA"
+    echo Note: Checking permissions for MSSQL data directory. Adjust path as necessary.
 ) else (
     echo 잘못된 선택입니다.
     goto end
@@ -38,8 +43,8 @@ for %%f in ("%FILES_TO_CHECK%") do (
         icacls "%%f"
         echo.
     ) else (
-        echo WARNING: Configuration file not found at "%%f"
-        echo Please verify the path and ensure the database configuration file is present.
+        echo WARNING: Configuration file or directory not found at "%%f"
+        echo Please verify the path and ensure the database configuration file or directory is present.
         echo.
     )
 )
