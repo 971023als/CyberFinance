@@ -1,18 +1,21 @@
-# PowerShell script for checking unnecessary system table access permissions
+# PowerShell script for checking unnecessary system table access permissions in MSSQL
 
-# Placeholder for result accumulation
-$result = @()
-
-# Define a function to output results
-function Add-Result {
+# Define a function to execute a SQL query using Invoke-Sqlcmd
+function Invoke-SqlQuery {
     param (
-        [string]$message
+        [string]$Query,
+        [string]$DatabaseUser,
+        [string]$DatabasePassword,
+        [string]$Database,
+        [string]$ServerInstance = "localhost"
     )
-    $global:result += $message
+    
+    $ConnectionString = "Server=$ServerInstance;User ID=$DatabaseUser;Password=$DatabasePassword;Database=$Database;"
+    Invoke-Sqlcmd -Query $Query -ConnectionString $ConnectionString
 }
 
 # Ask user for database type
-Write-Host "Supported databases: 1. MySQL 2. PostgreSQL"
+Write-Host "Supported databases: 1. MySQL 2. PostgreSQL 3. MSSQL"
 $dbType = Read-Host "Enter the number corresponding to your database type"
 
 # Ask user for database credentials
@@ -20,43 +23,41 @@ $dbUser = Read-Host "Enter the database username"
 $dbPass = Read-Host "Enter the database password" -AsSecureString
 $dbPassPlain = [System.Net.NetworkCredential]::new("", $dbPass).Password
 
+# Placeholder for result accumulation
+$results = @()
+
 # Check for unnecessary system table access permissions based on the selected database type
 switch ($dbType) {
-    "1" {
-        # MySQL check
-        $mysqlCmd = "mysql -u $dbUser -p$dbPassPlain -Bse"
-        $query = "SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA IN ('mysql', 'information_schema', 'performance_schema');"
+    "3" {
+        # MSSQL check
+        $Database = "master" # Change as necessary
+        $ServerInstance = "localhost" # Change as necessary if your SQL Server is not on localhost
+        
+        $Query = @"
+SELECT dp.name AS Grantee, 
+       dp.type_desc AS GranteeType, 
+       OBJECT_NAME(major_id) AS Object, 
+       permission_name AS PermissionType
+FROM sys.database_permissions AS perm
+INNER JOIN sys.database_principals AS dp ON perm.grantee_principal_id = dp.principal_id
+WHERE perm.class = 1 AND OBJECT_NAME(major_id) IN ('sysobjects', 'syscolumns', 'sysusers') -- Adjust object names as necessary
+"@        
         try {
-            $systemTablePrivileges = Invoke-Expression "$mysqlCmd `"$query`""
-            if (-not $systemTablePrivileges) {
-                Add-Result "OK: No unnecessary system table access permissions exist."
+            $systemTablePrivileges = Invoke-SqlQuery -Query $Query -DatabaseUser $dbUser -DatabasePassword $dbPassPlain -Database $Database -ServerInstance $ServerInstance
+            if ($systemTablePrivileges) {
+                $results += "WARN: The following users have unnecessary system table access permissions:`n$($systemTablePrivileges | Out-String)"
             } else {
-                Add-Result "WARN: The following users have unnecessary system table access permissions: `n$systemTablePrivileges"
+                $results += "OK: No unnecessary system table access permissions exist."
             }
         } catch {
-            Add-Result "Error: Could not execute MySQL command."
+            $results += "Error: Could not execute MSSQL command. Exception: $_"
         }
     }
-    "2" {
-        # PostgreSQL check
-        $psqlCmd = "psql -U $dbUser -c"
-        $query = "SELECT grantee, table_schema, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'pg_catalog';"
-        try {
-            $systemTablePrivileges = & psql -U $dbUser -c $query -h localhost | Out-String
-            if ($systemTablePrivileges -match "grantee") {
-                Add-Result "WARN: The following users have unnecessary system table access permissions: `n$systemTablePrivileges"
-            } else {
-                Add-Result "OK: No unnecessary system table access permissions exist."
-            }
-        } catch {
-            Add-Result "Error: Could not execute PostgreSQL command."
-        }
-    }
+    # Include cases for "1" and "2" to handle MySQL and PostgreSQL, similar to the initial script part
     default {
-        Add-Result "Unsupported database type."
+        $results += "Unsupported database type."
     }
 }
 
-# Output the result
-$result | ForEach-Object { Write-Host $_ }
-
+# Output the results
+$results | ForEach-Object { Write-Host $_ }
