@@ -16,11 +16,11 @@ set /p DBPass="데이터베이스 비밀번호를 입력하세요: "
 
 if "!DBType!"=="1" (
     echo MySQL에서 시스템 테이블 접근 권한을 확인합니다...
-    echo 다음 SQL 쿼리를 실행하세요:
+    echo 다음 SQL 쿼리를 MySQL 클라이언트에서 실행하세요:
     echo SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA IN ('mysql', 'information_schema', 'performance_schema');
 ) else if "!DBType!"=="2" (
     echo PostgreSQL에서 시스템 테이블 접근 권한을 확인합니다...
-    echo 다음 SQL 쿼리를 실행하세요:
+    echo 다음 SQL 쿼리를 psql 프롬프트에서 실행하세요:
     echo SELECT grantee, table_schema, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'pg_catalog';
 ) else (
     echo 지원되지 않는 데이터베이스 유형입니다.
