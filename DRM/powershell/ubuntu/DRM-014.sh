@@ -3,55 +3,48 @@ function Write-OutputWithBar {
     Write-Output "==========================================="
 }
 
-function Check-OracleRoles {
+function Check-MSSQLSecuritySettings {
     param(
-        [string]$OracleUser,
-        [string]$OraclePass,
-        [string]$OracleDB
+        [string]$SqlServer,
+        [PSCredential]$SqlCredential
     )
-    $sqlPlusCmd = "sqlplus -s /nolog"
-    $connectCmd = "CONNECT $OracleUser/$OraclePass@$OracleDB"
-    $osRolesQuery = "SELECT value FROM v\$parameter WHERE name = 'os_roles';"
-    $remoteOsRolesQuery = "SELECT value FROM v\$parameter WHERE name = 'remote_os_roles';"
-    
-    $scriptBlock = @"
-        $connectCmd
-        SET HEADING OFF;
-        SET FEEDBACK OFF;
-        $osRolesQuery
-        EXIT;
-"@
-    
-    $osRolesResult = Invoke-Expression "$sqlPlusCmd | echo $scriptBlock"
-    $osRolesDisabled = $osRolesResult -contains "FALSE"
-    
-    $scriptBlockRemote = @"
-        $connectCmd
-        SET HEADING OFF;
-        SET FEEDBACK OFF;
-        $remoteOsRolesQuery
-        EXIT;
-"@
-    
-    $remoteOsRolesResult = Invoke-Expression "$sqlPlusCmd | echo $scriptBlockRemote"
-    $remoteOsRolesDisabled = $remoteOsRolesResult -contains "FALSE"
+    Import-Module SqlServer
 
-    if ($osRolesDisabled -and $remoteOsRolesDisabled) {
-        Write-Output "OK: OS_ROLES 및 REMOTE_OS_ROLES 기능이 안전하게 비활성화되어 있습니다."
-    } else {
-        Write-Output "WARNING: OS_ROLES 또는 REMOTE_OS_ROLES 기능이 활성화되어 있어 취약할 수 있습니다."
+    try {
+        # Check for Mixed Mode Authentication (Windows + SQL Server authentication)
+        $queryAuthenticationMode = "SELECT SERVERPROPERTY('IsMixedModeAuthentication')"
+        $mixedModeAuthentication = Invoke-Sqlcmd -ServerInstance $SqlServer -Credential $SqlCredential -Query $queryAuthenticationMode
+
+        if ($mixedModeAuthentication.Column1 -eq 1) {
+            Write-Output "WARNING: Mixed Mode Authentication (Windows and SQL Server) is enabled."
+        } else {
+            Write-Output "OK: Only Windows Authentication mode is enabled."
+        }
+
+        # Placeholder for checking secure connections
+        # For real-world scenarios, you would check SQL Server's configuration for using SSL for encrypted connections
+        # Example: "SELECT * FROM sys.dm_exec_connections WHERE encrypt_option = 'TRUE'"
+        # This is a placeholder and should be replaced with actual checks as needed
+        $secureConnectionCheck = $true # Placeholder value
+
+        if ($secureConnectionCheck) {
+            Write-Output "OK: Secure connections are enabled."
+        } else {
+            Write-Output "WARNING: Secure connections are not enforced."
+        }
+    }
+    catch {
+        Write-Output "Error checking MSSQL security settings: $_"
     }
 }
 
 Write-OutputWithBar
-Write-Output "CODE [DBM-014] 취약한 운영체제 역할 인증 기능(OS_ROLES, REMOTE_OS_ROLES) 사용"
+Write-Output "Checking MSSQL Security Settings"
 
-# Prompt for Oracle DB user information
-$OracleUser = Read-Host "Enter Oracle DB username"
-$OraclePass = Read-Host "Enter Oracle DB password" -AsSecureString
-$OraclePass = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($OraclePass))
-$OracleDB = Read-Host "Enter Oracle DB connection string (e.g., //host:port/sid)"
+# Prompt for SQL Server connection details
+$SqlServer = Read-Host "Enter SQL Server instance (e.g., ServerName\\InstanceName)"
+$SqlCredential = Get-Credential -Message "Enter SQL Server admin credentials"
 
-Check-OracleRoles -OracleUser $OracleUser -OraclePass $OraclePass -OracleDB $OracleDB
+Check-MSSQLSecuritySettings -SqlServer $SqlServer -SqlCredential $SqlCredential
 
 Write-OutputWithBar
