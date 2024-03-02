@@ -31,7 +31,7 @@ set ExpectedUmask=027
 
 echo 데이터베이스 서비스 계정(%DatabaseServiceAccount%)의 umask 값 확인이 필요합니다.
 echo 이 작업은 해당 데이터베이스 서버에 직접 로그인하여 수행해야 합니다.
-echo 다음 명령어를 사용하세요: su - %DatabaseServiceAccount% -c umask
+echo 다음 명령어를 사용하세요: su - %DatabaseServiceAccount% -c "umask"
 echo 예상되는 umask 값: %ExpectedUmask%
 
 :end

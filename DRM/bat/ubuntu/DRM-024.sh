@@ -19,34 +19,22 @@ set /p DBUser="데이터베이스 사용자 이름을 입력하세요: "
 set /p DBPass="데이터베이스 비밀번호를 입력하세요: "
 
 if "!DBType!"=="1" (
-    set Query="SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE IS_GRANTABLE = 'YES';"
     echo MySQL에서 'WITH GRANT OPTION'으로 부여된 불필요한 권한을 확인 중...
-    mysql -u !DBUser! -p!DBPass! -e "!Query!" > grant_option_results.txt
-    findstr /C:"GRANTEE" grant_option_results.txt > nul
-    if errorlevel 1 (
-        echo 불필요한 'WITH GRANT OPTION' 권한이 없습니다.
-    ) else (
-        echo 불필요한 'WITH GRANT OPTION'으로 부여된 권한 목록:
-        type grant_option_results.txt
-    )
-    del grant_option_results.txt
+    mysql -u !DBUser! -p!DBPass! -e "SELECT GRANTEE, PRIVILEGE_TYPE FROM information_schema.user_privileges WHERE IS_GRANTABLE = 'YES';"
 ) else if "!DBType!"=="2" (
-    set Query="SELECT grantee, privilege_type FROM information_schema.role_usage_grants WHERE is_grantable = 'YES';"
     echo PostgreSQL에서 'WITH GRANT OPTION'으로 부여된 불필요한 권한을 확인 중...
-    psql -U !DBUser! -c "!Query!" > grant_option_results.txt
-    findstr /C:"grantee" grant_option_results.txt > nul
-    if errorlevel 1 (
-        echo 불필요한 'WITH GRANT OPTION' 권한이 없습니다.
-    ) else (
-        echo 불필요한 'WITH GRANT OPTION'으로 부여된 권한 목록:
-        type grant_option_results.txt
-    )
-    del grant_option_results.txt
+    psql -U !DBUser! -w -c "SELECT grantee, privilege_type FROM information_schema.role_usage_grants WHERE is_grantable = 'YES';"
 ) else if "!DBType!"=="3" (
-    echo Oracle에서는 이 스크립트를 통한 직접적인 확인이 구현되지 않았습니다.
+    echo Oracle 데이터베이스에서 'WITH GRANT OPTION'으로 부여된 권한을 확인하기 위해, 다음 SQL 쿼리를 실행하세요:
+    echo SELECT grantee, privilege FROM dba_sys_privs WHERE admin_option = 'YES';
+    echo 이 쿼리는 SQL*Plus 또는 Oracle SQL Developer에서 실행할 수 있습니다.
 ) else (
     echo 지원하지 않는 데이터베이스 유형입니다.
+    goto end
 )
 
+echo 설정을 검토하여 불필요하게 'WITH GRANT OPTION'이 설정된 권한이 없는지 확인하세요.
+
 :end
+echo ============================================
 pause

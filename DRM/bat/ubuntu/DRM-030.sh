@@ -16,30 +16,19 @@ set /p DB_PASS="데이터베이스 비밀번호를 입력하세요: "
 
 if "%DB_TYPE%"=="1" (
     echo MySQL에서 Audit Table 접근 제어를 확인 중입니다...
-    mysql -u %DB_USER% -p%DB_PASS% -e "SELECT * FROM audit_table_permissions;" > audit_results.txt
-    findstr /C:"[취약]" audit_results.txt > nul
-    if errorlevel 1 (
-        echo OK: Audit Table 접근 제어가 적절합니다.
-    ) else (
-        echo WARNING: Audit Table 접근 제어가 미흡합니다.
-    )
-    del audit_results.txt
+    mysql -u %DB_USER% -p%DB_PASS% -e "SHOW GRANTS FOR 'audit_user';"
+    echo 결과를 검토하여 Audit Table에 대한 접근 제어가 적절한지 확인하세요.
 ) else if "%DB_TYPE%"=="2" (
     echo PostgreSQL에서 Audit Table 접근 제어를 확인 중입니다...
-    psql -U %DB_USER% -c "SELECT * FROM audit_table_permissions;" > audit_results.txt
-    findstr /C:"[취약]" audit_results.txt > nul
-    if errorlevel 1 (
-        echo OK: Audit Table 접근 제어가 적절합니다.
-    ) else (
-        echo WARNING: Audit Table 접근 제어가 미흡합니다.
-    )
-    del audit_results.txt
+    psql -U %DB_USER% -c "\dp audit_table;"
+    echo 결과를 검토하여 Audit Table에 대한 접근 제어가 적절한지 확인하세요.
 ) else if "%DB_TYPE%"=="3" (
     echo Oracle에서 Audit Table 접근 제어를 수동으로 확인해야 합니다.
+    echo 다음 쿼리를 사용하여 접근 제어를 확인할 수 있습니다: SELECT * FROM all_tab_privs WHERE table_name = 'AUDIT_TABLE';
 ) else (
     echo 지원되지 않는 데이터베이스 유형입니다.
 )
 
+:end
 echo ============================================
-endlocal
 pause

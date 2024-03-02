@@ -28,7 +28,7 @@ if "%DBType%"=="1" (
     set /p DBUser="PostgreSQL 사용자 이름을 입력하세요: "
     set /p DBPass="PostgreSQL 비밀번호를 입력하세요: "
     echo PostgreSQL 데이터베이스 오브젝트를 확인 중입니다...
-    psql -U %DBUser% -w %DBPass% -c "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';"
+    psql -U %DBUser% -w -c "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';"
     if errorlevel 1 (
         echo PostgreSQL 데이터베이스 연결 오류.
     ) else (

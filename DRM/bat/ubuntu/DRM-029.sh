@@ -20,7 +20,7 @@ set DBHost=localhost
 if "%DBType%"=="1" (
     echo MySQL 자원 사용 제한을 확인 중...
     mysql -u %DBUser% -p%DBPass% -h %DBHost% -e "SHOW VARIABLES LIKE 'max_connections';"
-    if %ERRORLEVEL% neq 0 (
+    if errorlevel 1 (
         echo 경고: MySQL 자원 사용 제한을 검색하지 못했습니다.
     ) else (
         echo 양호: MySQL 자원 사용 제한 설정이 확인되었습니다.
@@ -28,13 +28,14 @@ if "%DBType%"=="1" (
 ) else if "%DBType%"=="2" (
     echo PostgreSQL 자원 사용 제한을 확인 중...
     psql -U %DBUser% -h %DBHost% -W %DBPass% -c "SHOW max_connections;"
-    if %ERRORLEVEL% neq 0 (
+    if errorlevel 1 (
         echo 경고: PostgreSQL 자원 사용 제한을 검색하지 못했습니다.
     ) else (
         echo 양호: PostgreSQL 자원 사용 제한 설정이 확인되었습니다.
     )
 ) else (
     echo 지원되지 않는 데이터베이스 유형입니다.
+    goto end
 )
 
 :end
