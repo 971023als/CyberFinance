@@ -26,8 +26,7 @@ if "%DB_TYPE%"=="MySQL" (
 
     del tmp_result.txt
 ) else (
-    echo PostgreSQL에 대해서는 기본적으로 로그인 실패 횟수에 따른 접속 제한 설정을 지원하지 않습니다.
-    echo pg_hba.conf 파일을 통해 접근 제어를 설정하거나 외부 보안 도구를 사용해야 합니다.
+    echo 지원하지 않는 데이터베이스 유형입니다.
 )
 
 :end
