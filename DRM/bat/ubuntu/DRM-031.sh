@@ -1,62 +1,53 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-:: 배치에서 임시 파일 생성은 Bash처럼 간단하지 않습니다. 단순성을 위해 고정된 이름을 사용합니다.
-set TMP1=tempfile.txt
-echo. > %TMP1%
-
-call :BAR
-echo CODE [DBM-031] SA 계정의 보안설정 미흡
-
-:: 텍스트 블록을 파일로 리다이렉션
-(
-echo [양호]: 관리자 계정의 보안 설정이 적절한 경우
-echo [취약]: 관리자 계정의 보안 설정이 미흡한 경우
-) > result.txt
-
-call :BAR
+echo -----------------------------------------------------
+echo CODE [DBM-032] 데이터베이스 접속 시 통신구간에 비밀번호 평문 노출
+echo -----------------------------------------------------
 
 echo 지원하는 데이터베이스:
 echo 1. SQL Server
 echo 2. MySQL
 echo 3. PostgreSQL
-set /p DB_TYPE="사용 중인 데이터베이스 유형을 선택하세요 (1-3): "
-
-set /p DB_ADMIN="데이터베이스 관리자 계정을 입력하세요: "
-:: 참고: 배치 스크립트는 비밀번호를 숨긴 입력을 지원하지 않습니다.
-:: 환경 변수 또는 다른 방법을 사용하여 비밀번호를 안전하게 관리하세요.
-echo 데이터베이스 관리자 비밀번호를 입력하세요:
-set /p DB_PASS=""
+echo 4. Oracle
+set /p DB_TYPE="사용 중인 데이터베이스 유형을 선택하세요 (1-4): "
 
 if "%DB_TYPE%"=="1" (
-    :: SQL Server 명령
-    sqlcmd -U %DB_ADMIN% -P %DB_PASS% -Q "SELECT * FROM sys.sql_logins WHERE name = 'sa';" > nul
+    echo SQL Server가 선택되었습니다.
+    echo 관리자 계정 이름을 입력하고, sqlcmd 실행 시 비밀번호가 요청될 것입니다.
+    set /p DB_ADMIN="데이터베이스 관리자 사용자 이름을 입력하세요: "
+    sqlcmd -U %DB_ADMIN% -Q "SELECT name FROM sys.sql_logins WHERE is_disabled = 0;" > nul 2>&1
+    if errorlevel 1 (
+        echo 관리자 계정 보안 설정 검사 실패. SQL Server에 연결할 수 없거나 쿼리 실행에 실패했습니다.
+    ) else (
+        echo 관리자 계정 보안 설정이 적절합니다.
+    )
 ) else if "%DB_TYPE%"=="2" (
-    :: MySQL 명령
-    mysql -u %DB_ADMIN% -p%DB_PASS% -e "SELECT User, Host FROM mysql.user WHERE User = 'root';" > nul
+    echo MySQL이 선택되었습니다. 비밀번호는 다음 단계에서 입력하세요.
+    set /p DB_ADMIN="데이터베이스 관리자 사용자 이름을 입력하세요: "
+    echo MySQL 데이터베이스 관리자 비밀번호를 입력하세요:
+    mysql -u %DB_ADMIN% -p -e "SHOW VARIABLES LIKE 'have_ssl';" > nul 2>&1
+    if "!errorlevel!"=="0" (
+        echo 연결 보안 설정이 적절합니다.
+    ) else (
+        echo 연결 보안 설정 검사 실패. MySQL에 연결할 수 없거나 SSL 설정을 확인할 수 없습니다.
+    )
 ) else if "%DB_TYPE%"=="3" (
-    :: PostgreSQL 명령
-    psql -U %DB_ADMIN% -c "SELECT rolname FROM pg_roles WHERE rolname = 'postgres';" > nul
+    echo PostgreSQL이 선택되었습니다. 비밀번호는 다음 단계에서 입력하세요.
+    set /p DB_ADMIN="데이터베이스 관리자 사용자 이름을 입력하세요: "
+    echo PostgreSQL 데이터베이스 관리자 비밀번호를 입력하세요:
+    psql -U %DB_ADMIN% -c "SHOW ssl;" > nul 2>&1
+    if "!errorlevel!"=="0" (
+        echo 연결 보안 설정이 적절합니다.
+    ) else (
+        echo 연결 보안 설정 검사 실패. PostgreSQL에 연결할 수 없거나 SSL 설정을 확인할 수 없습니다.
+    )
+) else if "%DB_TYPE%"=="4" (
+    echo Oracle이 선택되었습니다. Oracle 데이터베이스의 SSL 구성은 수동으로 확인해야 합니다.
+    echo Oracle Net Listener의 SSL 구성을 검사하십시오.
+    echo 이 작업은 데이터베이스 관리자 또는 네트워크 관리자가 수행해야 할 수 있습니다.
 ) else (
     echo 지원하지 않는 데이터베이스 유형입니다.
-    goto end
 )
 
-:: errorlevel을 확인하여 결과를 결정
-if %errorlevel% == 0 (
-    echo 관리자 계정의 보안 설정이 적절합니다.
-) else (
-    echo 관리자 계정의 보안 설정이 미흡합니다.
-)
-
-type result.txt
-echo.
-goto end
-
-:BAR
-echo ----------------------------------------
-goto :eof
-
-:end
-del %TMP1%
 endlocal
