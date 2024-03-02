@@ -1,33 +1,47 @@
-# 사용자 입력 받기
-$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL, MSSQL. 사용 중인 데이터베이스 유형을 입력하세요"
-$DB_USER = Read-Host "$DB_TYPE 사용자 이름을 입력하세요"
-$DB_PASS = Read-Host "$DB_TYPE 비밀번호를 입력하세요" -AsSecureString
+# Prompt for database type
+$DB_TYPE = Read-Host "Supported databases: MySQL, PostgreSQL, MSSQL. Enter your database type"
+$DB_USER = Read-Host "Enter $DB_TYPE username"
+$DB_PASS = Read-Host "Enter $DB_TYPE password" -AsSecureString
 
-# 데이터베이스 유형에 따른 처리
+# Convert SecureString password to plain text for MSSQL
+$PlainTextPassword = if ($DB_TYPE -eq "MSSQL") {
+    [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($DB_PASS))
+} else {
+    ""
+}
+
+# Handle database type
 switch ($DB_TYPE) {
     "MySQL" {
-        # MySQL 쿼리 실행
-        # MySQL PowerShell 연결 및 쿼리 실행 로직
+        # Placeholder for MySQL database management logic
+        Write-Host "MySQL database management is not implemented in this script."
     }
     "PostgreSQL" {
-        # PostgreSQL 쿼리 실행
-        # PostgreSQL PowerShell 연결 및 쿼리 실행 로직
+        # Placeholder for PostgreSQL database management logic
+        Write-Host "PostgreSQL database management is not implemented in this script."
     }
     "MSSQL" {
-        # MSSQL 쿼리 실행
-        $PlainTextPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($DB_PASS))
-        $ConnectionString = "Server=localhost;User ID=$DB_USER;Password=$PlainTextPassword;"
+        # MSSQL database management logic
+        $ConnectionString = "Server=localhost; User ID=$DB_USER; Password=$PlainTextPassword;"
         
         try {
             $queryResult = Invoke-Sqlcmd -Query "SELECT name FROM sys.syslogins WHERE isntname = 0;" -ConnectionString $ConnectionString
-            # 쿼리 실행 결과 처리 로직 필요
-            # 업무상 불필요한 계정 판단 로직 구현
-            Write-Host "업무상 불필요한 MSSQL 데이터베이스 계정이 존재하지 않습니다."
+            if ($queryResult.Count -gt 0) {
+                Write-Host "List of MSSQL Logins:"
+                foreach ($login in $queryResult) {
+                    Write-Host $login.name
+                }
+            } else {
+                Write-Host "No MSSQL logins found or no unnecessary accounts detected."
+            }
         } catch {
-            Write-Host "MSSQL 데이터베이스 쿼리 실행 중 오류가 발생했습니다: $_"
+            Write-Host "An error occurred while executing the MSSQL database query: $_"
         }
     }
     default {
-        Write-Host "지원하지 않는 데이터베이스 유형입니다."
+        Write-Host "Unsupported database type."
     }
 }
+
+# Note: This script provides a basic framework for integrating MSSQL database account management. 
+# Further development is required to implement specific database management logic, such as identifying unnecessary accounts.

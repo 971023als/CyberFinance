@@ -1,40 +1,45 @@
-# 사용자 입력 받기
-$DB_TYPE = Read-Host "지원하는 데이터베이스: MySQL, PostgreSQL, Oracle, MSSQL. 사용 중인 데이터베이스 유형을 입력하세요"
-$DB_USER = Read-Host "$DB_TYPE 사용자 이름을 입력하세요"
-$DB_PASS = Read-Host "$DB_TYPE 비밀번호를 입력하세요" -AsSecureString
+# Prompt for database type
+$DB_TYPE = Read-Host "Supported databases: MySQL, PostgreSQL, Oracle, MSSQL. Enter your database type"
+$DB_USER = Read-Host "Enter $DB_TYPE username"
+$DB_PASS = Read-Host "Enter $DB_TYPE password" -AsSecureString
 
-# 데이터베이스 유형에 따른 처리
+# Handle database type
 switch ($DB_TYPE) {
     "MySQL" {
-        # MySQL 처리 로직
-        # PowerShell에서 MySQL 쿼리 실행 방법은 MySQL 모듈 또는 MySQL .NET 커넥터 설치 필요
+        # Placeholder for MySQL password strength verification logic
+        Write-Host "Implement MySQL password strength verification."
     }
     "PostgreSQL" {
-        # PostgreSQL 처리 로직
-        # PowerShell에서 PostgreSQL 쿼리 실행 방법은 psql 명령어 사용 또는 Npgsql 모듈 설치 필요
+        # Placeholder for PostgreSQL password strength verification logic
+        Write-Host "Implement PostgreSQL password strength verification."
     }
     "Oracle" {
-        Write-Host "Oracle 데이터베이스에 대한 비밀번호 강도 검사는 수동으로 수행해야 할 수 있습니다."
+        Write-Host "Manual password strength verification required for Oracle."
     }
     "MSSQL" {
-        # MSSQL 처리 로직
+        # Convert SecureString password to plain text
         $PlainTextPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($DB_PASS))
-        $ConnectionString = "Server=localhost;User ID=$DB_USER;Password=$PlainTextPassword;"
+        $ConnectionString = "Server=localhost; User ID=$DB_USER; Password=$PlainTextPassword;"
+
+        # Try to execute a query to check for enabled logins as an example
         try {
-            Invoke-Sqlcmd -Query "SELECT name FROM sys.sql_logins WHERE is_disabled = 0;" -ConnectionString $ConnectionString
-            Write-Host "MSSQL에서 로그인 실패 횟수에 따른 접속 제한 설정이 적절한지 확인하세요."
+            $QueryResult = Invoke-Sqlcmd -Query "SELECT name FROM sys.sql_logins WHERE is_disabled = 0;" -ConnectionString $ConnectionString
+            if ($QueryResult) {
+                Write-Host "SQL Server logins enabled: $($QueryResult.name -join ', ')"
+            } else {
+                Write-Host "No enabled SQL Server logins found."
+            }
         } catch {
-            Write-Host "MSSQL 연결 실패: $_"
+            Write-Host "Failed to connect to MSSQL: $_"
         }
     }
     default {
-        Write-Host "지원하지 않는 데이터베이스 유형입니다."
-        exit
+        Write-Host "Unsupported database type."
     }
 }
 
-# 예시: MySQL, PostgreSQL, MSSQL에 대한 비밀번호 강도 검사 로직
-# 여기에 비밀번호 강도 검사 로직을 구현합니다. 예를 들어, 정규 표현식을 사용하여 비밀번호 패턴을 검사할 수 있습니다.
+# Note: Implement actual password strength verification logic based on your requirements.
+# The database queries shown here are placeholders and do not directly assess password strength.
 
-# 비밀번호 검사 결과에 따라 메시지 출력
-Write-Host "모든 데이터베이스 계정의 비밀번호가 강력합니다."
+# Example message, adjust based on actual implementation
+Write-Host "Ensure all database accounts have strong passwords as per your organization's policy."

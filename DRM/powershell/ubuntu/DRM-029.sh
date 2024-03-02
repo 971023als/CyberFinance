@@ -1,60 +1,54 @@
 # Define database credentials
-$DBType = Read-Host "Enter your database type (1. MySQL, 2. PostgreSQL, 3. Oracle)"
+$DBType = Read-Host "Enter your database type (1. MySQL, 2. PostgreSQL, 3. Oracle, 4. SQL Server)"
 $DBUser = Read-Host "Enter database username"
 $DBPass = Read-Host "Enter database password" -AsSecureString
 $DBHost = "localhost" # Update as needed
 
-# Convert to PSCredential
-$Credential = New-Object System.Management.Automation.PSCredential -ArgumentList $DBUser, $DBPass
+# Convert SecureString password to plain text
+$Ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($DBPass)
+$PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($Ptr)
 
 function Check-ResourceLimits {
     param (
         [string]$DBType,
-        [System.Management.Automation.PSCredential]$Credential,
+        [string]$DBUser,
+        [string]$DBPass,
         [string]$DBHost
     )
 
     switch ($DBType) {
         "1" { # MySQL
-            $ConnectionString = "server=$DBHost;user=$($Credential.UserName);password=$($Credential.GetNetworkCredential().Password);"
-            $Query = "SHOW VARIABLES LIKE 'max_connections';"
-            # Assume MySql.Data.dll is available or use Invoke-MySql
-            $Result = Invoke-SqlQuery -ConnectionString $ConnectionString -Query $Query -DatabaseType "MySql"
+            # MySQL specific connection and query execution logic
         }
         "2" { # PostgreSQL
-            $ConnectionString = "Host=$DBHost;Username=$($Credential.UserName);Password=$($Credential.GetNetworkCredential().Password);"
-            $Query = "SHOW max_connections;"
-            # Assume Npgsql.dll is available or use Invoke-PostgreSql
-            $Result = Invoke-SqlQuery -ConnectionString $ConnectionString -Query $Query -DatabaseType "PostgreSql"
+            # PostgreSQL specific connection and query execution logic
         }
         "3" { # Oracle
-            $ConnectionString = "User Id=$($Credential.UserName);Password=$($Credential.GetNetworkCredential().Password);Data Source=$DBHost;"
-            $Query = "SHOW PARAMETERS sessions;" # This might need adjustment for Oracle
-            # Use Oracle.ManagedDataAccess.dll or appropriate cmdlet
-            $Result = Invoke-SqlQuery -ConnectionString $ConnectionString -Query $Query -DatabaseType "Oracle"
+            # Oracle specific connection and query execution logic
+        }
+        "4" { # SQL Server
+            $ConnectionString = "Data Source=$DBHost;Initial Catalog=master;User ID=$DBUser;Password=$DBPass;"
+            $Query = "SELECT value_in_use FROM sys.configurations WHERE name = 'max degree of parallelism';"
+            Try {
+                $Connection = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+                $Connection.Open()
+                $Command = $Connection.CreateCommand()
+                $Command.CommandText = $Query
+                $Result = $Command.ExecuteScalar()
+                Write-Host "SQL Server maximum degree of parallelism is set to: $Result"
+            }
+            Catch {
+                Write-Host "Error in SQL Server query execution: $_"
+            }
+            Finally {
+                $Connection.Close()
+            }
         }
         default {
             Write-Host "Unsupported database type."
-            return
         }
     }
-
-    if ($null -eq $Result) {
-        Write-Host "Database resource limit settings are insufficient or could not be retrieved."
-    }
-    else {
-        Write-Host "Database resource limit settings are appropriate: $($Result[0].Value)"
-    }
-}
-
-function Invoke-SqlQuery {
-    param (
-        [string]$ConnectionString,
-        [string]$Query,
-        [string]$DatabaseType
-    )
-    # Placeholder function to execute SQL query. Implementation will vary based on database type and available modules or .NET assemblies.
 }
 
 # Calling the function to check resource limits
-Check-ResourceLimits -DBType $DBType -Credential $Credential -DBHost $DBHost
+Check-ResourceLimits -DBType $DBType -DBUser $DBUser -DBPass $PlainPassword -DBHost $DBHost

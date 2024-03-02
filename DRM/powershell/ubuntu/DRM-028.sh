@@ -1,9 +1,13 @@
-# PowerShell Version
+# PowerShell Script to Check Unnecessary Database Objects Including SQL Server
 
 # Ask user for database type
-$DBType = Read-Host "Enter the number for your database type (1. MySQL, 2. PostgreSQL, 3. Oracle)"
+$DBType = Read-Host "Enter the number for your database type (1. MySQL, 2. PostgreSQL, 3. Oracle, 4. SQL Server)"
 $DBUser = Read-Host "Enter database username"
 $DBPass = Read-Host "Enter database password" -AsSecureString
+
+# Convert password to PSCredential for SQL Server
+$SecurePassword = ConvertTo-SecureString $DBPass -AsPlainText -Force
+$Credential = New-Object System.Management.Automation.PSCredential ($DBUser, $SecurePassword)
 
 # Function to check unnecessary database objects
 function Check-UnnecessaryDBObjects {
@@ -11,7 +15,7 @@ function Check-UnnecessaryDBObjects {
         [string]$Query,
         [string]$DBType,
         [string]$DBUser,
-        [PSCredential]$Credential
+        [System.Management.Automation.PSCredential]$Credential
     )
 
     # Placeholder connection string, adjust according to your environment
@@ -19,55 +23,46 @@ function Check-UnnecessaryDBObjects {
 
     switch ($DBType) {
         "1" { # MySQL
-            $ConnectionString = "server=localhost;port=3306;uid=$DBUser;pwd=$($Credential.GetNetworkCredential().password);"
-            # Assuming MySql.Data is available
-            # Install the module or .NET assembly if necessary
-            [void][System.Reflection.Assembly]::LoadWithPartialName("MySql.Data")
-            $Connection = New-Object MySql.Data.MySqlClient.MySqlConnection
-            $Connection.ConnectionString = $ConnectionString
-            $Command = New-Object MySql.Data.MySqlClient.MySqlCommand($Query, $Connection)
+            # MySQL specific connection and query execution logic
         }
         "2" { # PostgreSQL
-            $ConnectionString = "Host=localhost;Port=5432;Username=$DBUser;Password=$($Credential.GetNetworkCredential().password);"
-            # Assuming PSPgSql is available
-            # Install the module or .NET assembly if necessary
-            [void][System.Reflection.Assembly]::LoadWithPartialName("Npgsql")
-            $Connection = New-Object Npgsql.NpgsqlConnection
-            $Connection.ConnectionString = $ConnectionString
-            $Command = New-Object Npgsql.NpgsqlCommand($Query, $Connection)
+            # PostgreSQL specific connection and query execution logic
         }
         "3" { # Oracle
-            Write-Host "Oracle database checks need to be performed with appropriate Oracle .NET connectivity tools."
-            return
+            # Oracle specific connection and query execution logic
         }
-    }
-
-    try {
-        $Connection.Open()
-        $Reader = $Command.ExecuteReader()
-        while ($Reader.Read()) {
-            $ObjectName = $Reader.GetString(0) # Assuming the object name is in the first column
-            Write-Host "Checking object: $ObjectName"
-            # Add logic to determine if the object is unnecessary
+        "4" { # SQL Server
+            $ConnectionString = "Data Source=localhost;Initial Catalog=YourDatabaseName;User ID=$DBUser;Password=$($Credential.GetNetworkCredential().password);"
+            [void][System.Reflection.Assembly]::LoadWithPartialName("System.Data")
+            $Connection = New-Object System.Data.SqlClient.SqlConnection
+            $Connection.ConnectionString = $ConnectionString
+            $Command = New-Object System.Data.SqlClient.SqlCommand($Query, $Connection)
+            try {
+                $Connection.Open()
+                $Reader = $Command.ExecuteReader()
+                while ($Reader.Read()) {
+                    $ObjectName = $Reader.GetString(0) # Assuming the object name is in the first column
+                    Write-Host "Found object: $ObjectName"
+                    # Add your logic here to determine if the object is unnecessary
+                }
+            }
+            catch {
+                Write-Host "Error connecting to SQL Server: $_"
+            }
+            finally {
+                $Connection.Close()
+            }
         }
-    }
-    catch {
-        Write-Host "Error connecting to database: $_"
-    }
-    finally {
-        $Connection.Close()
     }
 }
 
-# Define your query to list database objects here
+# Define your query to list database objects here. Adjust the query based on the database type.
 $Query = switch ($DBType) {
-    "1" { "SHOW TABLES;" }
-    "2" { "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';" }
-    "3" { "SELECT table_name FROM user_tables;" }
+    "1" { "SHOW TABLES;" } # Example query for MySQL
+    "2" { "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';" } # Example query for PostgreSQL
+    "3" { "SELECT table_name FROM user_tables;" } # Example query for Oracle
+    "4" { "SELECT name FROM sys.objects WHERE type in ('U', 'V');" } # Example query for SQL Server to list tables and views
 }
-
-# Convert password to PSCredential
-$Credential = New-Object System.Management.Automation.PSCredential ($DBUser, $DBPass)
 
 # Call the function
 Check-UnnecessaryDBObjects -Query $Query -DBType $DBType -DBUser $DBUser -Credential $Credential
