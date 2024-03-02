@@ -16,10 +16,12 @@ set /p DBPass="데이터베이스 관리자 비밀번호를 입력하세요: "
 
 if "%DBType%"=="1" (
     echo MySQL에서 사용자별 계정 분리 설정을 확인합니다...
-    mysql -u %DBUser% -p%DBPass% -e "SELECT User, Host, Db, Select_priv, Insert_priv, Update_priv FROM mysql.db;"
+    mysql -u %DBUser% -p%DBPass% -e "SELECT User, Host FROM mysql.user;"
+    echo 다음 쿼리 결과를 검토하여 각 사용자가 적절한 권한을 가지고 있는지 확인하세요.
 ) else if "%DBType%"=="2" (
     echo PostgreSQL에서 사용자별 계정 분리 설정을 확인합니다...
-    psql -U %DBUser% -w -c "SELECT rolname, rolselectpriv, rolinsertpriv, rolupdatepriv FROM pg_roles JOIN pg_database ON (rolname = datname);"
+    psql -U %DBUser% -w -c "SELECT rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin FROM pg_roles;"
+    echo 다음 쿼리 결과를 검토하여 각 사용자의 역할과 권한이 적절히 설정되었는지 확인하세요.
 ) else (
     echo 지원되지 않는 데이터베이스 유형입니다.
     goto end
