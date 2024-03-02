@@ -13,14 +13,14 @@ set /p DB_TYPE="사용 중인 데이터베이스 유형을 입력하세요: "
 
 if "%DB_TYPE%"=="MySQL" (
     for /f "tokens=*" %%i in ('mysql --version') do set VERSION=%%i
-    set VERSION=%VERSION:*is =%
+    set "VERSION=%VERSION:*is =%"
 ) else if "%DB_TYPE%"=="PostgreSQL" (
     for /f "tokens=*" %%i in ('psql -V') do set VERSION=%%i
-    set VERSION=%VERSION:* =%
+    set "VERSION=%VERSION:* =%"
 ) else if "%DB_TYPE%"=="Oracle" (
     for /f "tokens=*" %%i in ('sqlplus -v') do set VERSION=%%i
-    set VERSION=%VERSION:*Release =%
-    set VERSION=%VERSION:*,=%
+    set "VERSION=%VERSION:*Release =%"
+    set "VERSION=%VERSION:*,=%"
 ) else (
     echo 지원되지 않는 데이터베이스 유형입니다.
     goto end
